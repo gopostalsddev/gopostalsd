@@ -3,7 +3,7 @@ from flask import Flask
 from flask_restx import Api
 from flask_cors import CORS
 from server.config import DevelopmentConfig, TestingConfig, ProductionConfig
-from server.config import database, migrate
+from server.config import database, migrate, sinalite
 from server.models import * # So that they can be detected by migrations
 
 
@@ -41,6 +41,9 @@ def create_server(config="development"):
     # Initialize database and migration support
     database.init_app(server)
     migrate.init_app(server, database)
+
+    # Initialize sinalite adapter
+    sinalite.init_app(server)
 
     # Register API routes
     #from server.routes import register_routes

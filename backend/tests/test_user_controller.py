@@ -28,7 +28,6 @@ def create_role_and_addresses():
 
     return role, shipping_address, billing_address
 
-
 def test_create_user_success(client):
     role, shipping_address, billing_address = create_role_and_addresses()
 

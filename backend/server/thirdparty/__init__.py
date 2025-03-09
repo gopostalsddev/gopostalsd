@@ -1,0 +1,2 @@
+from .sinalite import SinaliteAdapter
+

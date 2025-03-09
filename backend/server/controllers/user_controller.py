@@ -2,7 +2,7 @@
 from enum import Enum
 from server.config import database as db
 from server.models.user import User, Role, Address
-from server.controllers.common import Result
+from server.controllers.helpers import Result
 import re
 
 class UserErrors(Enum):
