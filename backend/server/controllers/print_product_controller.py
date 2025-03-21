@@ -52,8 +52,8 @@ class PrintProductController:
     def update_print_product_category_status(category_id: int, enabled: bool):
         """Enable or disable a category."""
         
-        result = Result
-        category = PrintProductCategory.query(category_id)
+        result = Result()
+        category =  db.session.get(PrintProductCategory, category_id)
         if not category:
             result.status = False
             result.error = PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value

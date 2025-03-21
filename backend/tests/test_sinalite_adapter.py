@@ -128,9 +128,12 @@ def test_get_product_categories(sinalite_adapter):
         url = f"{sinalite_adapter.base_url}/product"
         mocker.get(url, json=mock_products, status_code=200)
 
-        expected_categories = ["Cards", "Marketing", "Labels"]
+        expected_categories = ["Cards", "Labels", "Marketing"] # Sorted in alphabetical order
         categories = sinalite_adapter.get_product_categories()
 
         # Check exact order and uniqueness without using set()
-        assert categories == expected_categories
-        assert len(categories) == len(set(categories))  # Ensure uniqueness
+        assert len(categories) == 3
+        assert len(categories) == len(set(categories))  
+        assert categories[0] == expected_categories[0]
+        assert categories[1] == expected_categories[1]
+        assert categories[2] == expected_categories[2]

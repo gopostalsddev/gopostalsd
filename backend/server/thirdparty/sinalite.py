@@ -74,4 +74,4 @@ class SinaliteAdapter:
     def get_product_categories(self):
         """Fetch available product categories"""
         products = self.get_products()
-        return list({product["category"] for product in products})
+        return sorted({product["category"] for product in products})
