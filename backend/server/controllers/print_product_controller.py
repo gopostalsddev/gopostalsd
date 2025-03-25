@@ -23,6 +23,12 @@ class PrintProductController:
         """Retrieve all product categories from the database."""
 
         result = Result()
+
+        table_is_empty = (PrintProductCategory.query.first() is None) # TODO: Add test case
+        if(table_is_empty):
+            result.data = []
+            return result
+
         categories = PrintProductCategory.query.all()
 
         if categories:
@@ -38,6 +44,12 @@ class PrintProductController:
         """Retrieve only enabled categories."""
         
         result = Result()
+
+        table_is_empty = (PrintProductCategory.query.first() is None) # TODO: Add test case
+        if(table_is_empty):
+            result.data = []
+            return result
+
         categories = PrintProductCategory.query.filter_by(enabled=True).all()
 
         if categories:
@@ -53,6 +65,12 @@ class PrintProductController:
         """Enable or disable a category."""
         
         result = Result()
+        
+        table_is_empty = (PrintProductCategory.query.first() is None) # TODO: Add test case
+        if(table_is_empty):
+            result.data = []
+            return result
+
         category =  db.session.get(PrintProductCategory, category_id)
         if not category:
             result.status = False
@@ -98,6 +116,11 @@ class PrintProductController:
     def get_products_by_category(category: str) -> Result:
         """Fetch print products from Sinalite API by category, esuring category is enabled in the database"""
         result = Result()
+
+        table_is_empty = (PrintProductCategory.query.first() is None) # TODO: Add test case
+        if(table_is_empty):
+            result.data = []
+            return result
 
         # Validate category exists and is enabled in the database
         local_category = PrintProductCategory.query.filter_by(name=category, enabled=True).first()
