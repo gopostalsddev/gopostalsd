@@ -222,7 +222,7 @@ const ProductCategoryTable = ({ productCategories, handleToggle }) => {
 /** ProductCategoryTableRow Component */
 const ProductCategoryTableRow = ({ productCategory, handleToggle }) => {
   return (
-    <TableRow>
+    <TableRow sx={{transition: 'transform 0.5s ease', '&:hover': {backgroundColor: '#eee'}}}>
       <TableCell>{productCategory.name}</TableCell>
       <TableCell>
         <Switch

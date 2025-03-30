@@ -13,6 +13,16 @@ export const fetchPrintProductCategories = async () => {
 };
 
 
+export const fetchEnabledPrintProductCategories = async () => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/print/categories/enabled`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching enabled categories: ", error);
+        return []
+    }
+};
+
 export const updatePrintProductCategoryStatus = async (categoryId, enabled) => {
     try {
         console.log(categoryId)
@@ -32,3 +42,13 @@ export const syncPrintProductCategories = async () => {
         console.error("Error syncing categories:", error)
     }
 };
+
+export const fetchProductsByCategory = async (categoryName) => {
+    try{
+        const response = await axios.get(`${API_BASE_URL}/print/products/${categoryName}`)
+        return response.data
+    }catch (error){
+        console.error("Error fetching products: ", error)
+        return []
+    }
+}

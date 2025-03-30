@@ -15,7 +15,7 @@ const theme = createTheme({
     },
     background: {
       default: "#fafafa",
-      paper: "#e0f7fa",
+      paper: "#fff",
     },
   },
   breakpoints: {
