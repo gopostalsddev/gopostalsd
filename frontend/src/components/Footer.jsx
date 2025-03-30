@@ -1,19 +1,16 @@
-// src/components/Footer.js
-import React from 'react';
-import { Box, Typography } from '@mui/material';
+import React from "react";
+import { Box, Typography } from "@mui/material";
 
 const Footer = () => {
   return (
     <Box
       sx={{
-        width: '100%',
-        padding: '1rem',
-        textAlign: 'center',
-        borderTop: 'solid 2px #ccc',
-        backgroundColor: '#ddd',
-        color: 'black',
-        position: 'absolute',
-        bottom: 0,
+        width: "100%",
+        padding: "1rem",
+        textAlign: "center",
+        borderTop: "solid 2px #ccc",
+        backgroundColor: "#eee",
+        marginTop: "auto", // Push footer to the bottom when content is short
       }}
     >
       <Typography variant="body2">

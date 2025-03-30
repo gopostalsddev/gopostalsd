@@ -119,4 +119,3 @@ class PrintProductByCategoryResource(Resource):
             return result.data, 200
         else:
             return {"error": result.error}, 500
-        

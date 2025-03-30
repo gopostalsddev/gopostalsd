@@ -16,7 +16,6 @@ const LandingPage = () => {
           justifyContent: 'center',
           alignItems: 'center',
           textAlign: 'center',
-          backgroundColor: '#f5f5f5',
         }}
       >
         <Typography variant="h2" component="h1" color="text.primary">

@@ -11,4 +11,4 @@ def register_routes(server: Flask):
         server (Flask): The Flask application instance.
     """
     # Register API namespace
-    swagger.add_namespace(print_products_namespace, path="/print")
+    swagger.add_namespace(print_products_namespace, path="/api/print")
