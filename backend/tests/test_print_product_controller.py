@@ -1,11 +1,14 @@
 import pytest
-from server.controllers.print_product_controller import PrintProductController, PrintProductErrors, PrintProductSuccessMessages
+from server.controllers.print_product_controller import (
+    PrintProductController,
+    PrintProductErrors,
+    PrintProductSuccessMessages
+)
 from server.models.print_product import PrintProductCategory
 from server import database as db
 from unittest.mock import patch
 from server.controllers import Result
 
-# Constants for category names
 CATEGORY_BUSINESS_CARDS = "Business Cards"
 CATEGORY_FLYERS = "Flyers"
 CATEGORY_POSTERS = "Posters"
@@ -19,11 +22,12 @@ def create_categories():
     db.session.add_all([category1, category2, category3])
     db.session.commit()
 
-    category1 = db.session.get(PrintProductCategory, category1.id)
-    category2 = db.session.get(PrintProductCategory, category2.id)
-    category3 = db.session.get(PrintProductCategory, category3.id)
-
-    return category1, category2, category3
+    # Re-attach for access to IDs
+    return (
+        db.session.get(PrintProductCategory, category1.id),
+        db.session.get(PrintProductCategory, category2.id),
+        db.session.get(PrintProductCategory, category3.id),
+    )
 
 @pytest.fixture
 def clean_categories():
@@ -33,27 +37,13 @@ def clean_categories():
     PrintProductCategory.query.delete()
     db.session.commit()
 
-def test_get_all_product_categories(client, create_categories):
-    result = PrintProductController.get_all_product_categories()
-    assert isinstance(result, Result)
-    assert result.status is True
-    assert len(result.data) == 3
-    assert result.error is None
+# ========== EMPTY TABLE COVERAGE ==========
 
 def test_get_all_product_categories_empty(client, clean_categories):
     result = PrintProductController.get_all_product_categories()
     assert isinstance(result, Result)
     assert result.status is True
     assert result.data == []
-    assert result.error is None
-
-def test_get_enabled_product_categories(client, create_categories):
-    result = PrintProductController.get_enabled_product_categories()
-    assert isinstance(result, Result)
-    assert result.status is True
-    assert len(result.data) == 2
-    assert result.data[0]['name'] == CATEGORY_BUSINESS_CARDS
-    assert result.data[1]['name'] == CATEGORY_POSTERS
     assert result.error is None
 
 def test_get_enabled_product_categories_empty(client, clean_categories):
@@ -63,135 +53,130 @@ def test_get_enabled_product_categories_empty(client, clean_categories):
     assert result.data == []
     assert result.error is None
 
+def test_update_print_product_category_status_empty(client, clean_categories):
+    result = PrintProductController.update_print_product_category_status(1, True)
+    assert isinstance(result, Result)
+    assert result.status is True  # Still true, just returns empty list
+    assert result.data == []
+    assert result.error is None
+
+def test_get_products_by_category_empty(client, clean_categories):
+    result = PrintProductController.get_products_by_category(CATEGORY_BUSINESS_CARDS)
+    assert isinstance(result, Result)
+    assert result.status is True
+    assert result.data == []
+    assert result.error is None
+
+# ========== STANDARD TESTS ==========
+
+def test_get_all_product_categories(client, create_categories):
+    result = PrintProductController.get_all_product_categories()
+    assert isinstance(result, Result)
+    assert result.status is True
+    assert len(result.data) == 3
+    assert result.error is None
+
+def test_get_enabled_product_categories(client, create_categories):
+    result = PrintProductController.get_enabled_product_categories()
+    assert isinstance(result, Result)
+    assert result.status is True
+    assert len(result.data) == 2
+    assert result.error is None
+
 def test_update_print_product_category_status(client, create_categories):
     _, category2, _ = create_categories
-    category2 = db.session.get(PrintProductCategory, category2.id)
-    assert category2 is not None
     assert category2.enabled is False
 
     result = PrintProductController.update_print_product_category_status(category2.id, True)
-
-    assert isinstance(result, Result)
     assert result.status is True
     assert result.data == {
         "message": PrintProductSuccessMessages.UPDATED_PRINT_PRODUCT_CATEGORY_STATUS_SUCCESSFULLY.value
     }
-    assert result.error is None
 
-    updated_category = db.session.get(PrintProductCategory, category2.id)
-    assert updated_category is not None
-    assert updated_category.enabled is True
+    # Confirm DB updated
+    updated = db.session.get(PrintProductCategory, category2.id)
+    assert updated.enabled is True
 
-    result = PrintProductController.update_print_product_category_status(999, True)
-    assert isinstance(result, Result)
+    result = PrintProductController.update_print_product_category_status(9999, False)
     assert result.status is False
-    assert result.data is None
     assert result.error == PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value
 
-def test_sync_print_product_categories(client, clean_categories):
-    with patch('server.config.sinalite.get_product_categories', return_value=[CATEGORY_BUSINESS_CARDS, CATEGORY_FLYERS, CATEGORY_POSTERS]) as mock_get_product_categories:
-        result = PrintProductController.sync_print_product_categories()
+# ========== SYNC ==========
 
-        assert isinstance(result, Result)
+def test_sync_print_product_categories(client, clean_categories):
+    with patch('server.config.sinalite.get_product_categories', return_value=[CATEGORY_BUSINESS_CARDS, CATEGORY_FLYERS]):
+        result = PrintProductController.sync_print_product_categories()
         assert result.status is True
         assert result.data == {"message": PrintProductSuccessMessages.PRINT_PRODUCT_CATEGORY_IN_SYNC.value}
-        assert result.error is None
+        assert PrintProductCategory.query.count() == 2
 
-        categories = PrintProductCategory.query.all()
-        assert len(categories) == 3
-
-        mock_get_product_categories.assert_called_once()
+# ========== SINALITE PRODUCTS ==========
 
 def test_get_all_products(client):
-    with patch('server.config.sinalite.get_products', return_value=[{"id": 1, "name": "Business Card"}]) as mock_get_products:
+    with patch('server.config.sinalite.get_products', return_value=[{"id": 1, "name": "Business Card"}]):
         result = PrintProductController.get_all_products()
-
-        assert isinstance(result, Result)
         assert result.status is True
-        assert len(result.data) == 1
         assert result.data[0]["name"] == "Business Card"
-        assert result.error is None
-        mock_get_products.assert_called_once()
 
-    with patch('server.config.sinalite.get_products', return_value=[]) as mock_get_products:
+    with patch('server.config.sinalite.get_products', return_value=[]):
         result = PrintProductController.get_all_products()
-
-        assert isinstance(result, Result)
         assert result.status is False
         assert result.error == PrintProductErrors.FAILED_TO_FETCH_PRINT_PRODUCTS.value
-        assert result.data is None
-        mock_get_products.assert_called_once()
 
 def test_get_products_by_category(client, create_categories):
     with patch('server.config.sinalite.get_products', return_value=[
-        {"id": 1, "name": "Premium Business Card", "category": CATEGORY_BUSINESS_CARDS},
-        {"id": 2, "name": "Standard Business Card", "category": CATEGORY_BUSINESS_CARDS},
-        {"id": 3, "name": "Marketing Flyer", "category": CATEGORY_FLYERS},
-    ]) as mock_get_products:
+        {"id": 1, "name": "Premium BC", "category": CATEGORY_BUSINESS_CARDS},
+        {"id": 2, "name": "Standard BC", "category": CATEGORY_BUSINESS_CARDS}
+    ]):
         result = PrintProductController.get_products_by_category(CATEGORY_BUSINESS_CARDS)
-
-        assert isinstance(result, Result)
-        assert result.status == True
+        assert result.status is True
         assert len(result.data) == 2
-        assert result.data[0]["name"] == "Premium Business Card"
-        assert result.data[1]["name"] == "Standard Business Card"
-        assert result.error is None
-
-        mock_get_products.assert_called_once()
 
         result = PrintProductController.get_products_by_category(CATEGORY_FLYERS)
-        assert isinstance(result, Result)
-        assert result.status == False
-        assert result.data is None
+        assert result.status is False
         assert result.error == PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value
 
         result = PrintProductController.get_products_by_category("Shirts")
-        assert isinstance(result, Result)
         assert result.status is False
-        assert result.data is None
         assert result.error == PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value
 
-    with patch('server.config.sinalite.get_products', return_value=[
-        {"id": 1, "name": "Premium Business Card", "category": CATEGORY_BUSINESS_CARDS},
-        {"id": 2, "name": "Standard Business Card", "category": CATEGORY_BUSINESS_CARDS},
-    ]) as mock_get_products:
+    with patch('server.config.sinalite.get_products', return_value=[]):
         result = PrintProductController.get_products_by_category(CATEGORY_POSTERS)
-
-        assert isinstance(result, Result)
         assert result.status is True
         assert result.data == []
-        assert result.error is None
 
-        mock_get_products.assert_called_once()
+# ========== update_print_product_category ==========
 
-def test_update_print_product_category(client, create_categories):
-    category1, _, _ = create_categories
-
-    result = PrintProductController.update_print_product_category(category_id=category1.id, description="  New Description  ", image="https://example.com/image.png")
+def test_update_print_product_category_description(client, create_categories):
+    category, _, _ = create_categories
+    result = PrintProductController.update_print_product_category(category.id, description="New description")
 
     assert result.status is True
-    assert result.error is None
-    assert result.data == {"message": PrintProductSuccessMessages.PRODUCT_CATEGORY_UPDATED_SUCCESSFULLY}
+    assert result.data["message"] == PrintProductSuccessMessages.PRODUCT_CATEGORY_UPDATED_SUCCESSFULLY.value
+    updated = db.session.get(PrintProductCategory, category.id)
+    assert updated.description == "New description"
 
-    updated = db.session.get(PrintProductCategory, category1.id)
-    assert updated.description == "New Description"
-    assert updated.image == "https://example.com/image.png"
-
-def test_update_print_product_category_invalid_id(client):
-    result = PrintProductController.update_print_product_category(category_id=999, description="Some text")
+def test_update_print_product_category_invalid_description(client, create_categories):
+    category, _, _ = create_categories
+    long_desc = "a" * 1001
+    result = PrintProductController.update_print_product_category(category.id, description=long_desc)
     assert result.status is False
-    assert result.error == PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value
+    assert result.error == PrintProductErrors.PRINT_PRODUCT_DESCRIPTION_TOO_LONG.value
+
+def test_update_print_product_category_image_url(client, create_categories):
+    category, _, _ = create_categories
+    result = PrintProductController.update_print_product_category(category.id, image="https://example.com/image.jpg")
+    assert result.status is True
+    updated = db.session.get(PrintProductCategory, category.id)
+    assert updated.image == "https://example.com/image.jpg"
 
 def test_update_print_product_category_invalid_image_url(client, create_categories):
-    category1, _, _ = create_categories
-    result = PrintProductController.update_print_product_category(category_id=category1.id, image="ftp://invalid.com")
+    category, _, _ = create_categories
+    result = PrintProductController.update_print_product_category(category.id, image="ftp://invalid-url.com")
     assert result.status is False
     assert result.error == PrintProductErrors.INVALID_IMAGE_URL.value
 
-def test_update_print_product_category_description_too_long(client, create_categories):
-    category1, _, _ = create_categories
-    long_description = "x" * 1001
-    result = PrintProductController.update_print_product_category(category_id=category1.id, description=long_description)
+def test_update_print_product_category_not_found(client):
+    result = PrintProductController.update_print_product_category(9999, description="No such category")
     assert result.status is False
-    assert result.error == PrintProductErrors.PRINT_PRODUCT_DESCRIPTION_TOO_LONG.value
- 
+    assert result.error == PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value

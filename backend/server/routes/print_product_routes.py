@@ -34,7 +34,6 @@ class PrintProductResource(Resource):
     def get(self):
         """Retrieve available print products"""
         result = PrintProductController.get_all_products()
-        print(result)
 
         if result.status:
             return result.data, 200
@@ -64,6 +63,7 @@ class PrintProductCategoriesEnabledResource(Resource):
     @api.marshal_list_with(category_model, code=200)
     def get(self):
         """Retrieves enabled product categories"""
+      
         result = PrintProductController.get_enabled_product_categories()
         if result.status:
             return result.data, 200
