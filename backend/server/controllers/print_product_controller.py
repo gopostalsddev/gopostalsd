@@ -3,6 +3,7 @@ from enum import Enum
 from server.config import sinalite
 from server.config import database as db
 from server.models.print_product import PrintProductCategory
+from markupsafe import escape
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,10 +13,14 @@ class PrintProductErrors(Enum):
     FAILED_TO_FETCH_PRINT_PRODUCT_CATEGORIES = "Failed to fetch print product categories"
     FAILED_TO_FETCH_ENABLED_PRINT_PRODUCT_CATEGORIES = "Failed to fetch enabled print product categories"
     PRINT_PRODUCT_CATEGORY_NOT_FOUND = "Print product category not found"
+    FAILED_TO_UPDATE_PRODUCT_CATEGORY = "Failed to update product categories"
+    PRINT_PRODUCT_DESCRIPTION_TOO_LONG = "Description is too long (max 1000 characters)."
+    INVALID_IMAGE_URL = "Invalid image URL. Must start with http:// or https://"
     
 class PrintProductSuccessMessages(Enum):
     UPDATED_PRINT_PRODUCT_CATEGORY_STATUS_SUCCESSFULLY = "Updated print product category status successfully"
     PRINT_PRODUCT_CATEGORY_IN_SYNC = "Print products are in sync"
+    PRODUCT_CATEGORY_UPDATED_SUCCESSFULLY = "Product category updated successfully"
 
 class PrintProductController:
 
@@ -86,21 +91,18 @@ class PrintProductController:
 
             # Update category status
             category.enabled = enabled
-            db.session.commit()  # ✅ Commit the transaction
+            db.session.commit()  
 
             result.data = {"message": PrintProductSuccessMessages.UPDATED_PRINT_PRODUCT_CATEGORY_STATUS_SUCCESSFULLY.value}
         
         except Exception as e:
             logger.error(f"Failed to update category status: {e}")
-            db.session.rollback()  # ✅ Rollback in case of failure
+            db.session.rollback()  # Rollback in case of failure
             result.status = False
             result.error = "An error occurred while updating the category."
         
-        finally:
-            db.session.close()  # ✅ Close the session properly
 
         return result
-
 
     @staticmethod
     def sync_print_product_categories() -> Result:
@@ -136,21 +138,18 @@ class PrintProductController:
         if new_categories:
             logger.info("Syncing product categories ...")
             try:
-                db.session.bulk_save_objects(new_categories)  # ✅ Save new categories
-                db.session.commit()  # ✅ Commit changes
+                db.session.bulk_save_objects(new_categories) 
+                db.session.commit() 
                 logger.info("Synced product categories successfully ...")
             except Exception as e:
                 logger.error(f"Failed to sync new product categories: {e}")
                 db.session.rollback()  # ✅ Rollback in case of failure
                 result.data = {"message": "Failed to sync product categories"}
                 return result
-            finally:
-                db.session.close()  # ✅ Close session properly
 
         result.data = {"message": PrintProductSuccessMessages.PRINT_PRODUCT_CATEGORY_IN_SYNC.value}
         return result
 
-    
     @staticmethod
     def get_all_products() -> Result:
         """Fetch print products from Sinalite"""
@@ -194,3 +193,43 @@ class PrintProductController:
 
         return result
 
+    @staticmethod
+    def update_print_product_category(category_id: int, description: str = None, image = None):
+        """Update the description or image of a product category securely"""
+        result = Result()
+
+        try:
+            category = db.session.get(PrintProductCategory, category_id)
+
+            if not category:
+                result.status = False
+                result.error = PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value
+                return result
+            
+            # Sanitize and validate input
+            if(description):
+                description = escape(description.strip())
+                if len(description) > 1000:
+                    result.status = False
+                    result.error = PrintProductErrors.PRINT_PRODUCT_DESCRIPTION_TOO_LONG.value
+                    return result
+                category.description = description
+
+            if image:
+                image = escape(image.strip())
+                if not image.startswith(("http://", "https://")):
+                    result.status = False
+                    result.error = PrintProductErrors.INVALID_IMAGE_URL.value
+                    return result
+                category.image = image
+
+            db.session.commit()
+            result.data = {"message": PrintProductSuccessMessages.PRODUCT_CATEGORY_UPDATED_SUCCESSFULLY}
+
+        except Exception as e:
+            db.session.rollback()
+            result.status = False
+            result.error = f"{PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_CATEGORIES.value}: {str(e)}"
+
+
+        return result

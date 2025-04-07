@@ -6,6 +6,8 @@ class PrintProductCategory(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), unique=True, nullable=False)
+    description = db.Column(db.Text, nullable=True) 
+    image = db.Column(db.String(512), nullable=True)  
     enabled = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=db.func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=db.func.now(), onupdate=db.func.now(), nullable=False)

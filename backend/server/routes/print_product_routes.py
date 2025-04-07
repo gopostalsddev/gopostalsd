@@ -1,4 +1,4 @@
-from flask_restx import Namespace, Resource, fields
+from flask_restx import Namespace, Resource, reqparse, fields
 from server.controllers.print_product_controller import PrintProductController
 
 
@@ -119,3 +119,29 @@ class PrintProductByCategoryResource(Resource):
             return result.data, 200
         else:
             return {"error": result.error}, 500
+        
+update_category_parser = reqparse.RequestParser()
+update_category_parser.add_argument("description", type=str, required=False, help="New description for the category")
+update_category_parser.add_argument("image", type=str, required=False, help="New image URL for the category")
+
+@api.route("/categories/<int:category_id>")
+class PrintProductCategoryUpdateResource(Resource):
+    """Resource for updating a print product category's image or description"""
+
+    @api.doc(description="Update the description or image of a product category")
+    @api.expect(update_category_parser)
+    def put(self, category_id):
+        """Update category image and/or description"""
+        args = update_category_parser.parse_args()
+        description = args.get("description")
+        image = args.get("image")
+
+        if not description and not image:
+            return {"error": "At least one field (description or image) must be provided"}, 400
+        
+        result = PrintProductController.update_print_product_category(category_id, description, image)
+
+        if result.status:
+            return result.data, 200
+        else:
+            return {"error": result.error}, 400
