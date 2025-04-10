@@ -119,12 +119,12 @@ class PrintProductByCategoryResource(Resource):
             return result.data, 200
         else:
             return {"error": result.error}, 500
-        
+
 update_category_parser = reqparse.RequestParser()
 update_category_parser.add_argument("description", type=str, required=False, help="New description for the category")
-update_category_parser.add_argument("image", type=str, required=False, help="New image URL for the category")
+update_category_parser.add_argument("image", type='FileStorage', location='files', required=False, help="New imag for the category")
 
-@api.route("/categories/<int:category_id>")
+@api.route("/categories/<int:category_id>/update")
 class PrintProductCategoryUpdateResource(Resource):
     """Resource for updating a print product category's image or description"""
 

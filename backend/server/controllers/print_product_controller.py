@@ -5,6 +5,8 @@ from server.config import database as db
 from server.models.print_product import PrintProductCategory
 from markupsafe import escape
 import logging
+from werkzeug.datastructures import FileStorage
+from flask import current_app
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +196,7 @@ class PrintProductController:
         return result
 
     @staticmethod
-    def update_print_product_category(category_id: int, description: str = None, image = None):
+    def update_print_product_category(category_id: int, description: str = None, image=None):
         """Update the description or image of a product category securely"""
         result = Result()
 
@@ -205,9 +207,9 @@ class PrintProductController:
                 result.status = False
                 result.error = PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value
                 return result
-            
-            # Sanitize and validate input
-            if(description):
+
+            # Sanitize and validate description
+            if description:
                 description = escape(description.strip())
                 if len(description) > 1000:
                     result.status = False
@@ -215,21 +217,36 @@ class PrintProductController:
                     return result
                 category.description = description
 
+            # Handle image upload
             if image:
-                image = escape(image.strip())
-                if not image.startswith(("http://", "https://")):
+                if isinstance(image, FileStorage):
+                    # Ensure file is not empty
+                    if image.filename == "":
+                        result.status = False
+                        result.error = PrintProductErrors.EMPTY_IMAGE_FILE.value
+                        return result
+
+                    content_type = image.content_type
+                    filename = image.filename
+                    file_data = image.read()
+
+                    # Upload file using current filestorage
+                    filestorage = current_app.extensions["filestorage"]
+                    image_url = filestorage.upload_file(file_data, filename, content_type)
+
+                    # Save URL in DB
+                    category.image = image_url
+                else:
                     result.status = False
-                    result.error = PrintProductErrors.INVALID_IMAGE_URL.value
+                    result.error = PrintProductErrors.INVALID_IMAGE_FILE.value
                     return result
-                category.image = image
 
             db.session.commit()
-            result.data = {"message": PrintProductSuccessMessages.PRODUCT_CATEGORY_UPDATED_SUCCESSFULLY}
+            result.data = {"message": PrintProductSuccessMessages.PRODUCT_CATEGORY_UPDATED_SUCCESSFULLY.value}
 
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"{PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_CATEGORIES.value}: {str(e)}"
-
+            result.error = f"{PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_CATEGORY.value}: {str(e)}"
 
         return result

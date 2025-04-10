@@ -2,6 +2,7 @@ import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restx import Api
+from server.services import FileStorage
 from server.thirdparty import SinaliteAdapter as Sinalite
 from dotenv import load_dotenv
 from server.logging import configure_logging
@@ -9,7 +10,8 @@ from server.logging import configure_logging
 # Configure third party libraries
 database = SQLAlchemy()
 migrate = Migrate()
-sinalite = Sinalite() # Implemented in house
+sinalite = Sinalite()           # Implemented in house
+filestorage = FileStorage()     # Implemented in house
 
 # Configure Swagger UI documentation
 swagger = Api(

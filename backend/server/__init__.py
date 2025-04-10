@@ -2,7 +2,7 @@
 from flask import Flask
 from flask_cors import CORS
 from server.config import DevelopmentConfig, TestingConfig, ProductionConfig
-from server.config import database, migrate, sinalite, swagger
+from server.config import database, migrate, sinalite, swagger, filestorage
 from server.models import * # So that they can be detected by migrations
 import logging
 
@@ -46,6 +46,11 @@ def create_server(config="development"):
     # Initialize swagger documentation
     swagger.init_app(server)
 
+    # Initialize file storage for image storing
+    filestorage.init_app(server)
+    logger.info(f"File Storage: {filestorage.current_backend}")
+
+    
     # Register API routes
     from server.routes import register_routes
     register_routes(server)

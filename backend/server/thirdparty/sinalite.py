@@ -31,6 +31,9 @@ class SinaliteAdapter:
         self.client_id = app.config["SINALITE_CLIENT_ID"]
         self.client_secret = app.config["SINALITE_CLIENT_SECRET"]
 
+        # Add to Flask extensions
+        app.extensions["sinalite"] = self
+
     def authenticate(self):
         """Authenticate and obtain an access token."""
         
