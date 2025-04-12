@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress, Paper } from '@mui/material';
+import placeholderImage from '../assets/image_placeholder.jpg';
 import Navbar from '../components/NavBar';
 import Footer from '../components/Footer';
 import SpinnerOverlay from "../components/SpinnerOverlay";
-import { fetchEnabledPrintProductCategories, fetchProductsByCategory } from '../services/product_service';
+import { fetchEnabledPrintProductCategories, fetchPrintProductsByCategory } from '../services/product_service';
 
 const LandingPage = () => {
 
@@ -142,7 +143,7 @@ const ProductList = ({ category }) => {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const fetchedProducts = await fetchProductsByCategory(category.name);  // Fetch products by category name
+        const fetchedProducts = await fetchPrintProductsByCategory(category.name);  // Fetch products by category name
         setProducts(fetchedProducts);
       } catch (error) {
         console.error("Error fetching products: ", error);

@@ -12,7 +12,6 @@ export const fetchPrintProductCategories = async () => {
     }
 };
 
-
 export const fetchEnabledPrintProductCategories = async () => {
     try {
         const response = await axios.get(`${API_BASE_URL}/print/categories/enabled`);
@@ -43,7 +42,7 @@ export const syncPrintProductCategories = async () => {
     }
 };
 
-export const fetchProductsByCategory = async (categoryName) => {
+export const fetchPrintProductsByCategory = async (categoryName) => {
     try{
         const response = await axios.get(`${API_BASE_URL}/print/products/${categoryName}`)
         return response.data
@@ -52,3 +51,32 @@ export const fetchProductsByCategory = async (categoryName) => {
         return []
     }
 }
+
+export const updatePrintProductCategoryDetails = async (categoryDetails) => {
+  try {
+    const formData = new FormData();
+
+    if (categoryDetails.description) {
+      formData.append("description", categoryDetails.description);
+    }
+
+    if (categoryDetails.imageFile) {
+      formData.append("image", categoryDetails.imageFile);
+    }
+
+    const response = await axios.put(
+      `${API_BASE_URL}/print/categories/${categoryDetails.id}/update`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    return response.status === 200;
+  } catch (error) {
+    console.error("Failed to update product category details:", error);
+    return false;
+  }
+};

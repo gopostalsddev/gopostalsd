@@ -17,10 +17,15 @@ import {
   Select,
   MenuItem,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   fetchPrintProductCategories,
   updatePrintProductCategoryStatus,
+  updatePrintProductCategoryDetails,
   syncPrintProductCategories,
 } from "../services/product_service";
 
@@ -29,6 +34,7 @@ const AdminPage = () => {
   const [loading, setLoading] = useState(false);
   const [filterMode, setFilterMode] = useState("All"); // Default filter mode
   const [startingLetter, setStartingLetter] = useState(""); // Default Category Name
+  const [editingCategory, setEditingCategory] = useState(null);
 
   useEffect(() => {
     loadProductCategories();
@@ -120,6 +126,21 @@ const AdminPage = () => {
         <ProductCategoryTable
           productCategories={filteredCategories} // Use filtered categories
           handleToggle={handleToggle}
+          onEdit={(category) => setEditingCategory(category)}
+        />
+        <EditCategoryModal
+          open={Boolean(editingCategory)}
+          category={editingCategory}
+          onClose={() => setEditingCategory(null)}
+          onSave={async (updatedCategory) => {
+            setLoading(true);
+            const success = await updatePrintProductCategoryDetails(updatedCategory); // service function
+            if (success) {
+              await loadProductCategories();
+            }
+            setEditingCategory(null);
+            setLoading(false);
+          }}
         />
       </Box>
       <Footer />
@@ -191,7 +212,7 @@ const Header = ({
 };
 
 /** ProductCategoryTable Component */
-const ProductCategoryTable = ({ productCategories, handleToggle }) => {
+const ProductCategoryTable = ({ productCategories, handleToggle, onEdit }) => {
   return (
     <TableContainer component={Paper} sx={{ mt: 4, overflowX: "auto" }}>
       <Table>
@@ -203,6 +224,9 @@ const ProductCategoryTable = ({ productCategories, handleToggle }) => {
             <TableCell>
             <Typography sx={{ fontWeight: "bold", color: "#fff" }}>Enable</Typography>
             </TableCell>
+            <TableCell>
+            <Typography sx={{ fontWeight: "bold", color: "#fff" }}>Details</Typography>
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -211,6 +235,7 @@ const ProductCategoryTable = ({ productCategories, handleToggle }) => {
               key={productCategory.id}
               productCategory={productCategory}
               handleToggle={handleToggle}
+              onEdit={onEdit}
             />
           ))}
         </TableBody>
@@ -220,20 +245,65 @@ const ProductCategoryTable = ({ productCategories, handleToggle }) => {
 };
 
 /** ProductCategoryTableRow Component */
-const ProductCategoryTableRow = ({ productCategory, handleToggle }) => {
+const ProductCategoryTableRow = ({ productCategory, handleToggle, onEdit }) => {
   return (
-    <TableRow sx={{transition: 'transform 0.5s ease', '&:hover': {backgroundColor: '#eee'}}}>
+    <TableRow sx={{ transition: 'transform 0.5s ease', '&:hover': { backgroundColor: '#eee' } }}>
       <TableCell>{productCategory.name}</TableCell>
       <TableCell>
         <Switch
           checked={productCategory.enabled}
-          onChange={() =>
-            handleToggle(productCategory.id, productCategory.enabled)
-          }
+          onChange={() => handleToggle(productCategory.id, productCategory.enabled)}
           color="primary"
         />
       </TableCell>
+      <TableCell>
+        <Button variant="outlined" size="small" onClick={() => onEdit(productCategory)}>
+          Edit
+        </Button>
+      </TableCell>
     </TableRow>
+  );
+};
+
+/** Modal For editing Category Details */
+const EditCategoryModal = ({ open, category, onClose, onSave }) => {
+  const [description, setDescription] = useState(category?.description || "");
+  const [imageFile, setImageFile] = useState(null);
+
+  useEffect(() => {
+    if (category) {
+      setDescription(category.description || "");
+      setImageFile(null);
+    }
+  }, [category]);
+
+  const handleSubmit = () => {
+    onSave({ ...category, description, imageFile });
+  };
+
+  if (!category) return null;
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Edit Category</DialogTitle>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        <TextField
+          label="Description"
+          multiline
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          fullWidth
+        />
+        <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained" color="primary">
+          Save
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

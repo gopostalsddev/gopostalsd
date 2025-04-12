@@ -1,4 +1,5 @@
 from flask_restx import Namespace, Resource, reqparse, fields
+from werkzeug.datastructures import FileStorage
 from server.controllers.print_product_controller import PrintProductController
 
 
@@ -121,8 +122,8 @@ class PrintProductByCategoryResource(Resource):
             return {"error": result.error}, 500
 
 update_category_parser = reqparse.RequestParser()
-update_category_parser.add_argument("description", type=str, required=False, help="New description for the category")
-update_category_parser.add_argument("image", type='FileStorage', location='files', required=False, help="New imag for the category")
+update_category_parser.add_argument("description", type=str, location="form", required=False, help="New description for the category")
+update_category_parser.add_argument("image", type=FileStorage, location='files', required=False, help="New image for the category")
 
 @api.route("/categories/<int:category_id>/update")
 class PrintProductCategoryUpdateResource(Resource):
@@ -136,6 +137,7 @@ class PrintProductCategoryUpdateResource(Resource):
         description = args.get("description")
         image = args.get("image")
 
+        print("IMAGE TYPE:", type(image))
         if not description and not image:
             return {"error": "At least one field (description or image) must be provided"}, 400
         
