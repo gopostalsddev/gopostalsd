@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress, Paper } from '@mui/material';
-import placeholderImage from '../assets/image_placeholder.jpg';
+import placeholderImage from '../assets/logo.png';
 import Navbar from '../components/NavBar';
 import Footer from '../components/Footer';
 import SpinnerOverlay from "../components/SpinnerOverlay";
@@ -84,10 +84,27 @@ const LandingPage = () => {
                     }}
                     onClick={() => handleProductCategoryClick(category)}
                   >
-                    <CardContent sx={{display: "flex", justifyContent: "center", alignContent: "center"}}>
-                      <Typography variant="h5">{category.name}</Typography>
-                      {/* <Typography color="text.secondary">{category.description || 'No description available'}</Typography> */}
-                      <Typography color="text.secondary">{category.description}</Typography>
+                    <Box sx={{ height: 200, overflow: "hidden" }}>
+                      <img
+                        src={category.image || placeholderImage}
+                        alt={category.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block"
+                        }}
+                      />
+                    </Box>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ mb: 1 }}>
+                        {category.name}
+                      </Typography>
+                      {category.description && (
+                        <Typography color="text.secondary" variant="body2">
+                          {category.description}
+                        </Typography>
+                      )}
                     </CardContent>
                   </Card>
                 </Grid>
