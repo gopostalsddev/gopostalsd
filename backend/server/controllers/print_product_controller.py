@@ -17,6 +17,7 @@ class PrintProductErrors(Enum):
     PRINT_PRODUCT_CATEGORY_NOT_FOUND = "Print product category not found"
     FAILED_TO_UPDATE_PRODUCT_CATEGORY = "Failed to update product categories"
     PRINT_PRODUCT_DESCRIPTION_TOO_LONG = "Description is too long (max 1000 characters)."
+    INVALID_IMAGE_FILE = "Invalid imege"
     INVALID_IMAGE_URL = "Invalid image URL. Must start with http:// or https://"
     
 class PrintProductSuccessMessages(Enum):

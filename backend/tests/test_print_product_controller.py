@@ -1,4 +1,7 @@
 import pytest
+import io
+from unittest.mock import MagicMock, patch
+from werkzeug.datastructures import FileStorage
 from server.controllers.print_product_controller import (
     PrintProductController,
     PrintProductErrors,
@@ -8,6 +11,8 @@ from server.models.print_product import PrintProductCategory
 from server import database as db
 from unittest.mock import patch
 from server.controllers import Result
+
+
 
 CATEGORY_BUSINESS_CARDS = "Business Cards"
 CATEGORY_FLYERS = "Flyers"
@@ -156,27 +161,54 @@ def test_update_print_product_category_description(client, create_categories):
     updated = db.session.get(PrintProductCategory, category.id)
     assert updated.description == "New description"
 
-def test_update_print_product_category_invalid_description(client, create_categories):
+def test_update_print_product_category_description_too_long(client, create_categories):
     category, _, _ = create_categories
     long_desc = "a" * 1001
     result = PrintProductController.update_print_product_category(category.id, description=long_desc)
+
     assert result.status is False
     assert result.error == PrintProductErrors.PRINT_PRODUCT_DESCRIPTION_TOO_LONG.value
 
-def test_update_print_product_category_image_url(client, create_categories):
-    category, _, _ = create_categories
-    result = PrintProductController.update_print_product_category(category.id, image="https://example.com/image.jpg")
-    assert result.status is True
-    updated = db.session.get(PrintProductCategory, category.id)
-    assert updated.image == "https://example.com/image.jpg"
+def test_update_print_product_category_not_found():
+    result = PrintProductController.update_print_product_category(category_id=9999, description="Doesn't matter")
 
-def test_update_print_product_category_invalid_image_url(client, create_categories):
-    category, _, _ = create_categories
-    result = PrintProductController.update_print_product_category(category.id, image="ftp://invalid-url.com")
-    assert result.status is False
-    assert result.error == PrintProductErrors.INVALID_IMAGE_URL.value
-
-def test_update_print_product_category_not_found(client):
-    result = PrintProductController.update_print_product_category(9999, description="No such category")
     assert result.status is False
     assert result.error == PrintProductErrors.PRINT_PRODUCT_CATEGORY_NOT_FOUND.value
+
+def test_update_print_product_category_invalid_image_type(client, create_categories):
+    category, _, _ = create_categories
+    result = PrintProductController.update_print_product_category(category.id, image=12345)
+
+    assert result.status is False
+    assert result.error == PrintProductErrors.INVALID_IMAGE_FILE.value
+
+def test_update_print_product_category_empty_image_file(client, create_categories):
+    category, _, _ = create_categories
+    empty_image = FileStorage(stream=io.BytesIO(), filename="", content_type="image/png")
+    result = PrintProductController.update_print_product_category(category.id, image=empty_image)
+
+    assert result.status is False
+    assert result.error == PrintProductErrors.EMPTY_IMAGE_FILE.value
+
+@patch("server.controllers.print_product_controller.current_app")
+def test_update_print_product_category_valid_image(mock_current_app, client, create_categories):
+    category, _, _ = create_categories
+    fake_storage = MagicMock()
+    fake_storage.upload_file.return_value = "http://example.com/image.png"
+    mock_current_app.extensions = {"filestorage": fake_storage}
+
+    image_data = FileStorage(stream=io.BytesIO(b"fake image data"), filename="test.png", content_type="image/png")
+    result = PrintProductController.update_print_product_category(category.id, image=image_data)
+
+    assert result.status is True
+    assert result.data["message"] == PrintProductSuccessMessages.PRODUCT_CATEGORY_UPDATED_SUCCESSFULLY.value
+    updated = db.session.get(PrintProductCategory, category.id)
+    assert updated.image == "http://example.com/image.png"
+
+@patch("server.controllers.print_product_controller.db.session.commit", side_effect=Exception("Database fail"))
+def test_update_print_product_category_commit_fails(mock_commit, client, create_categories):
+    category, _, _ = create_categories
+    result = PrintProductController.update_print_product_category(category.id, description="Should fail")
+
+    assert result.status is False
+    assert PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_CATEGORY.value in result.error

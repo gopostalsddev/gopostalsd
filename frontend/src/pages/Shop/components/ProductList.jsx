@@ -28,7 +28,7 @@ const ProductList = ({ category }) => {
         <Box>
         <SpinnerOverlay loading={loading} /> {/* Use SpinnerOverlay for loading state */}
         {loading ? null : products.length === 0 ? (
-            <Typography>No products available in this category.</Typography>
+            <Typography>No products available in this category -.</Typography>
         ) : (
             <Grid container spacing={3}>
             {products.map((product) => (
