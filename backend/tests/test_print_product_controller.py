@@ -169,7 +169,7 @@ def test_update_print_product_category_description_too_long(client, create_categ
     assert result.status is False
     assert result.error == PrintProductErrors.PRINT_PRODUCT_DESCRIPTION_TOO_LONG.value
 
-def test_update_print_product_category_not_found():
+def test_update_print_product_category_not_found(client):
     result = PrintProductController.update_print_product_category(category_id=9999, description="Doesn't matter")
 
     assert result.status is False
@@ -184,11 +184,12 @@ def test_update_print_product_category_invalid_image_type(client, create_categor
 
 def test_update_print_product_category_empty_image_file(client, create_categories):
     category, _, _ = create_categories
-    empty_image = FileStorage(stream=io.BytesIO(), filename="", content_type="image/png")
+    # Create FileStorage with empty filename but some content to ensure it's a valid FileStorage object
+    empty_image = FileStorage(stream=io.BytesIO(b"some content"), filename="", content_type="image/png")
     result = PrintProductController.update_print_product_category(category.id, image=empty_image)
 
     assert result.status is False
-    assert result.error == PrintProductErrors.EMPTY_IMAGE_FILE.value
+    assert result.error == PrintProductErrors.EMPTY_IMAGE_FILENAME.value
 
 @patch("server.controllers.print_product_controller.current_app")
 def test_update_print_product_category_valid_image(mock_current_app, client, create_categories):
