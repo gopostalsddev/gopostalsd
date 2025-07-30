@@ -19,6 +19,8 @@ product_model = api.model("Product", {
 category_model = api.model("ProductCategory", {
     "id": fields.Integer(description="Category ID"),
     "name": fields.String(description="Category name"),
+    "description": fields.String(description="Category description"),
+    "image": fields.String(description="Category image URL"),
     "enabled": fields.Boolean(description="Category status"),
     "created_at": fields.DateTime(description="Created timestamp"),
     "updated_at": fields.DateTime(description="Updated timestamp"),
@@ -137,7 +139,6 @@ class PrintProductCategoryUpdateResource(Resource):
         description = args.get("description")
         image = args.get("image")
 
-        print("IMAGE TYPE:", type(image))
         if not description and not image:
             return {"error": "At least one field (description or image) must be provided"}, 400
         

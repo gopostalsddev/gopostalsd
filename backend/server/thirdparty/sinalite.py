@@ -19,6 +19,7 @@ class SinaliteAdapter:
 
         if app:
             self.init_app(app)
+        # Else init_app must be called with valid Flask app  before using the adapter
     
     def is_access_expired(self) -> bool:
         """Check if the access token is expired."""
@@ -60,12 +61,8 @@ class SinaliteAdapter:
             self.token_type = None
             self.token_lifetime= 0
             self.token_expiry = 0
-
-            if response:
-                logger.error(f"{self.name} authentication failed!, Error: {response.get('message', 'No message provided')}")
-            else:
-                logger.error(f"{self.name} authentication failed! No response received.")
-
+            
+            logger.error(f"{self.name} authentication failed!")
             return False
 
     def get_products(self):

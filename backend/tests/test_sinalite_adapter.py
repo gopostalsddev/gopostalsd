@@ -18,13 +18,31 @@ def test_app():
 @pytest.fixture
 def sinalite_adapter(test_app):
     """Initialize SinaliteAdapter with the test app"""
-    adapter = SinaliteAdapter()
+    adapter = SinaliteAdapter(test_app)
     adapter.init_app(test_app)
     return adapter
 
+def test_constructor(test_app):
+    """Test constructor with no Flask app"""
+    adapter = SinaliteAdapter()
+    assert adapter.base_url is None
+    assert adapter.client_id is None
+    assert adapter.client_secret is None
+
+    adapter = SinaliteAdapter(test_app)
+    assert adapter.base_url == test_app.config["SINALITE_BASE_URL"]
+    assert adapter.client_id == test_app.config["SINALITE_CLIENT_ID"]
+    assert adapter.client_secret == test_app.config["SINALITE_CLIENT_SECRET"]
+    
 def test_init_app(sinalite_adapter, test_app):
     """Tests that init correctly sets up the adapter"""
 
+    adapter = SinaliteAdapter()
+    assert adapter.base_url is None
+    assert adapter.client_id is None
+    assert adapter.client_secret is None
+
+    adapter.init_app(test_app)
     assert sinalite_adapter.base_url == test_app.config["SINALITE_BASE_URL"]
     assert sinalite_adapter.client_id == test_app.config["SINALITE_CLIENT_ID"]
     assert sinalite_adapter.client_secret == test_app.config["SINALITE_CLIENT_SECRET"]
@@ -64,16 +82,6 @@ def test_authentication_success(sinalite_adapter):
         # Confirm that the request was made to the custom_base_url
         assert mocker.called
         assert mocker.last_request.url == url
-
-def test_authenticate_invalid_credentials(sinalite_adapter):
-    """Test authentication failure with invalid credentials."""
-    with requests_mock.Mocker() as mocker:
-        mock_response = {"message": "Invalid authentication request"}
-        url = f"{sinalite_adapter.base_url}/auth/token"
-        mocker.post(url, json=mock_response, status_code=401)
-
-        assert sinalite_adapter.authenticate() is False
-        assert sinalite_adapter.access_token is None
 
 def test_token_expiry(sinalite_adapter):
     """Test token expiration logic"""
@@ -124,17 +132,27 @@ def test_get_products_auth_failure(sinalite_adapter):
         # Assertions
         assert products == []
 
-def test_authenticate_invalid_credentials(sinalite_adapter):
-    """Test authentication failure with invalid credentials."""
+def test_authenticate_failure_scenarios(sinalite_adapter):
+    """Test authentication failure with invalid credentials using both default and custom auth URLs."""
     with requests_mock.Mocker() as mocker:
-        # Set the custom auth_base_url
-        sinalite_adapter.auth_base_url = "https://customapi.sinalite.com"
-        url = f"{sinalite_adapter.auth_base_url}/auth/token"
-        
         mock_response = {"message": "Invalid authentication request"}
-        mocker.post(url, json=mock_response, status_code=401)
-
-        # Test the authentication method
+        
+        # Test with default base_url (set auth_base_url to match base_url for first test)
+        sinalite_adapter.auth_base_url = sinalite_adapter.base_url
+        default_url = f"{sinalite_adapter.base_url}/auth/token"
+        mocker.post(default_url, json=mock_response, status_code=401)
+        
+        assert sinalite_adapter.authenticate() is False
+        assert sinalite_adapter.access_token is None
+        
+        # Reset mocker for next test
+        mocker.reset()
+        
+        # Test with custom auth_base_url
+        sinalite_adapter.auth_base_url = "https://customapi.sinalite.com"
+        custom_url = f"{sinalite_adapter.auth_base_url}/auth/token"
+        mocker.post(custom_url, json=mock_response, status_code=401)
+        
         assert sinalite_adapter.authenticate() is False
         assert sinalite_adapter.access_token is None
 

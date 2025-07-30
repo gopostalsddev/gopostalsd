@@ -1,6 +1,6 @@
 import os
 from abc import ABC, abstractmethod
-from flask import Flask
+from flask import Flask, request
 from werkzeug.utils import secure_filename
 from server.thirdparty.supabase import SupabaseStorage
 
@@ -24,9 +24,18 @@ class LocalFileStorage(BaseFileStorage):
     def upload_file(self, file_data: bytes, file_name: str, content_type: str) -> str:
         file_name = secure_filename(file_name)
         file_path = os.path.join(self.upload_dir, file_name)
+
+        # Make sure upload directory exists
+        os.makedirs(self.upload_dir, exist_ok=True)
+
+        # Save the file
         with open(file_path, "wb") as f:
             f.write(file_data)
-        return f"/uploads/{file_name}"
+
+        # Build full URL
+        relative_path = f"/uploads/{file_name}"
+        full_url = request.host_url.rstrip('/') + relative_path
+        return full_url
     
     def delete_file(self, file_path: str) -> bool:
         local_path = os.path.join(self.upload_dir, os.path.basename(file_path))

@@ -17,6 +17,8 @@ class PrintProductErrors(Enum):
     PRINT_PRODUCT_CATEGORY_NOT_FOUND = "Print product category not found"
     FAILED_TO_UPDATE_PRODUCT_CATEGORY = "Failed to update product categories"
     PRINT_PRODUCT_DESCRIPTION_TOO_LONG = "Description is too long (max 1000 characters)."
+    INVALID_IMAGE_FILE = "Invalid image"
+    EMPTY_IMAGE_FILENAME = "Empty image filename"
     INVALID_IMAGE_URL = "Invalid image URL. Must start with http:// or https://"
     
 class PrintProductSuccessMessages(Enum):
@@ -218,12 +220,13 @@ class PrintProductController:
                 category.description = description
 
             # Handle image upload
-            if image:
+            if image is not None:
                 if isinstance(image, FileStorage):
                     # Ensure file is not empty
                     if image.filename == "":
                         result.status = False
-                        result.error = PrintProductErrors.EMPTY_IMAGE_FILE.value
+                        
+                        result.error = PrintProductErrors.EMPTY_IMAGE_FILENAME.value
                         return result
 
                     content_type = image.content_type

@@ -17,6 +17,8 @@ class PrintProductCategory(db.Model):
         return {
             "id": self.id,
             "name": self.name,
+            "description": self.description,
+            "image": self.image,
             "enabled": self.enabled,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -24,3 +26,5 @@ class PrintProductCategory(db.Model):
 
     def __repr__(self):
         return f"<PrintProductCategory {self.name}>"
+    
+    
