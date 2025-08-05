@@ -108,7 +108,7 @@ class PrintProductCategorySyncResource(Resource):
 
 @api.route("/products/<int:category_id>")
 @api.param("category_id", "The category ID of the products to retrieve")
-class PrintProductByCategoryResource(Resource):
+class PrintProductByCategoryEnabledResource(Resource):
     """Resource for fetching print products by category"""
 
     @api.doc(description="Fetch list of print products listed by category")
@@ -121,11 +121,11 @@ class PrintProductByCategoryResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return {"error": result.error}, 200
 
 @api.route("/products/<int:category_id>/all")
 @api.param("category_id", "The category ID of the products to retrieve")
-class PrintProductByCategoryResource(Resource):
+class PrintProductByCategoryAllResource(Resource):
     """Resource for fetching print products by category"""
 
     @api.doc(description="Fetch list of print products listed by category")
@@ -133,12 +133,13 @@ class PrintProductByCategoryResource(Resource):
     @api.response(500, "Server error")
     def get(self, category_id):
         """Retrieve print products by category"""
-        result = PrintProductController.get_all_products_by_category(category_id)
 
+        result = PrintProductController.get_all_products_by_category(category_id)
+       
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return {"error": result.error}, 200
 
 update_category_parser = reqparse.RequestParser()
 update_category_parser.add_argument("description", type=str, location="form", required=False, help="New description for the category")
