@@ -10,6 +10,7 @@ import SpinnerOverlay from "../../components/SpinnerOverlay";
 import ProductCategoryHeader from "./components/ProductCategoryHeader";
 import ProductCategoryTable from "./components/ProductCategoryTable";
 import EditCategoryModal from "./components/EditCategoryModal";
+import ProductViewPage from "./components/ProductViewPage";
 
 import {
   fetchPrintProductCategories,
@@ -24,6 +25,7 @@ const AdminPage = () => {
   const [filterMode, setFilterMode] = useState("All");
   const [startingLetter, setStartingLetter] = useState("");
   const [editingCategory, setEditingCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     loadProductCategories();
@@ -61,6 +63,14 @@ const AdminPage = () => {
     setLoading(false);
   };
 
+  const handleCategoryAction = (category) => {
+    setSelectedCategory(category);
+  };
+
+  const handleBackToCategories = () => {
+    setSelectedCategory(null);
+  };
+
   const filteredCategories = productCategories.filter((category) => {
     if (filterMode === "Enabled" && !category.enabled) return false;
     if (filterMode === "Disabled" && category.enabled) return false;
@@ -88,23 +98,33 @@ const AdminPage = () => {
           startingLetter={startingLetter}
           setStartingLetter={setStartingLetter}
         />
-        <ProductCategoryTable
-          productCategories={filteredCategories}
-          handleToggle={handleToggle}
-          onEdit={(category) => setEditingCategory(category)}
-        />
-        <EditCategoryModal
-          open={Boolean(editingCategory)}
-          category={editingCategory}
-          onClose={() => setEditingCategory(null)}
-          onSave={async (updatedCategory) => {
-            setLoading(true);
-            const success = await updatePrintProductCategoryDetails(updatedCategory);
-            if (success) await loadProductCategories();
-            setEditingCategory(null);
-            setLoading(false);
-          }}
-        />
+        {selectedCategory ? (
+          <ProductViewPage
+            category={selectedCategory}
+            onBack={handleBackToCategories}
+          />
+        ) : (
+          <>
+            <ProductCategoryTable
+              productCategories={filteredCategories}
+              handleToggle={handleToggle}
+              onEdit={handleCategoryAction}
+              onEditCategory={(category) => setEditingCategory(category)}
+            />
+            <EditCategoryModal
+              open={Boolean(editingCategory)}
+              category={editingCategory}
+              onClose={() => setEditingCategory(null)}
+              onSave={async (updatedCategory) => {
+                setLoading(true);
+                const success = await updatePrintProductCategoryDetails(updatedCategory);
+                if (success) await loadProductCategories();
+                setEditingCategory(null);
+                setLoading(false);
+              }}
+            />
+          </>
+        )}
       </Box>
       <Footer />
     </Box>

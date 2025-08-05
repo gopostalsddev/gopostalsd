@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress, Paper } from '@mui/material';
-import { fetchPrintProductsByCategory } from '../../../services/product_service';
+import { fetchEnabledPrintProductsByCategory } from '../../../services/product_service';
 import SpinnerOverlay from "../../../components/SpinnerOverlay";
 
 
@@ -11,7 +11,7 @@ const ProductList = ({ category }) => {
     useEffect(() => {
         const loadProducts = async () => {
         try {
-            const fetchedProducts = await fetchPrintProductsByCategory(category.id);  // Fetch products by category id
+            const fetchedProducts = await fetchEnabledPrintProductsByCategory(category.id);  // Fetch products by category id
             setProducts(fetchedProducts);
         } catch (error) {
             console.error("Error fetching products: ", error);

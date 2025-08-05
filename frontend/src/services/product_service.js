@@ -41,10 +41,21 @@ export const syncPrintProductCategories = async () => {
     }
 };
 
-export const fetchPrintProductsByCategory = async (categoryName) => {
+
+export const fetchEnabledPrintProductsByCategory = async (category_id) => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/print/products/${category_id}`)
+        return response.data
+    } catch (error) {
+        console.error("Error fetching enabled products: ", error)
+        return []
+    }
+}
+
+export const fetchAllPrintProductsByCategory = async (category_id) => {
     
     try{
-        const response = await axios.get(`${API_BASE_URL}/print/products/${categoryName}`)
+        const response = await axios.get(`${API_BASE_URL}/print/products/${category_id}/all`)
         
         return response.data
     }catch (error){
@@ -78,6 +89,35 @@ export const updatePrintProductCategoryDetails = async (categoryDetails) => {
     return response.status === 200;
   } catch (error) {
     console.error("Failed to update product category details:", error);
+    return false;
+  }
+};
+
+export const updatePrintProductDetails = async (productDetails) => {
+  try {
+    const formData = new FormData();
+
+    if (productDetails.description) {
+      formData.append("description", productDetails.description);
+    }
+
+    if (productDetails.imageFile) {
+      formData.append("image", productDetails.imageFile);
+    }
+
+    const response = await axios.put(
+      `${API_BASE_URL}/print/products/${productDetails.id}/update`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    return response.status === 200;
+  } catch (error) {
+    console.error("Failed to update product details:", error);
     return false;
   }
 };
