@@ -41,4 +41,4 @@ def shutdown():
 
   
 if __name__ == "__main__":
-    app.run(debug=debug)
+    app.run(debug=debug, port=5000)

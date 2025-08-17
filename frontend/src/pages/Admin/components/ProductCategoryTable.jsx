@@ -60,9 +60,11 @@ const ProductCategoryTableRow = ({ productCategory, handleToggle, onEdit, onEdit
       </TableCell>
       <TableCell>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {
           <Button variant="outlined" size="small" onClick={() => onEdit(productCategory)}>
             View
           </Button>
+          }
           <Button variant="outlined" size="small" onClick={() => onEditCategory(productCategory)}>
             Edit
           </Button>
