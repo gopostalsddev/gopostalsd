@@ -112,9 +112,12 @@ The GoPostal SD E-commerce Web Application is built on a modular architecture th
    ```
 3. Run database migrations:
    ```bash
-   flask db init
-   flask db migrate
-   flask db upgrade
+   flask db init         # Initialize migrations folder (only once)
+   flask db migrate -m "Add users table"  # Create migration script
+   flask db upgrade      # Apply migration to the database
+   flask db downgrade    # Revert to previous migration
+   flask db history      # View migration history
+   flask db current      # Show current migration version
    ```
 4. Start the server:
    ```bash
