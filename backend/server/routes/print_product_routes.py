@@ -190,3 +190,95 @@ class PrintProductCategoryUpdateResource(Resource):
             return result.data, 200
         else:
             return {"error": result.error}, 400
+
+# Product Type endpoints
+@api.route("/product-types")
+class PrintProductTypesResource(Resource):
+    """Resource for fetching all product types"""
+
+    @api.doc(description="Fetch all product types")
+    @api.marshal_list_with(product_type_model, code=200)
+    @api.response(500, "Server error")
+    def get(self):
+        """Retrieve all product types"""
+        result = PrintProductController.get_all_print_product_types()
+
+        if result.status:
+            return result.data, 200
+        else:
+            return {"error": result.error}, 500
+
+    @api.doc(description="Create a new product type")
+    @api.expect(api.model("CreateProductType", {
+        "name": fields.String(required=True, description="Product type name"),
+        "category_id": fields.Integer(required=True, description="Category ID this type belongs to"),
+        "description": fields.String(required=True, description="Product type description"),
+        "image": fields.String(required=False, description="Product type image URL")
+    }))
+    @api.response(201, "Product type created successfully")
+    @api.response(400, "Bad request")
+    @api.response(500, "Server error")
+    def post(self):
+        """Create a new product type"""
+        from flask import request
+        
+        data = request.get_json()
+        result = PrintProductController.create_print_product_type(data)
+
+        if result.status:
+            return result.data, 201
+        else:
+            return {"error": result.error}, 400
+
+update_product_type_parser = reqparse.RequestParser()
+update_product_type_parser.add_argument("description", type=str, location="form", required=False, help="New description for the product type")
+update_product_type_parser.add_argument("image", type=FileStorage, location='files', required=False, help="New image for the product type")
+
+@api.route("/product-types/<int:type_id>/update")
+class PrintProductTypeUpdateResource(Resource):
+    """Resource for updating a product type's description or image"""
+
+    @api.doc(description="Update the description or image of a product type")
+    @api.expect(update_product_type_parser)
+    @api.response(200, "Product type updated successfully")
+    @api.response(400, "Bad request")
+    @api.response(404, "Product type not found")
+    @api.response(500, "Server error")
+    def put(self, type_id):
+        """Update product type description and/or image"""
+        args = update_product_type_parser.parse_args()
+        description = args.get("description")
+        image = args.get("image")
+
+        if not description and not image:
+            return {"error": "At least one field (description or image) must be provided"}, 400
+        
+        result = PrintProductController.update_print_product_type(type_id, description, image)
+
+        if result.status:
+            return result.data, 200
+        else:
+            return {"error": result.error}, 400
+
+@api.route("/product-types/<int:type_id>/delete")
+class PrintProductTypeDeleteResource(Resource):
+    """Resource for deleting a product type"""
+
+    @api.doc(description="Delete a product type")
+    @api.response(200, "Product type deleted successfully")
+    @api.response(404, "Product type not found")
+    @api.response(400, "Cannot delete: Product type in use")
+    @api.response(500, "Server error")
+    def delete(self, type_id):
+        """Delete a product type"""
+        result = PrintProductController.delete_print_product_type(type_id)
+
+        if result.status:
+            return result.data, 200
+        else:
+            if "not found" in result.error.lower():
+                return {"error": result.error}, 404
+            elif "in use" in result.error.lower():
+                return {"error": result.error}, 400
+            else:
+                return {"error": result.error}, 500
