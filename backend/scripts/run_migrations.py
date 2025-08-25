@@ -4,20 +4,22 @@ Simple script to run Flask database migrations
 """
 import os
 import sys
+from pathlib import Path
 
-# Add the current directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the server directory to the Python path
+server_dir = Path(__file__).parent.parent / "server"
+sys.path.insert(0, str(server_dir))
 
 from flask import Flask
 from flask_migrate import Migrate
 from server.config import database as db
-from server import create_app
+from server import create_server
 
 def run_migrations():
     """Run database migrations"""
     try:
         # Create Flask app
-        app = create_app()
+        app = create_server()
         
         with app.app_context():
             # Initialize migrations

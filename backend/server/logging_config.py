@@ -1,6 +1,4 @@
 import logging
-
-import logging
 import logging.config
 
 def configure_logging(environment):
@@ -35,5 +33,4 @@ def configure_logging(environment):
     }
 
     # Apply logging configuration
-    logging.config.dictConfig(log_config)
-
+    logging.config.dictConfig(log_config) 

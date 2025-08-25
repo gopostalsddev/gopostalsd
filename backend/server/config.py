@@ -5,7 +5,7 @@ from flask_restx import Api
 from server.services import FileStorage
 from server.thirdparty import SinaliteAdapter as Sinalite
 from dotenv import load_dotenv
-from server.logging import configure_logging
+from server.logging_config import configure_logging
 
 # Configure third party libraries
 database = SQLAlchemy()

@@ -40,7 +40,7 @@ class PrintProductType(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey('print_product_categories.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('print_product_categories.id'), nullable=True)  # Allow NULL for wildcard type
     description = db.Column(db.Text, nullable=True)
     image = db.Column(db.String(512), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=db.func.now(), nullable=False)
@@ -72,7 +72,7 @@ class PrintProduct(db.Model):
     name = db.Column(db.String(255), nullable=False)
     sku = db.Column(db.String(255), unique=True, nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('print_product_categories.id'), nullable=False)
-    type_id = db.Column(db.Integer, db.ForeignKey('print_product_types.id'), nullable=False)
+    type_id = db.Column(db.Integer, db.ForeignKey('print_product_types.id'), nullable=False, default=0)  # Default to unclassified type
     description = db.Column(db.Text, nullable=True)
     image = db.Column(db.String(512), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=db.func.now(), nullable=False)

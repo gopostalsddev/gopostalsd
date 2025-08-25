@@ -10,7 +10,7 @@ import SpinnerOverlay from "../../components/SpinnerOverlay";
 import ProductCategoryHeader from "./components/ProductCategoryHeader";
 import ProductCategoryTable from "./components/ProductCategoryTable";
 import EditCategoryModal from "./components/EditCategoryModal";
-import ProductViewPage from "./components/ProductViewPage";
+import ProductClassificationView from "./components/ProductClassificationView";
 
 import {
   fetchPrintProductCategories,
@@ -45,6 +45,15 @@ const AdminPage = () => {
   };
 
   const handleToggle = async (categoryId, currentStatus) => {
+    // Check if all products are classified before enabling
+    if (!currentStatus) {
+      const category = productCategories.find(cat => cat.id === categoryId);
+      if (category && !category.product_classification_status?.all_classified) {
+        alert("Please complete product classification before enabling this category.");
+        return;
+      }
+    }
+
     const updatedStatus = !currentStatus;
     const success = await updatePrintProductCategoryStatus(categoryId, updatedStatus);
     if (success) {
@@ -71,6 +80,11 @@ const AdminPage = () => {
     setSelectedCategory(null);
   };
 
+  const handleCategoryUpdate = () => {
+    // Reload categories when returning from classification view
+    loadProductCategories();
+  };
+
   const filteredCategories = productCategories.filter((category) => {
     if (filterMode === "Enabled" && !category.enabled) return false;
     if (filterMode === "Disabled" && category.enabled) return false;
@@ -89,9 +103,10 @@ const AdminPage = () => {
       <SpinnerOverlay loading={loading} />
       <Box sx={{ flex: 1, mt: "64px", p: 4 }}>
         {selectedCategory ? (
-          <ProductViewPage
+          <ProductClassificationView
             category={selectedCategory}
             onBack={handleBackToCategories}
+            onCategoryUpdate={handleCategoryUpdate}
           />
         ) : (
           

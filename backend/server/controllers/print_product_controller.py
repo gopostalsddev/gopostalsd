@@ -425,6 +425,12 @@ class PrintProductController:
                 result.error = PrintProductErrors.PRINT_PRODUCT_TYPE_NOT_FOUND.value
                 return result
 
+            # Prevent modification of the unclassified wildcard type (ID 0)
+            if type_id == 0:
+                result.status = False
+                result.error = "Cannot modify the unclassified product type (system reserved)"
+                return result
+
             # Sanitize and validate description
             if description:
                 description = escape(description.strip())
@@ -481,6 +487,12 @@ class PrintProductController:
                 result.error = PrintProductErrors.PRINT_PRODUCT_TYPE_NOT_FOUND.value
                 return result
 
+            # Prevent deletion of the unclassified wildcard type (ID 0)
+            if type_id == 0:
+                result.status = False
+                result.error = "Cannot delete the unclassified product type (system reserved)"
+                return result
+
             # Check if there are any products using this type
             products_using_type = PrintProduct.query.filter_by(type_id=type_id).first()
             
@@ -506,6 +518,41 @@ class PrintProductController:
         return result
 
     @staticmethod
+    def ensure_unclassified_type_exists() -> Result:
+        """Ensure the unclassified product type (ID 0) exists in the database"""
+        result = Result()
+
+        try:
+            # Check if unclassified type already exists
+            unclassified_type = db.session.get(PrintProductType, 0)
+            
+            if not unclassified_type:
+                # Create the unclassified type
+                unclassified_type = PrintProductType(
+                    id=0,
+                    name="Unclassified",
+                    description="Default type for products not yet classified",
+                    category_id=None  # No specific category - system-wide wildcard
+                )
+                
+                db.session.add(unclassified_type)
+                db.session.commit()
+                
+                result.data = {"message": "Unclassified product type created successfully"}
+                result.status = True
+            else:
+                result.data = {"message": "Unclassified product type already exists"}
+                result.status = True
+
+        except Exception as e:
+            db.session.rollback()
+            result.status = False
+            result.error = f"Failed to ensure unclassified type exists: {str(e)}"
+            logger.error(f"Error ensuring unclassified type exists: {str(e)}")
+
+        return result
+
+    @staticmethod
     def assign_product_to_type(product_id: int, type_id: int) -> Result:
         """Assign a product to a product type"""
         result = Result()
@@ -519,6 +566,12 @@ class PrintProductController:
             if not product:
                 result.status = False
                 result.error = "Product not found"
+                return result
+
+            # Prevent assignment to the unclassified wildcard type (ID 0)
+            if type_id == 0:
+                result.status = False
+                result.error = "Cannot assign product to unclassified type (use unassign instead)"
                 return result
 
             # Get the product type
@@ -573,8 +626,8 @@ class PrintProductController:
             # Store category_id before unassigning
             category_id = product.category_id
 
-            # Unassign the product from its type
-            product.type_id = None
+            # Unassign the product from its type (set to unclassified type 0)
+            product.type_id = 0
             db.session.commit()
 
             # Update the category's classification status
@@ -661,8 +714,9 @@ class PrintProductController:
                 result.status = True
                 return result
 
-            # Check how many products have a type_id assigned
-            classified_products = sum(1 for product in products if product.type_id is not None)
+            # Check how many products have a type_id > 0 (classified)
+            # type_id = 0 is the unclassified wildcard type
+            classified_products = sum(1 for product in products if product.type_id > 0)
             total_products = len(products)
             all_classified = classified_products == total_products
 
@@ -708,8 +762,9 @@ class PrintProductController:
                     "unclassified_products": 0
                 }
             else:
-                # Check how many products have a type_id assigned
-                classified_products = sum(1 for product in products if product.type_id is not None)
+                # Check how many products have a type_id > 0 (classified)
+                # type_id = 0 is the unclassified wildcard type
+                classified_products = sum(1 for product in products if product.type_id > 0)
                 total_products = len(products)
                 all_classified = classified_products == total_products
 
