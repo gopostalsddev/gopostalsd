@@ -63,7 +63,7 @@ const ShopPage = () => {
               <ProductListHeader
                 productCategoryName={selectedProductCategory ? selectedProductCategory.name : 'None'}
                 numberOfProducts={products.length}
-                backToProductCategories = {handleBackToProductCategories}
+                backToProductCategories={handleBackToProductCategories}
               />
               <ProductList category={selectedProductCategory} />
             </Box>

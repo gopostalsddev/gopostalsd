@@ -1,29 +1,101 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress, Paper } from '@mui/material';
+import { 
+  Box, 
+  Typography, 
+  Card, 
+  CardContent, 
+  Button, 
+  Grid, 
+  CircularProgress, 
+  Paper,
+  Breadcrumbs,
+  Chip,
+  Divider
+} from '@mui/material';
+import { 
+  ArrowBack as ArrowBackIcon,
+  Home as HomeIcon,
+  Store as StoreIcon
+} from '@mui/icons-material';
 
-const ProductListHeader = ({productCategoryName, backToProductCategories}) => {
+const ProductListHeader = ({productCategoryName, numberOfProducts, backToProductCategories}) => {
 
     return (
-        <Box
-        sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexDirection: { xs: "column", sm: "row" },
-            gap: 2,
-            mb: 2,
-        }}
-        >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            {/* Main Title */}
-            <Typography variant="h4">{productCategoryName}</Typography>
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            {/* Go back to categories Button */}
-            <Button variant="outlined" onClick={backToProductCategories}>
-                Back
-            </Button>
-        </Box>
+        <Box sx={{ mb: 4 }}>
+            {/* Breadcrumbs */}
+            <Breadcrumbs sx={{ mb: 3 }}>
+                <Button
+                    startIcon={<HomeIcon />}
+                    onClick={backToProductCategories}
+                    sx={{ textTransform: 'none', color: 'text.secondary' }}
+                >
+                    Shop
+                </Button>
+                <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
+                    <StoreIcon sx={{ mr: 0.5, fontSize: 20 }} />
+                    {productCategoryName}
+                </Typography>
+            </Breadcrumbs>
+
+            {/* Main Header */}
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    flexDirection: { xs: "column", sm: "row" },
+                    gap: 3,
+                    mb: 3,
+                }}
+            >
+                <Box sx={{ flex: 1 }}>
+                    <Typography 
+                        variant="h3" 
+                        component="h1"
+                        sx={{ 
+                            fontWeight: 700, 
+                            mb: 1,
+                            background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                        }}
+                    >
+                        {productCategoryName}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Chip
+                            label={`${numberOfProducts} products`}
+                            color="primary"
+                            variant="outlined"
+                            size="small"
+                        />
+                        <Typography variant="body1" color="text.secondary">
+                            Browse our collection of {productCategoryName.toLowerCase()} products
+                        </Typography>
+                    </Box>
+                </Box>
+
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Button 
+                        variant="outlined" 
+                        startIcon={<ArrowBackIcon />}
+                        onClick={backToProductCategories}
+                        sx={{
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: 3,
+                            py: 1
+                        }}
+                    >
+                        Back to Categories
+                    </Button>
+                </Box>
+            </Box>
+
+            <Divider sx={{ mb: 3 }} />
         </Box>
     );
 };
