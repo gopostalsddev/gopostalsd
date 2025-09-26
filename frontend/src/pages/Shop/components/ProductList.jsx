@@ -92,9 +92,33 @@ const ProductList = ({ category, onViewProduct }) => {
 
     return (
         <Box>
-            <Grid container spacing={3}>
+            <Grid 
+                container 
+                spacing={3}
+                justifyContent="center"
+                sx={{
+                    alignItems: 'stretch', // This ensures all cards stretch to the same height
+                }}
+            >
                 {products.map((product) => (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
+                    <Grid 
+                        item 
+                        xs={12} 
+                        sm={6} 
+                        md={4} 
+                        lg={3} 
+                        xl={2}
+                        key={product.id}
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'stretch', // Ensure grid items stretch to full height
+                            maxWidth: '350px', // Constrain maximum card width
+                            '& > *': {
+                                width: '100%',
+                                height: '100%' // Ensure cards take full height of grid item
+                            }
+                        }}
+                    >
                         <ProductCard
                             product={product}
                             onAddToCart={handleAddToCart}

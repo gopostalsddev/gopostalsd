@@ -181,24 +181,39 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
       <Card 
         sx={{ 
           height: '100%',
+          width: '100%',
+          maxWidth: '350px', // Constrain card width
           display: 'flex',
           flexDirection: 'column',
           boxShadow: 2,
+          borderRadius: 3,
+          overflow: 'hidden',
           transition: 'all 0.3s ease',
           '&:hover': {
-            boxShadow: 6,
+            boxShadow: 8,
             transform: 'translateY(-4px)',
           }
         }}
       >
-        {/* Product Image */}
-        <Box sx={{ position: 'relative' }}>
-          <CardMedia
-            component="img"
-            height="200"
-            image={getProductImage()}
+        {/* Product Image - Small Square */}
+        <Box sx={{ 
+          position: 'relative',
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          p: 2,
+          backgroundColor: '#f5f5f5'
+        }}>
+          <img
+            src={getProductImage()}
             alt={product.name}
-            sx={{ objectFit: 'cover' }}
+            style={{
+              width: '100px',
+              height: '100px',
+              objectFit: 'cover',
+              borderRadius: '8px',
+              border: '2px solid #e0e0e0'
+            }}
           />
           <IconButton
             sx={{ position: 'absolute', top: 8, right: 8 }}
@@ -209,22 +224,61 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
           </IconButton>
         </Box>
 
-        <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+        <CardContent sx={{ 
+          flexGrow: 1, 
+          pb: 1,
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}>
           {/* Product Name */}
-          <Typography variant="h6" component="h3" gutterBottom noWrap>
+          <Typography 
+            variant="h6" 
+            component="h3" 
+            gutterBottom
+            sx={{
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto',
+              maxWidth: '100%',
+              lineHeight: 1.2
+            }}
+          >
             {product.name}
           </Typography>
 
           {/* Product SKU */}
           {product.sku && (
-            <Typography variant="body2" color="text.secondary" gutterBottom>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              gutterBottom
+              sx={{
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                hyphens: 'auto',
+                maxWidth: '100%'
+              }}
+            >
               SKU: {product.sku}
             </Typography>
           )}
 
           {/* Product Description */}
           {product.description && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 2,
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                hyphens: 'auto',
+                maxWidth: '100%',
+                lineHeight: 1.5
+              }}
+            >
               {product.description.length > 100 
                 ? `${product.description.substring(0, 100)}...` 
                 : product.description

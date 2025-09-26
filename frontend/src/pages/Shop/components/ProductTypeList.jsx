@@ -18,8 +18,9 @@ import ProductTypeCard from './ProductTypeCard';
  * 
  * @param {Object} category - The product category
  * @param {Function} onProductClick - Callback when a product is clicked
+ * @param {Function} onProductTypesLoaded - Callback when product types are loaded (for count)
  */
-const ProductTypeList = ({ category, onProductClick }) => {
+const ProductTypeList = ({ category, onProductClick, onProductTypesLoaded }) => {
   const [productTypes, setProductTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,6 +36,10 @@ const ProductTypeList = ({ category, onProductClick }) => {
         const result = await fetchProductTypesByCategory(category.id);
         if (result.success) {
           setProductTypes(result.data);
+          // Notify parent component of the count
+          if (onProductTypesLoaded) {
+            onProductTypesLoaded(result.data.length);
+          }
         } else {
           setError('Failed to load product types');
         }
@@ -96,24 +101,17 @@ const ProductTypeList = ({ category, onProductClick }) => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
+    <Container maxWidth="xl" sx={{ py: 0 }}>
+      {/* Sub-header */}
       <Box sx={{ mb: 4 }}>
         <Typography 
-          variant="h4" 
-          component="h1" 
+          variant="h5" 
+          component="h2" 
           sx={{ 
             fontWeight: 600,
-            color: 'primary.main',
+            color: 'text.secondary',
             mb: 1
           }}
-        >
-          {category?.name || 'Product Types'}
-        </Typography>
-        <Typography 
-          variant="body1" 
-          color="text.secondary"
-          sx={{ mb: 2 }}
         >
           Choose a product type to view available products
         </Typography>

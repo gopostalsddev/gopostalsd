@@ -46,12 +46,38 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
       </Box>
 
       {/* Categories Grid */}
-      <Grid container spacing={4}>
+      <Grid 
+        container 
+        spacing={4}
+        justifyContent="center"
+        sx={{
+          alignItems: 'stretch', // This ensures all cards stretch to the same height
+        }}
+      >
         {productCategories.map((category) => (
-          <Grid item xs={12} sm={6} md={4} key={category.id}>
+          <Grid 
+            item 
+            xs={12} 
+            sm={6} 
+            md={4} 
+            lg={3}
+            xl={2}
+            key={category.id}
+            sx={{
+              display: 'flex',
+              alignItems: 'stretch', // Ensure grid items stretch to full height
+              maxWidth: '400px', // Constrain maximum card width for categories
+              '& > *': {
+                width: '100%',
+                height: '100%' // Ensure cards take full height of grid item
+              }
+            }}
+          >
             <Card
               sx={{
                 height: '100%',
+                width: '100%',
+                maxWidth: '400px', // Constrain card width
                 display: 'flex',
                 flexDirection: 'column',
                 boxShadow: 3,
@@ -113,37 +139,53 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
               </Box>
 
               {/* Category Content */}
-              <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <StoreIcon sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography 
-                    variant="h5" 
-                    component="h2"
-                    sx={{ 
-                      fontWeight: 600,
-                      color: 'text.primary'
-                    }}
-                  >
-                    {category.name}
-                  </Typography>
+              <CardContent sx={{ 
+                flexGrow: 1, 
+                p: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <StoreIcon sx={{ mr: 1, color: 'primary.main' }} />
+                    <Typography 
+                      variant="h5" 
+                      component="h2"
+                      sx={{ 
+                        fontWeight: 600,
+                        color: 'text.primary',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        hyphens: 'auto',
+                        maxWidth: '100%'
+                      }}
+                    >
+                      {category.name}
+                    </Typography>
+                  </Box>
+                  
+                  {category.description && (
+                    <Typography 
+                      color="text.secondary" 
+                      variant="body1"
+                      sx={{ 
+                        mb: 2,
+                        lineHeight: 1.6,
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        hyphens: 'auto',
+                        maxWidth: '100%',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {category.description}
+                    </Typography>
+                  )}
                 </Box>
-                
-                {category.description && (
-                  <Typography 
-                    color="text.secondary" 
-                    variant="body1"
-                    sx={{ 
-                      mb: 2,
-                      lineHeight: 1.6,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {category.description}
-                  </Typography>
-                )}
 
                 {/* Classification Status */}
                 {category.product_classification_status && (

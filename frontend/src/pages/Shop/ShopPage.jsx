@@ -20,6 +20,7 @@ const ShopPage = () => {
     const  [productCategories, setProductCategories] = useState([])
     const  [selectedProductCategory, setSelectedProductCategrory] = useState(null)
     const  [selectedProduct, setSelectedProduct] = useState(null)
+    const  [productTypeCount, setProductTypeCount] = useState(0)
     const  [loading, setLoading] = useState(true)
   
     useEffect(() => {
@@ -44,6 +45,11 @@ const ShopPage = () => {
     const handleBackToProductCategories = () => {
         setSelectedProductCategrory(null);
         setSelectedProduct(null);
+        setProductTypeCount(0);
+    }
+
+    const handleProductTypesLoaded = (count) => {
+        setProductTypeCount(count);
     }
 
     const handleViewProduct = (product) => {
@@ -75,10 +81,18 @@ const ShopPage = () => {
             />
           ) : selectedProductCategory ? (
             // If a category is selected, display its product types
-            <ProductTypeList 
-              category={selectedProductCategory} 
-              onProductClick={handleViewProduct}
-            />
+            <Box sx={{ width: '100%', p: 0 }}>
+              <ProductListHeader
+                productCategoryName={selectedProductCategory ? selectedProductCategory.name : 'None'}
+                numberOfProducts={productTypeCount}
+                backToProductCategories={handleBackToProductCategories}
+              />
+              <ProductTypeList 
+                category={selectedProductCategory} 
+                onProductClick={handleViewProduct}
+                onProductTypesLoaded={handleProductTypesLoaded}
+              />
+            </Box>
           ) : (
             // Display the enabled categories as cards
             <ProductCategoryList productCategories={productCategories} handleProductCategoryClick={handleProductCategoryClick} />

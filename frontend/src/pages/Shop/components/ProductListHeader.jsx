@@ -66,13 +66,13 @@ const ProductListHeader = ({productCategoryName, numberOfProducts, backToProduct
                     
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                         <Chip
-                            label={`${numberOfProducts} products`}
+                            label={`${numberOfProducts} product types`}
                             color="primary"
                             variant="outlined"
                             size="small"
                         />
                         <Typography variant="body1" color="text.secondary">
-                            Browse our collection of {productCategoryName.toLowerCase()} products
+                            Browse our collection of {productCategoryName.toLowerCase()} product types
                         </Typography>
                     </Box>
                 </Box>

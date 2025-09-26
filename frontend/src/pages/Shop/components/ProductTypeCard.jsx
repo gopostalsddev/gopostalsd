@@ -13,6 +13,9 @@ import {
   Alert,
   Skeleton
 } from '@mui/material';
+import {
+  Category as CategoryIcon
+} from '@mui/icons-material';
 import { fetchProductsByType } from '../../../services/product_service';
 import logoImage from '../../../assets/logo.png';
 
@@ -72,35 +75,60 @@ const ProductTypeCard = ({ productType, onProductClick }) => {
         maxWidth: '350px', // Constrain card width
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: 2,
+        boxShadow: 3,
         borderRadius: 3,
         overflow: 'hidden',
-        transition: 'all 0.3s ease-in-out',
+        transition: 'all 0.3s ease',
         '&:hover': {
+          transform: 'translateY(-8px)',
           boxShadow: 8,
-          transform: 'translateY(-4px)',
         }
       }}
     >
-      {/* Product Type Image - Small Square */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        p: 2,
-        backgroundColor: '#f5f5f5'
-      }}>
-        <img
-          src={displayImage}
+      {/* Product Type Image - Full Width */}
+      <Box sx={{ position: 'relative', height: 200 }}>
+        <CardMedia
+          component="img"
+          height="200"
+          image={displayImage}
           alt={productType?.name || 'Product Type'}
-          style={{
-            width: '100px',
-            height: '100px',
+          sx={{
             objectFit: 'cover',
-            borderRadius: '8px',
-            border: '2px solid #e0e0e0'
+            transition: 'transform 0.3s ease',
+            '&:hover': {
+              transform: 'scale(1.05)'
+            }
           }}
         />
+        
+        {/* Overlay Gradient */}
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '50%',
+            background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+          }}
+        />
+        
+        {/* Product Count Badge */}
+        {!loading && !error && products.length > 0 && (
+          <Chip
+            label={`${products.length} products`}
+            color="primary"
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              backgroundColor: 'rgba(25, 118, 210, 0.9)',
+              color: 'white',
+              fontWeight: 600
+            }}
+          />
+        )}
       </Box>
 
       <CardContent sx={{ 
@@ -112,18 +140,20 @@ const ProductTypeCard = ({ productType, onProductClick }) => {
       }}>
         {/* Product Type Header */}
         <Box sx={{ mb: 2 }}>
-          <Typography 
-            variant="h5" 
-            component="h2" 
-            sx={{ 
-              fontWeight: 600,
-              color: 'primary.main',
-              mb: 1,
-              lineHeight: 1.2
-            }}
-          >
-            {productType?.name || 'Product Type'}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <CategoryIcon sx={{ mr: 1, color: 'primary.main' }} />
+            <Typography 
+              variant="h5" 
+              component="h2" 
+              sx={{ 
+                fontWeight: 600,
+                color: 'text.primary',
+                lineHeight: 1.2
+              }}
+            >
+              {productType?.name || 'Product Type'}
+            </Typography>
+          </Box>
           
           {productType?.description && (
             <Typography 
@@ -150,9 +180,13 @@ const ProductTypeCard = ({ productType, onProductClick }) => {
             sx={{ 
               fontWeight: 600,
               mb: 1.5,
-              color: 'text.primary'
+              color: 'text.primary',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
             }}
           >
+            <CategoryIcon sx={{ fontSize: 16, color: 'primary.main' }} />
             Available Products ({products.length})
           </Typography>
 
@@ -180,83 +214,111 @@ const ProductTypeCard = ({ productType, onProductClick }) => {
             >
               No products available for this type
             </Typography>
-          ) : (
-            <List 
-              dense 
-              sx={{ 
-                p: 0,
-                '& .MuiListItem-root': {
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  transition: 'all 0.2s ease',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: '#e0e0e0', // Light gray background
-                    border: '1px solid #757575', // Dark gray border
-                    '& .MuiListItemText-primary': {
-                      color: '#ffffff', // White text
-                      fontWeight: 500
-                    }
-                  }
-                }
-              }}
-            >
-              {products.map((product) => (
-                <ListItem 
-                  key={product.id}
-                  onClick={() => handleProductClick(product)}
-                  sx={{
-                    borderRadius: 1,
-                    mb: 0.5,
-                    border: '1px solid transparent', // Transparent border by default
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      backgroundColor: '#e0e0e0',
-                      border: '1px solid #757575',
-                      '& .MuiListItemText-primary': {
-                        color: '#ffffff',
-                        fontWeight: 500
-                      }
-                    }
-                  }}
-                >
-                  <ListItemText
-                    primary={product.name}
-                    primaryTypographyProps={{
-                      variant: 'body2',
-                      sx: {
-                        fontWeight: 400,
-                        transition: 'all 0.2s ease',
-                        color: 'text.primary',
-                        wordWrap: 'break-word',
-                        overflowWrap: 'break-word',
-                        hyphens: 'auto',
-                        maxWidth: '100%'
-                      }
-                    }}
-                  />
-                </ListItem>
-              ))}
-            </List>
+                  ) : (
+                    <List 
+                      dense 
+                      sx={{ 
+                        p: 0,
+                        '& .MuiListItem-root': {
+                          px: 2,
+                          py: 1,
+                          borderRadius: 2,
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          cursor: 'pointer',
+                          border: '1px solid transparent',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          '&:hover': {
+                            backgroundColor: 'primary.main',
+                            border: '1px solid primary.dark',
+                            transform: 'translateX(4px)',
+                            boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
+                            '& .MuiListItemText-primary': {
+                              color: 'white',
+                              fontWeight: 600
+                            },
+                            '&::before': {
+                              opacity: 1,
+                              transform: 'translateX(0)'
+                            }
+                          },
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '4px',
+                            height: '100%',
+                            backgroundColor: 'primary.light',
+                            opacity: 0,
+                            transform: 'translateX(-4px)',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                          }
+                        }
+                      }}
+                    >
+                      {products.map((product, index) => (
+                        <ListItem 
+                          key={product.id}
+                          onClick={() => handleProductClick(product)}
+                          sx={{
+                            borderRadius: 2,
+                            mb: 1,
+                            border: '1px solid #e0e0e0',
+                            backgroundColor: '#fafafa',
+                            position: 'relative',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                            '&:hover': {
+                              backgroundColor: 'primary.main',
+                              border: '1px solid primary.dark',
+                              transform: 'translateX(4px)',
+                              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
+                              '& .MuiListItemText-primary': {
+                                color: 'white',
+                                fontWeight: 600
+                              },
+                              '&::before': {
+                                opacity: 1,
+                                transform: 'translateX(0)'
+                              }
+                            },
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '4px',
+                              height: '100%',
+                              backgroundColor: 'primary.light',
+                              opacity: 0,
+                              transform: 'translateX(-4px)',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }
+                          }}
+                        >
+                          <ListItemText
+                            primary={product.name}
+                            primaryTypographyProps={{
+                              variant: 'body2',
+                              sx: {
+                                fontWeight: 500,
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                color: 'text.primary',
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                hyphens: 'auto',
+                                maxWidth: '100%',
+                                position: 'relative',
+                                pl: 1
+                              }
+                            }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
           )}
         </Box>
 
-        {/* Product Count Chip - Always at bottom */}
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          {!loading && !error && products.length > 0 && (
-            <Chip
-              label={`${products.length} product${products.length !== 1 ? 's' : ''}`}
-              size="small"
-              color="primary"
-              variant="outlined"
-              sx={{ 
-                fontSize: '0.75rem',
-                height: 24
-              }}
-            />
-          )}
-        </Box>
       </CardContent>
     </Card>
   );

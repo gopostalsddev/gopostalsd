@@ -229,7 +229,7 @@ const ProductDetailPage = ({ product, onBack }) => {
 
       <Grid container spacing={4}>
         {/* Left Column - Product Image */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} lg={4}>
           <Card>
             <CardContent>
               <Box sx={{ textAlign: 'center' }}>
@@ -248,9 +248,9 @@ const ProductDetailPage = ({ product, onBack }) => {
           </Card>
         </Grid>
 
-        {/* Right Column - Configuration */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+        {/* Middle Column - Configuration */}
+        <Grid item xs={12} lg={4}>
+          <Paper sx={{ p: 3, maxWidth: '450px', mx: 'auto' }}>
             <Typography variant="h5" gutterBottom>
               Price this item:
             </Typography>
@@ -363,127 +363,132 @@ const ProductDetailPage = ({ product, onBack }) => {
             </Box>
           </Paper>
         </Grid>
-      </Grid>
 
-      {/* Stepper for Additional Steps */}
-      <Box sx={{ mt: 4 }}>
-        <Stepper activeStep={activeStep} orientation="vertical">
-          <Step>
-            <StepLabel>Upload your artwork</StepLabel>
-            <StepContent>
-              <Box sx={{ mb: 2 }}>
-                <input
-                  accept="image/*,.pdf"
-                  style={{ display: 'none' }}
-                  id="file-upload"
-                  multiple
-                  type="file"
-                  onChange={handleFileUpload}
-                />
-                <label htmlFor="file-upload">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mb: 2 }}
-                  >
-                    Upload Files
-                  </Button>
-                </label>
-                
-                {uploadedFiles.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Uploaded Files:
-                    </Typography>
-                    {uploadedFiles.map((file, index) => (
-                      <Chip
-                        key={index}
-                        label={file.name}
-                        onDelete={() => removeFile(index)}
-                        sx={{ mr: 1, mb: 1 }}
-                      />
-                    ))}
+        {/* Right Column - Stepper for Additional Steps */}
+        <Grid item xs={12} lg={4}>
+          <Paper sx={{ p: 3, maxWidth: '450px', mx: 'auto' }}>
+            <Typography variant="h5" gutterBottom>
+              Additional Steps:
+            </Typography>
+            <Stepper activeStep={activeStep} orientation="vertical">
+              <Step>
+                <StepLabel>Upload your artwork</StepLabel>
+                <StepContent>
+                  <Box sx={{ mb: 2 }}>
+                    <input
+                      accept="image/*,.pdf"
+                      style={{ display: 'none' }}
+                      id="file-upload"
+                      multiple
+                      type="file"
+                      onChange={handleFileUpload}
+                    />
+                    <label htmlFor="file-upload">
+                      <Button
+                        variant="outlined"
+                        component="span"
+                        startIcon={<CloudUploadIcon />}
+                        sx={{ mb: 2 }}
+                      >
+                        Upload Files
+                      </Button>
+                    </label>
+                    
+                    {uploadedFiles.length > 0 && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Uploaded Files:
+                        </Typography>
+                        {uploadedFiles.map((file, index) => (
+                          <Chip
+                            key={index}
+                            label={file.name}
+                            onDelete={() => removeFile(index)}
+                            sx={{ mr: 1, mb: 1 }}
+                          />
+                        ))}
+                      </Box>
+                    )}
                   </Box>
-                )}
-              </Box>
-              <Button
-                variant="contained"
-                onClick={() => setActiveStep(1)}
-                sx={{ mt: 1, mr: 1 }}
-              >
-                Continue
-              </Button>
-            </StepContent>
-          </Step>
+                  <Button
+                    variant="contained"
+                    onClick={() => setActiveStep(1)}
+                    sx={{ mt: 1, mr: 1 }}
+                  >
+                    Continue
+                  </Button>
+                </StepContent>
+              </Step>
 
-          <Step>
-            <StepLabel>Calculate shipping cost</StepLabel>
-            <StepContent>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Enter your destination to get a shipping estimate.
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Country</InputLabel>
-                      <Select
-                        value={shippingInfo.country}
-                        onChange={(e) => setShippingInfo(prev => ({ ...prev, country: e.target.value }))}
-                        label="Country"
-                      >
-                        <MenuItem value="US">United States</MenuItem>
-                        <MenuItem value="CA">Canada</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>State/Province</InputLabel>
-                      <Select
-                        value={shippingInfo.state}
-                        onChange={(e) => setShippingInfo(prev => ({ ...prev, state: e.target.value }))}
-                        label="State/Province"
-                      >
-                        <MenuItem value="CA">California</MenuItem>
-                        <MenuItem value="NY">New York</MenuItem>
-                        <MenuItem value="TX">Texas</MenuItem>
-                        <MenuItem value="ON">Ontario</MenuItem>
-                        <MenuItem value="BC">British Columbia</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="City"
-                      value={shippingInfo.city}
-                      onChange={(e) => setShippingInfo(prev => ({ ...prev, city: e.target.value }))}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Zip/Postal Code"
-                      value={shippingInfo.zip}
-                      onChange={(e) => setShippingInfo(prev => ({ ...prev, zip: e.target.value }))}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-              <Button
-                variant="contained"
-                onClick={handleShippingEstimate}
-                disabled={shippingLoading}
-                sx={{ mt: 1, mr: 1 }}
-              >
-                {shippingLoading ? <CircularProgress size={20} /> : 'Get a Quote'}
-              </Button>
-            </StepContent>
-          </Step>
-        </Stepper>
-      </Box>
+              <Step>
+                <StepLabel>Calculate shipping cost</StepLabel>
+                <StepContent>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Enter your destination to get a shipping estimate.
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth>
+                          <InputLabel>Country</InputLabel>
+                          <Select
+                            value={shippingInfo.country}
+                            onChange={(e) => setShippingInfo(prev => ({ ...prev, country: e.target.value }))}
+                            label="Country"
+                          >
+                            <MenuItem value="US">United States</MenuItem>
+                            <MenuItem value="CA">Canada</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth>
+                          <InputLabel>State/Province</InputLabel>
+                          <Select
+                            value={shippingInfo.state}
+                            onChange={(e) => setShippingInfo(prev => ({ ...prev, state: e.target.value }))}
+                            label="State/Province"
+                          >
+                            <MenuItem value="CA">California</MenuItem>
+                            <MenuItem value="NY">New York</MenuItem>
+                            <MenuItem value="TX">Texas</MenuItem>
+                            <MenuItem value="ON">Ontario</MenuItem>
+                            <MenuItem value="BC">British Columbia</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="City"
+                          value={shippingInfo.city}
+                          onChange={(e) => setShippingInfo(prev => ({ ...prev, city: e.target.value }))}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Zip/Postal Code"
+                          value={shippingInfo.zip}
+                          onChange={(e) => setShippingInfo(prev => ({ ...prev, zip: e.target.value }))}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    onClick={handleShippingEstimate}
+                    disabled={shippingLoading}
+                    sx={{ mt: 1, mr: 1 }}
+                  >
+                    {shippingLoading ? <CircularProgress size={20} /> : 'Get a Quote'}
+                  </Button>
+                </StepContent>
+              </Step>
+            </Stepper>
+          </Paper>
+        </Grid>
+      </Grid>
 
       {/* Shipping Estimates Dialog */}
       <Dialog
