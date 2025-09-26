@@ -31,13 +31,18 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Breadcrumbs
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
   CloudUpload as CloudUploadIcon,
   LocalShipping as LocalShippingIcon,
   ShoppingCart as ShoppingCartIcon,
+  ArrowBack as ArrowBackIcon,
+  Home as HomeIcon,
+  Store as StoreIcon,
+  Category as CategoryIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
 import {
@@ -206,19 +211,79 @@ const ProductDetailPage = ({ product, onBack }) => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Button
-          startIcon={<CloseIcon />}
-          onClick={onBack}
-          sx={{ mb: 2 }}
+        {/* Breadcrumbs */}
+        <Breadcrumbs sx={{ mb: 3 }}>
+          <Button
+            startIcon={<HomeIcon />}
+            onClick={() => window.location.href = '/'}
+            sx={{ textTransform: 'none', color: 'text.secondary' }}
+          >
+            Shop
+          </Button>
+          <Button
+            startIcon={<StoreIcon />}
+            onClick={onBack}
+            sx={{ textTransform: 'none', color: 'text.secondary' }}
+          >
+            Product Types
+          </Button>
+          <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
+            <CategoryIcon sx={{ mr: 0.5, fontSize: 20 }} />
+            {product.name}
+          </Typography>
+        </Breadcrumbs>
+
+        {/* Main Header */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 3,
+            mb: 3,
+          }}
         >
-          Back to Products
-        </Button>
-        <Typography variant="h4" component="h1" gutterBottom>
-          {product.name}
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          {product.description}
-        </Typography>
+          <Box sx={{ flex: 1 }}>
+            <Typography 
+              variant="h3" 
+              component="h1"
+              sx={{ 
+                fontWeight: 700, 
+                mb: 1,
+                background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
+            >
+              {product.name}
+            </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Typography variant="body1" color="text.secondary">
+                {product.description}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              onClick={onBack}
+              startIcon={<ArrowBackIcon />}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                py: 1
+              }}
+            >
+              Back to Products
+            </Button>
+          </Box>
+        </Box>
       </Box>
 
       {displayError && (
