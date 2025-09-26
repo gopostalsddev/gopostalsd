@@ -84,9 +84,10 @@ class PricingController:
     Implements the Controller pattern for clean separation of concerns.
     """
     
-    def __init__(self, sinalite_adapter: SinaliteAdapter):
-        self.pricing_service = PricingService(sinalite_adapter)
-        self.cart_service = CartService(self.pricing_service)
+    def __init__(self, sinalite_adapter: SinaliteAdapter, pricing_service: PricingService, cart_service: CartService):
+        self.sinalite_adapter = sinalite_adapter
+        self.pricing_service = pricing_service
+        self.cart_service = cart_service
     
     def get_product_options(self, product_id: int, store_code: int) -> Dict:
         """

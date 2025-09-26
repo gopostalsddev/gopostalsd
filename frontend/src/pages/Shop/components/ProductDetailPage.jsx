@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Container,
@@ -13,7 +13,6 @@ import {
   TextField,
   Button,
   Paper,
-  Divider,
   Alert,
   CircularProgress,
   Chip,
@@ -32,35 +31,27 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  LinearProgress
+  DialogActions
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
   CloudUpload as CloudUploadIcon,
   LocalShipping as LocalShippingIcon,
-  Calculate as CalculateIcon,
   ShoppingCart as ShoppingCartIcon,
-  Close as CloseIcon,
-  CheckCircle as CheckCircleIcon,
-  Info as InfoIcon
+  Close as CloseIcon
 } from '@mui/icons-material';
 import {
-  fetchProductOptions,
-  calculateProductPrice,
   getShippingEstimates,
   addItemToCart,
   getOrCreateCart
 } from '../../../services/product_service';
+import { useProductOptions } from '../../../hooks/useProductOptions';
+import { useProductPricing } from '../../../hooks/useProductPricing';
+import { formatPrice, calculateTotalPrice, getEstimatedShipDate } from '../../../utils/priceUtils';
 import logoImage from '../../../assets/logo.png';
 
 const ProductDetailPage = ({ product, onBack }) => {
-  const [options, setOptions] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
-  const [pricing, setPricing] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [pricingLoading, setPricingLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -73,98 +64,24 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [shippingEstimates, setShippingEstimates] = useState([]);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [showShippingDialog, setShowShippingDialog] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Load product options when component mounts
-  useEffect(() => {
-    const loadOptions = async () => {
-      if (!product.vendor_product_id) return;
-      
-      setLoading(true);
-      try {
-        console.log('Loading options for product:', product.vendor_product_id);
-        const productOptions = await fetchProductOptions(parseInt(product.vendor_product_id), 6); // Canada store
-        console.log('Product options loaded:', productOptions);
-        setOptions(productOptions);
-      } catch (error) {
-        console.error('Error loading product options:', error);
-        setError('Failed to load product options');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Custom hooks for product options and pricing
+  const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
+  const { pricing, loading: pricingLoading, error: pricingError } = useProductPricing(
+    product.vendor_product_id, 
+    selectedOptions, 
+    options
+  );
 
-    loadOptions();
-  }, [product.vendor_product_id]);
-
-  // Calculate price when options change
-  useEffect(() => {
-    const calculatePrice = async () => {
-      console.log('Price calculation triggered');
-      console.log('Product vendor ID:', product.vendor_product_id);
-      console.log('Selected options:', selectedOptions);
-      console.log('Available options:', options);
-      
-      if (!product.vendor_product_id || Object.keys(selectedOptions).length === 0) {
-        console.log('No vendor ID or no selected options, setting pricing to null');
-        setPricing(null);
-        return;
-      }
-
-      // Check if all required option groups have selections
-      const hasAllRequiredOptions = options.every(optionGroup => 
-        selectedOptions[optionGroup.group] && selectedOptions[optionGroup.group] !== ''
-      );
-
-      console.log('Has all required options:', hasAllRequiredOptions);
-
-      if (!hasAllRequiredOptions) {
-        console.log('Not all required options selected, setting pricing to null');
-        setPricing(null);
-        return;
-      }
-
-      // Generate the option key in the correct order
-      const optionIds = options.map(optionGroup => 
-        selectedOptions[optionGroup.group]
-      ).filter(id => id && id !== '');
-
-      console.log('Generated option IDs:', optionIds);
-
-      if (optionIds.length === 0) {
-        console.log('No option IDs generated, setting pricing to null');
-        setPricing(null);
-        return;
-      }
-
-      setPricingLoading(true);
-      try {
-        console.log('Calculating price for product:', product.vendor_product_id, 'with options:', optionIds);
-        const priceData = await calculateProductPrice(parseInt(product.vendor_product_id), optionIds, 6);
-        console.log('Price data received:', priceData);
-        setPricing(priceData);
-        setError(null);
-      } catch (error) {
-        console.error('Error calculating price:', error);
-        setError('Failed to calculate price');
-        setPricing(null);
-      } finally {
-        setPricingLoading(false);
-      }
-    };
-
-    calculatePrice();
-  }, [selectedOptions, product.vendor_product_id, options]);
+  // Combine errors from different sources
+  const displayError = error || optionsError || pricingError;
 
   const handleOptionChange = (group, optionId) => {
-    console.log('Option changed:', group, 'to', optionId);
-    setSelectedOptions(prev => {
-      const newOptions = {
-        ...prev,
-        [group]: optionId
-      };
-      console.log('New selected options:', newOptions);
-      return newOptions;
-    });
+    setSelectedOptions(prev => ({
+      ...prev,
+      [group]: optionId
+    }));
   };
 
   const handleFileUpload = (event) => {
@@ -252,26 +169,8 @@ const ProductDetailPage = ({ product, onBack }) => {
     }
   };
 
-  const formatPrice = (price) => {
-    if (!price) return 'Price not available';
-    return `$${parseFloat(price).toFixed(2)}`;
-  };
-
   const getTotalPrice = () => {
-    if (!pricing) return 0;
-    return parseFloat(pricing.price) * quantity;
-  };
-
-  const getEstimatedShipDate = () => {
-    const today = new Date();
-    const shipDate = new Date(today);
-    shipDate.setDate(today.getDate() + 3); // 3 business days
-    return shipDate.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    return calculateTotalPrice(pricing?.price, quantity);
   };
 
   const steps = [
@@ -299,9 +198,9 @@ const ProductDetailPage = ({ product, onBack }) => {
         </Typography>
       </Box>
 
-      {error && (
+      {displayError && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
+          {displayError}
         </Alert>
       )}
 
@@ -333,7 +232,7 @@ const ProductDetailPage = ({ product, onBack }) => {
               Price this item:
             </Typography>
 
-            {loading ? (
+            {optionsLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                 <CircularProgress />
               </Box>

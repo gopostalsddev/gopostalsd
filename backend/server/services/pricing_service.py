@@ -19,6 +19,11 @@ from server.models.pricing import (
 )
 from server.thirdparty.sinalite import SinaliteAdapter
 from server.thirdparty.helpers import logger
+from server.exceptions.pricing_exceptions import (
+    ProductNotFoundError, PricingCalculationError, 
+    InvalidOptionsError, ShippingEstimateError
+)
+from server.repositories.pricing_repository import PricingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +46,9 @@ class SinalitePricingStrategy(PricingStrategy):
     Implements caching to reduce API calls and improve performance.
     """
     
-    def __init__(self, sinalite_adapter: SinaliteAdapter):
+    def __init__(self, sinalite_adapter: SinaliteAdapter, repository: PricingRepository):
         self.sinalite = sinalite_adapter
+        self.repository = repository
         self.cache_duration = timedelta(hours=1)  # Cache pricing for 1 hour
     
     def calculate_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
@@ -62,7 +68,7 @@ class SinalitePricingStrategy(PricingStrategy):
             option_key = "-".join(map(str, sorted(options)))
             
             # Check cache first
-            cached_pricing = self._get_cached_pricing(product_id, store_code, option_key)
+            cached_pricing = self.repository.get_cached_pricing(product_id, store_code, option_key)
             if cached_pricing:
                 logger.info(f"Using cached pricing for product {product_id}")
                 return cached_pricing
@@ -88,7 +94,7 @@ class SinalitePricingStrategy(PricingStrategy):
             }
             
             # Cache the result
-            self._cache_pricing(product_id, store_code, option_key, formatted_pricing, options)
+            self.repository.cache_pricing(product_id, store_code, option_key, formatted_pricing, options)
             
             return formatted_pricing
             
@@ -96,63 +102,6 @@ class SinalitePricingStrategy(PricingStrategy):
             logger.error(f"Error calculating price for product {product_id}: {str(e)}")
             return None
     
-    def _get_cached_pricing(self, product_id: int, store_code: int, option_key: str) -> Optional[Dict]:
-        """Retrieve cached pricing data if still valid."""
-        try:
-            cached = ProductPricing.query.filter_by(
-                product_id=product_id,
-                store_code=store_code,
-                option_key=option_key
-            ).first()
-            
-            if cached and cached.updated_at > datetime.utcnow() - self.cache_duration:
-                return {
-                    'price': str(cached.price),
-                    'packageInfo': cached.package_info,
-                    'productOptions': cached.product_options
-                }
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error retrieving cached pricing: {str(e)}")
-            return None
-    
-    def _cache_pricing(self, product_id: int, store_code: int, option_key: str, 
-                      pricing_data: Dict, options: List[int]) -> None:
-        """Cache pricing data for future use."""
-        try:
-            # Check if already exists
-            existing = ProductPricing.query.filter_by(
-                product_id=product_id,
-                store_code=store_code,
-                option_key=option_key
-            ).first()
-            
-            if existing:
-                # Update existing record
-                existing.price = pricing_data.get('price', 0)
-                existing.package_info = pricing_data.get('packageInfo')
-                existing.product_options = pricing_data.get('productOptions')
-                existing.updated_at = datetime.utcnow()
-            else:
-                # Create new record
-                new_pricing = ProductPricing(
-                    product_id=product_id,
-                    store_code=store_code,
-                    option_key=option_key,
-                    price=pricing_data.get('price', 0),
-                    package_info=pricing_data.get('packageInfo'),
-                    product_options=pricing_data.get('productOptions')
-                )
-                db.session.add(new_pricing)
-            
-            db.session.commit()
-            logger.info(f"Cached pricing for product {product_id}")
-            
-        except Exception as e:
-            logger.error(f"Error caching pricing: {str(e)}")
-            db.session.rollback()
 
 
 class PricingService:
@@ -161,9 +110,10 @@ class PricingService:
     Implements the Facade pattern to provide a simple interface for complex operations.
     """
     
-    def __init__(self, sinalite_adapter: SinaliteAdapter):
+    def __init__(self, sinalite_adapter: SinaliteAdapter, repository: PricingRepository):
         self.sinalite = sinalite_adapter
-        self.pricing_strategy = SinalitePricingStrategy(sinalite_adapter)
+        self.repository = repository
+        self.pricing_strategy = SinalitePricingStrategy(sinalite_adapter, repository)
     
     def get_product_options(self, product_id: int, store_code: int) -> List[Dict]:
         """
@@ -178,9 +128,9 @@ class PricingService:
         """
         try:
             # Check cache first
-            cached_options = self._get_cached_options(product_id, store_code)
+            cached_options = self.repository.get_cached_options(product_id)
             if cached_options:
-                return cached_options
+                return self._group_options_by_category(cached_options)
             
             # Fetch from API
             product_details = self.sinalite.get_product_details(product_id, store_code)
@@ -191,7 +141,7 @@ class PricingService:
             options = product_details[0]  # First array contains options
             
             # Cache the options
-            self._cache_options(product_id, store_code, options)
+            self.repository.cache_options(product_id, options)
             
             # Group options by category
             grouped_options = self._group_options_by_category(options)
@@ -287,44 +237,6 @@ class PricingService:
             logger.error(f"Error getting shipping estimates: {str(e)}")
             return []
     
-    def _get_cached_options(self, product_id: int, store_code: int) -> Optional[List[Dict]]:
-        """Retrieve cached product options if available."""
-        try:
-            cached_options = ProductOption.query.filter_by(
-                product_id=product_id
-            ).all()
-            
-            if cached_options:
-                return self._group_options_by_category([opt.to_dict() for opt in cached_options])
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error retrieving cached options: {str(e)}")
-            return None
-    
-    def _cache_options(self, product_id: int, store_code: int, options: List[Dict]) -> None:
-        """Cache product options for future use."""
-        try:
-            # Clear existing options for this product
-            ProductOption.query.filter_by(product_id=product_id).delete()
-            
-            # Add new options
-            for option in options:
-                new_option = ProductOption(
-                    sinalite_option_id=option['id'],
-                    product_id=product_id,
-                    group=option['group'],
-                    name=option['name']
-                )
-                db.session.add(new_option)
-            
-            db.session.commit()
-            logger.info(f"Cached {len(options)} options for product {product_id}")
-            
-        except Exception as e:
-            logger.error(f"Error caching options: {str(e)}")
-            db.session.rollback()
     
     def _group_options_by_category(self, options: List[Dict]) -> List[Dict]:
         """Group options by their category/group."""
@@ -345,43 +257,6 @@ class PricingService:
         
         return result
     
-    def _get_cached_variants(self, product_id: int, offset: int) -> Optional[List[Dict]]:
-        """Retrieve cached product variants if available."""
-        try:
-            cached_variants = ProductVariant.query.filter_by(
-                product_id=product_id
-            ).offset(offset).limit(1000).all()
-            
-            if cached_variants:
-                return [variant.to_dict() for variant in cached_variants]
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error retrieving cached variants: {str(e)}")
-            return None
-    
-    def _cache_variants(self, product_id: int, offset: int, variants: List[Dict]) -> None:
-        """Cache product variants for future use."""
-        try:
-            # Clear existing variants for this product
-            ProductVariant.query.filter_by(product_id=product_id).delete()
-            
-            # Add new variants
-            for variant in variants:
-                new_variant = ProductVariant(
-                    product_id=product_id,
-                    variant_key=variant['key'],
-                    price=variant['price']
-                )
-                db.session.add(new_variant)
-            
-            db.session.commit()
-            logger.info(f"Cached {len(variants)} variants for product {product_id}")
-            
-        except Exception as e:
-            logger.error(f"Error caching variants: {str(e)}")
-            db.session.rollback()
 
 
 class CartService:
@@ -390,8 +265,9 @@ class CartService:
     Implements the Repository pattern for data access.
     """
     
-    def __init__(self, pricing_service: PricingService):
+    def __init__(self, pricing_service: PricingService, repository: 'CartRepository'):
         self.pricing_service = pricing_service
+        self.repository = repository
     
     def get_or_create_cart(self, session_id: str, user_id: Optional[int] = None, 
                           store_code: int = StoreCode.CANADA.value) -> Cart:
@@ -406,30 +282,7 @@ class CartService:
         Returns:
             Cart instance
         """
-        try:
-            cart = Cart.query.filter_by(session_id=session_id).first()
-            
-            if not cart:
-                cart = Cart(
-                    session_id=session_id,
-                    user_id=user_id,
-                    store_code=store_code
-                )
-                db.session.add(cart)
-                db.session.commit()
-                logger.info(f"Created new cart for session {session_id}")
-            else:
-                # Update store code if different
-                if cart.store_code != store_code:
-                    cart.store_code = store_code
-                    db.session.commit()
-            
-            return cart
-            
-        except Exception as e:
-            logger.error(f"Error getting/creating cart: {str(e)}")
-            db.session.rollback()
-            raise
+        return self.repository.get_or_create_cart(session_id, user_id, store_code)
     
     def add_item_to_cart(self, cart_id: int, product_id: int, product_name: str,
                         product_sku: str, selected_options: List[int], 
@@ -449,7 +302,7 @@ class CartService:
             CartItem instance or None if failed
         """
         try:
-            cart = Cart.query.get(cart_id)
+            cart = self.repository.get_cart_by_id(cart_id)
             if not cart:
                 logger.error(f"Cart {cart_id} not found")
                 return None
@@ -478,8 +331,9 @@ class CartService:
                 existing_item.quantity += quantity
                 existing_item.total_price = existing_item.quantity * existing_item.unit_price
                 existing_item.updated_at = datetime.utcnow()
-                db.session.commit()
-                return existing_item
+                if self.repository.update_cart_item(existing_item):
+                    return existing_item
+                return None
             
             # Create new cart item
             unit_price = float(pricing.get('price', 0))
@@ -498,11 +352,10 @@ class CartService:
                 package_info=pricing.get('packageInfo')
             )
             
-            db.session.add(cart_item)
-            db.session.commit()
-            
-            logger.info(f"Added item to cart {cart_id}: {product_name}")
-            return cart_item
+            if self.repository.add_cart_item(cart_item):
+                logger.info(f"Added item to cart {cart_id}: {product_name}")
+                return cart_item
+            return None
             
         except Exception as e:
             logger.error(f"Error adding item to cart: {str(e)}")
@@ -521,22 +374,21 @@ class CartService:
             True if successful, False otherwise
         """
         try:
-            cart_item = CartItem.query.get(cart_item_id)
+            cart_item = self.repository.get_cart_item_by_id(cart_item_id)
             if not cart_item:
                 logger.error(f"Cart item {cart_item_id} not found")
                 return False
             
             cart_item.quantity = quantity
             cart_item.total_price = cart_item.quantity * cart_item.unit_price
-            cart_item.updated_at = datetime.utcnow()
             
-            db.session.commit()
-            logger.info(f"Updated cart item {cart_item_id} quantity to {quantity}")
-            return True
+            if self.repository.update_cart_item(cart_item):
+                logger.info(f"Updated cart item {cart_item_id} quantity to {quantity}")
+                return True
+            return False
             
         except Exception as e:
             logger.error(f"Error updating cart item quantity: {str(e)}")
-            db.session.rollback()
             return False
     
     def remove_cart_item(self, cart_item_id: int) -> bool:
@@ -549,22 +401,7 @@ class CartService:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            cart_item = CartItem.query.get(cart_item_id)
-            if not cart_item:
-                logger.error(f"Cart item {cart_item_id} not found")
-                return False
-            
-            db.session.delete(cart_item)
-            db.session.commit()
-            
-            logger.info(f"Removed cart item {cart_item_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error removing cart item: {str(e)}")
-            db.session.rollback()
-            return False
+        return self.repository.delete_cart_item(cart_item_id)
     
     def get_cart_total(self, cart_id: int) -> Dict[str, float]:
         """
@@ -577,7 +414,7 @@ class CartService:
             Dict with subtotal, tax, and total amounts
         """
         try:
-            cart_items = CartItem.query.filter_by(cart_id=cart_id).all()
+            cart_items = self.repository.get_cart_items(cart_id)
             
             subtotal = sum(item.total_price for item in cart_items)
             # TODO: Implement tax calculation based on location

@@ -35,7 +35,6 @@ const ProductList = ({ category, onViewProduct }) => {
     }, [category]);
 
     const handleAddToCart = (cartItem) => {
-        console.log('Item added to cart:', cartItem);
         setSnackbarMessage(`${cartItem.product_name} added to cart!`);
         setSnackbarOpen(true);
     };

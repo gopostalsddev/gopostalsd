@@ -6,8 +6,7 @@ It initializes the pricing controller and makes it available to the app context.
 """
 
 from flask import Flask
-from server.controllers.pricing_controller import pricing_ns, PricingController
-from server.thirdparty.sinalite import SinaliteAdapter
+from server.controllers.pricing_controller import pricing_ns
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,18 +20,12 @@ def register_pricing_routes(app: Flask) -> None:
         app: Flask application instance
     """
     try:
-        # Get Sinalite adapter from app extensions
-        sinalite_adapter = app.extensions.get('sinalite')
+        # Verify that pricing controller is already available in app extensions
+        pricing_controller = app.extensions.get('pricing_controller')
         
-        if not sinalite_adapter:
-            logger.error("Sinalite adapter not found in app extensions")
+        if not pricing_controller:
+            logger.error("Pricing controller not found in app extensions")
             return
-        
-        # Create pricing controller
-        pricing_controller = PricingController(sinalite_adapter)
-        
-        # Store controller in app extensions for use by resources
-        app.extensions['pricing_controller'] = pricing_controller
         
         # Register the namespace with the API
         from server.config import swagger
