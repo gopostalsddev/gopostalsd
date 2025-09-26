@@ -10,7 +10,7 @@ import SpinnerOverlay from "../../components/SpinnerOverlay";
 // Import local components
 import ProductCategoryList from "./components/ProductCategoryList";
 import ProductListHeader from "./components/ProductListHeader";
-import ProductList from "./components/ProductList";
+import ProductTypeList from "./components/ProductTypeList";
 import ProductDetailPage from "./components/ProductDetailPage";
 
 import { fetchEnabledPrintProductCategories } from '../../services/product_service';
@@ -20,7 +20,6 @@ const ShopPage = () => {
     const  [productCategories, setProductCategories] = useState([])
     const  [selectedProductCategory, setSelectedProductCategrory] = useState(null)
     const  [selectedProduct, setSelectedProduct] = useState(null)
-    const  [products, setProducts] = useState([])
     const  [loading, setLoading] = useState(true)
   
     useEffect(() => {
@@ -75,18 +74,11 @@ const ShopPage = () => {
               onBack={handleBackToProducts} 
             />
           ) : selectedProductCategory ? (
-            // If a category is selected, display its products
-            <Box sx={{ width: '100%', p: 0 }}>
-              <ProductListHeader
-                productCategoryName={selectedProductCategory ? selectedProductCategory.name : 'None'}
-                numberOfProducts={products.length}
-                backToProductCategories={handleBackToProductCategories}
-              />
-              <ProductList 
-                category={selectedProductCategory} 
-                onViewProduct={handleViewProduct}
-              />
-            </Box>
+            // If a category is selected, display its product types
+            <ProductTypeList 
+              category={selectedProductCategory} 
+              onProductClick={handleViewProduct}
+            />
           ) : (
             // Display the enabled categories as cards
             <ProductCategoryList productCategories={productCategories} handleProductCategoryClick={handleProductCategoryClick} />

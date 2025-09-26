@@ -167,6 +167,23 @@ class PrintProductByCategoryAllResource(Resource):
         else:
             return {"error": result.error}, 200
 
+@api.route("/products/type/<int:type_id>")
+@api.param("type_id", "The product type ID of the products to retrieve")
+class PrintProductByTypeResource(Resource):
+    """Resource for fetching print products by product type"""
+
+    @api.doc(description="Fetch list of print products by product type")
+    @api.marshal_list_with(product_model, code=200)
+    @api.response(500, "Server error")
+    def get(self, type_id):
+        """Retrieve print products by product type"""
+        result = PrintProductController.get_products_by_type(type_id)
+
+        if result.status:
+            return result.data, 200
+        else:
+            return {"error": result.error}, 200
+
 update_category_parser = reqparse.RequestParser()
 update_category_parser.add_argument("description", type=str, location="form", required=False, help="New description for the category")
 update_category_parser.add_argument("image", type=FileStorage, location='files', required=False, help="New image for the category")
@@ -210,6 +227,23 @@ class PrintProductTypesResource(Resource):
     def get(self):
         """Retrieve all product types"""
         result = PrintProductController.get_all_print_product_types()
+
+        if result.status:
+            return result.data, 200
+        else:
+            return {"error": result.error}, 500
+
+@api.route("/product-types/category/<int:category_id>")
+@api.param("category_id", "The category ID to filter product types")
+class PrintProductTypesByCategoryResource(Resource):
+    """Resource for fetching product types by category"""
+
+    @api.doc(description="Fetch product types for a specific category")
+    @api.marshal_list_with(product_type_model, code=200)
+    @api.response(500, "Server error")
+    def get(self, category_id):
+        """Retrieve product types for a specific category"""
+        result = PrintProductController.get_product_types_by_category(category_id)
 
         if result.status:
             return result.data, 200

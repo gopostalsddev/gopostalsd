@@ -43,7 +43,8 @@ import {
 import {
   getShippingEstimates,
   addItemToCart,
-  getOrCreateCart
+  getOrCreateCart,
+  fetchAllProductTypes
 } from '../../../services/product_service';
 import { useProductOptions } from '../../../hooks/useProductOptions';
 import { useProductPricing } from '../../../hooks/useProductPricing';
@@ -65,6 +66,7 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [shippingLoading, setShippingLoading] = useState(false);
   const [showShippingDialog, setShowShippingDialog] = useState(false);
   const [error, setError] = useState(null);
+  const [productTypeImage, setProductTypeImage] = useState(null);
 
   // Custom hooks for product options and pricing
   const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
@@ -76,6 +78,27 @@ const ProductDetailPage = ({ product, onBack }) => {
 
   // Combine errors from different sources
   const displayError = error || optionsError || pricingError;
+
+  // Fetch product type image for fallback
+  React.useEffect(() => {
+    const fetchProductTypeImage = async () => {
+      if (!product.type_id || product.type_id === 0) return;
+      
+      try {
+        const result = await fetchAllProductTypes();
+        if (result.success) {
+          const productType = result.data.find(type => type.id === product.type_id);
+          if (productType?.image) {
+            setProductTypeImage(productType.image);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching product type image:', err);
+      }
+    };
+
+    fetchProductTypeImage();
+  }, [product.type_id]);
 
   const handleOptionChange = (group, optionId) => {
     setSelectedOptions(prev => ({
@@ -211,7 +234,7 @@ const ProductDetailPage = ({ product, onBack }) => {
             <CardContent>
               <Box sx={{ textAlign: 'center' }}>
                 <img
-                  src={product.image || logoImage}
+                  src={product.image || productTypeImage || logoImage}
                   alt={product.name}
                   style={{
                     width: '100%',

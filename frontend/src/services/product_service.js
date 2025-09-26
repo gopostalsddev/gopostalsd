@@ -63,6 +63,16 @@ export const fetchAllPrintProductsByCategory = async (category_id) => {
     }
 }
 
+export const fetchProductsByType = async (typeId) => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/print/products/type/${typeId}`);
+        return { success: true, data: response.data };
+    } catch (error) {
+        console.error("Error fetching products by type: ", error);
+        return { success: false, data: [] };
+    }
+};
+
 export const updatePrintProductCategoryDetails = async (categoryDetails) => {
   try {
     const formData = new FormData();
@@ -128,6 +138,16 @@ export const fetchAllProductTypes = async () => {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("Error fetching product types: ", error);
+    return { success: false, data: [] };
+  }
+};
+
+export const fetchProductTypesByCategory = async (categoryId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/print/product-types/category/${categoryId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error("Error fetching product types by category: ", error);
     return { success: false, data: [] };
   }
 };
