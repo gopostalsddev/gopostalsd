@@ -33,7 +33,10 @@ import {
   DialogContent,
   DialogActions,
   Breadcrumbs,
-  Snackbar
+  Snackbar,
+  CardMedia,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -44,7 +47,10 @@ import {
   Home as HomeIcon,
   Store as StoreIcon,
   Category as CategoryIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Visibility as VisibilityIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import {
   getShippingEstimates,
@@ -64,6 +70,8 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [fileError, setFileError] = useState(null);
+  const [previewFiles, setPreviewFiles] = useState([]);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [shippingInfo, setShippingInfo] = useState({
     country: 'US',
@@ -154,6 +162,7 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Custom hooks for product options and pricing
   const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
@@ -162,6 +171,29 @@ const ProductDetailPage = ({ product, onBack }) => {
     selectedOptions, 
     options
   );
+
+  // Manage initial loading state
+  React.useEffect(() => {
+    // Set initial loading to false when we have the basic product data
+    // Don't wait for options and pricing to load - show the layout immediately
+    if (product && product.vendor_product_id) {
+      setInitialLoading(false);
+    }
+  }, [product]);
+
+  // Set initial values when options load
+  React.useEffect(() => {
+    if (options && options.length > 0) {
+      const initialSelections = {};
+      options.forEach(optionGroup => {
+        if (optionGroup.options && optionGroup.options.length > 0) {
+          // Set the first option as the initial value
+          initialSelections[optionGroup.group] = optionGroup.options[0].id;
+        }
+      });
+      setSelectedOptions(initialSelections);
+    }
+  }, [options]);
 
   // Combine errors from different sources
   const displayError = error || optionsError || pricingError;
@@ -306,6 +338,53 @@ const ProductDetailPage = ({ product, onBack }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handlePreviewFiles = () => {
+    if (uploadedFiles.length === 0) return;
+    
+    // Create preview data for images
+    const previewData = uploadedFiles.map(file => ({
+      file,
+      url: URL.createObjectURL(file),
+      approved: false
+    }));
+    
+    setPreviewFiles(previewData);
+    setShowPreviewDialog(true);
+  };
+
+  const handleApproveFile = (index) => {
+    setPreviewFiles(prev => 
+      prev.map((item, i) => 
+        i === index ? { ...item, approved: !item.approved } : item
+      )
+    );
+  };
+
+  const handleConfirmApproval = () => {
+    // Only keep approved files
+    const approvedFiles = previewFiles
+      .filter(item => item.approved)
+      .map(item => item.file);
+    
+    setUploadedFiles(approvedFiles);
+    setShowPreviewDialog(false);
+    setPreviewFiles([]);
+    
+    // Clean up object URLs
+    previewFiles.forEach(item => {
+      URL.revokeObjectURL(item.url);
+    });
+  };
+
+  const handleCancelPreview = () => {
+    setShowPreviewDialog(false);
+    // Clean up object URLs
+    previewFiles.forEach(item => {
+      URL.revokeObjectURL(item.url);
+    });
+    setPreviewFiles([]);
+  };
+
   const handleShippingEstimate = async () => {
     if (!validateShippingInfo()) {
       setError('Please fill in all required shipping information');
@@ -325,16 +404,28 @@ const ProductDetailPage = ({ product, onBack }) => {
       options.forEach(optionGroup => {
         const selectedId = selectedOptions[optionGroup.group];
         if (selectedId && selectedId !== '') {
-          optionsObject[optionGroup.group] = selectedId;
+          // Find the option name for the selected ID
+          const selectedOption = optionGroup.options.find(opt => opt.id === selectedId);
+          if (selectedOption) {
+            optionsObject[optionGroup.group] = selectedOption.id.toString();
+          }
         }
       });
 
-      const items = [{
-        productId: parseInt(product.vendor_product_id),
-        options: optionsObject
-      }];
+      // Format request according to Sinalite API documentation
+      const requestData = {
+        items: [{
+          productId: parseInt(product.vendor_product_id),
+          options: optionsObject
+        }],
+        shippingInfo: {
+          ShipState: shippingInfo.state,
+          ShipZip: shippingInfo.zip,
+          ShipCountry: shippingInfo.country
+        }
+      };
 
-      const estimates = await getShippingEstimates(items, shippingInfo);
+      const estimates = await getShippingEstimates(requestData);
       setShippingEstimates(estimates);
       setShowShippingDialog(true);
     } catch (error) {
@@ -374,17 +465,28 @@ const ProductDetailPage = ({ product, onBack }) => {
         selectedOptions[optionGroup.group]
       ).filter(id => id && id !== '');
 
+      // Check if quantity is part of API options
+      const hasQuantityInOptions = options.some(optionGroup => 
+        optionGroup.group.toLowerCase().includes('quantity') || 
+        optionGroup.group.toLowerCase().includes('qty')
+      );
+
+      // Use quantity from API options if available, otherwise use local quantity
+      const finalQuantity = hasQuantityInOptions ? 
+        (selectedOptions.Quantity || selectedOptions.quantity || selectedOptions.Qty || 1) : 
+        quantity;
+
       const cartItem = await addItemToCart(
         cart.id,
         parseInt(product.vendor_product_id),
         product.name,
         product.sku,
         optionIds,
-        quantity
+        finalQuantity
       );
 
       if (cartItem) {
-        setSuccessMessage(`Successfully added ${quantity} ${quantity > 1 ? 'items' : 'item'} to cart!`);
+        setSuccessMessage(`Successfully added ${finalQuantity} ${finalQuantity > 1 ? 'items' : 'item'} to cart!`);
         setShowSuccessSnackbar(true);
         setRetryCount(0);
       } else {
@@ -425,8 +527,13 @@ const ProductDetailPage = ({ product, onBack }) => {
       });
     }
     
-    // Validate quantity
-    if (quantity < 1) {
+    // Validate quantity only if it's not part of API options
+    const hasQuantityInOptions = options.some(optionGroup => 
+      optionGroup.group.toLowerCase().includes('quantity') || 
+      optionGroup.group.toLowerCase().includes('qty')
+    );
+    
+    if (!hasQuantityInOptions && quantity < 1) {
       errors.quantity = 'Quantity must be at least 1';
     }
     
@@ -463,6 +570,31 @@ const ProductDetailPage = ({ product, onBack }) => {
     'Upload Artwork',
     'Shipping & Checkout'
   ];
+
+  // Show loading spinner while initial data is being fetched
+  if (initialLoading) {
+    return (
+      <Box sx={{ 
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw", 
+        height: "100vh", 
+        display: "flex", 
+        flexDirection: "column",
+        alignItems: "center", 
+        justifyContent: "center",
+        gap: 2,
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+        zIndex: 9999
+      }}>
+        <CircularProgress size={60} />
+        <Typography variant="h6" color="text.secondary">
+          Loading product details...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Container maxWidth="xl" sx={{ py: 0 }}>
@@ -587,7 +719,7 @@ const ProductDetailPage = ({ product, onBack }) => {
 
       <Grid 
         container 
-        spacing={{ xs: 2, md: 4 }}
+        spacing={3}
         justifyContent="center"
         sx={{
           alignItems: 'stretch', // This ensures all cards stretch to the same height
@@ -601,7 +733,7 @@ const ProductDetailPage = ({ product, onBack }) => {
           sx={{
             display: 'flex',
             alignItems: 'stretch',
-            maxWidth: '450px', // Constrain maximum width
+            maxWidth: '400px', // Constrain maximum width to match ProductTypes spacing
             '& > *': {
               width: '100%',
               height: '100%' // Ensure cards take full height of grid item
@@ -622,6 +754,15 @@ const ProductDetailPage = ({ product, onBack }) => {
                   }}
                 />
               </Box>
+              
+              {/* Product Description */}
+              {product.description && (
+                <Box sx={{ mt: 2, textAlign: 'left' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                    {product.description}
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -634,7 +775,7 @@ const ProductDetailPage = ({ product, onBack }) => {
           sx={{
             display: 'flex',
             alignItems: 'stretch',
-            maxWidth: '450px', // Constrain maximum width
+            maxWidth: '400px', // Constrain maximum width to match ProductTypes spacing
             '& > *': {
               width: '100%',
               height: '100%' // Ensure cards take full height of grid item
@@ -646,13 +787,13 @@ const ProductDetailPage = ({ product, onBack }) => {
               Price this item:
             </Typography>
 
-            {optionsLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box sx={{ mb: 3 }}>
-                {options.map((optionGroup, index) => (
+            <Box sx={{ mb: 3 }}>
+              {optionsLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                options.map((optionGroup, index) => (
                   <FormControl 
                     key={index} 
                     fullWidth 
@@ -665,9 +806,6 @@ const ProductDetailPage = ({ product, onBack }) => {
                       onChange={(e) => handleOptionChange(optionGroup.group, e.target.value)}
                       label={optionGroup.group}
                     >
-                      <MenuItem value="">
-                        <em>Select {optionGroup.group}</em>
-                      </MenuItem>
                       {optionGroup.options.map((option) => (
                         <MenuItem key={option.id} value={option.id}>
                           {option.name}
@@ -680,33 +818,38 @@ const ProductDetailPage = ({ product, onBack }) => {
                       </Typography>
                     )}
                   </FormControl>
-                ))}
-              </Box>
-            )}
+                ))
+              )}
+            </Box>
 
-            {/* Quantity */}
-            <TextField
-              label="Quantity"
-              type="number"
-              value={quantity}
-              onChange={(e) => {
-                const newQuantity = Math.max(1, parseInt(e.target.value) || 1);
-                setQuantity(newQuantity);
-                // Clear validation error
-                if (validationErrors.quantity) {
-                  setValidationErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.quantity;
-                    return newErrors;
-                  });
-                }
-              }}
-              inputProps={{ min: 1 }}
-              fullWidth
-              sx={{ mb: 3 }}
-              error={!!validationErrors.quantity}
-              helperText={validationErrors.quantity}
-            />
+            {/* Quantity - Only show if not included in API options */}
+            {!options.some(optionGroup => 
+              optionGroup.group.toLowerCase().includes('quantity') || 
+              optionGroup.group.toLowerCase().includes('qty')
+            ) && (
+              <TextField
+                label="Quantity"
+                type="number"
+                value={quantity}
+                onChange={(e) => {
+                  const newQuantity = Math.max(1, parseInt(e.target.value) || 1);
+                  setQuantity(newQuantity);
+                  // Clear validation error
+                  if (validationErrors.quantity) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.quantity;
+                      return newErrors;
+                    });
+                  }
+                }}
+                inputProps={{ min: 1 }}
+                fullWidth
+                sx={{ mb: 3 }}
+                error={!!validationErrors.quantity}
+                helperText={validationErrors.quantity}
+              />
+            )}
 
             {/* Pricing Display */}
             <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
@@ -771,50 +914,6 @@ const ProductDetailPage = ({ product, onBack }) => {
               </Accordion>
             )}
 
-            {/* Product Specifications */}
-            <Accordion sx={{ mb: 3 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Product Specifications</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <List dense>
-                  <ListItem>
-                    <ListItemText
-                      primary="Product Name"
-                      secondary={product.name}
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary="SKU"
-                      secondary={product.sku || 'N/A'}
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary="Description"
-                      secondary={product.description || 'No description available'}
-                    />
-                  </ListItem>
-                  {product.vendor_product_id && (
-                    <ListItem>
-                      <ListItemText
-                        primary="Vendor Product ID"
-                        secondary={product.vendor_product_id}
-                      />
-                    </ListItem>
-                  )}
-                  {product.type_id && (
-                    <ListItem>
-                      <ListItemText
-                        primary="Product Type ID"
-                        secondary={product.type_id}
-                      />
-                    </ListItem>
-                  )}
-                </List>
-              </AccordionDetails>
-            </Accordion>
 
             {/* Action Buttons */}
             <Box sx={{ 
@@ -860,7 +959,7 @@ const ProductDetailPage = ({ product, onBack }) => {
           sx={{
             display: 'flex',
             alignItems: 'stretch',
-            maxWidth: '450px', // Constrain maximum width
+            maxWidth: '400px', // Constrain maximum width to match ProductTypes spacing
             '& > *': {
               width: '100%',
               height: '100%' // Ensure cards take full height of grid item
@@ -935,9 +1034,20 @@ const ProductDetailPage = ({ product, onBack }) => {
                     {/* Uploaded Files Display */}
                     {uploadedFiles.length > 0 && (
                       <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Uploaded Files ({uploadedFiles.length}):
-                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="subtitle2">
+                            Uploaded Files ({uploadedFiles.length}):
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<VisibilityIcon />}
+                            onClick={handlePreviewFiles}
+                            sx={{ textTransform: 'none' }}
+                          >
+                            Preview & Approve
+                          </Button>
+                        </Box>
                         <List dense>
                           {uploadedFiles.map((file, index) => (
                             <ListItem
@@ -1102,20 +1212,28 @@ const ProductDetailPage = ({ product, onBack }) => {
         <DialogContent>
           {shippingEstimates.length > 0 ? (
             <List>
-              {shippingEstimates.map((option, index) => (
-                <ListItem key={index} divider>
-                  <ListItemIcon>
-                    <LocalShippingIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={`${option.carrier_name} ${option.method_name}`}
-                    secondary={`${option.shipping_days} - Days Shipping`}
-                  />
-                  <Typography variant="h6" color="primary">
-                    {formatPrice(option.price)}
-                  </Typography>
-                </ListItem>
-              ))}
+              {shippingEstimates.map((option, index) => {
+                // Handle both old format (object) and new format (array)
+                const carrierName = Array.isArray(option) ? option[0] : option.carrier_name;
+                const methodName = Array.isArray(option) ? option[1] : option.method_name;
+                const price = Array.isArray(option) ? option[2] : option.price;
+                const shippingDays = Array.isArray(option) ? option[3] : option.shipping_days;
+                
+                return (
+                  <ListItem key={index} divider>
+                    <ListItemIcon>
+                      <LocalShippingIcon color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={`${carrierName} ${methodName}`}
+                      secondary={`${shippingDays} ${shippingDays === 1 ? 'Day' : 'Days'} Shipping`}
+                    />
+                    <Typography variant="h6" color="primary">
+                      {formatPrice(price)}
+                    </Typography>
+                  </ListItem>
+                );
+              })}
             </List>
           ) : (
             <Typography color="text.secondary">
@@ -1138,6 +1256,108 @@ const ProductDetailPage = ({ product, onBack }) => {
         message={successMessage}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
+
+      {/* File Preview Dialog */}
+      <Dialog
+        open={showPreviewDialog}
+        onClose={handleCancelPreview}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Preview & Approve Artwork
+            <IconButton onClick={handleCancelPreview}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Review your uploaded files and select which ones to approve for your order.
+          </Typography>
+          
+          <Grid container spacing={2}>
+            {previewFiles.map((item, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Card sx={{ height: '100%', position: 'relative' }}>
+                  {item.file.type.startsWith('image/') ? (
+                    <CardMedia
+                      component="img"
+                      height="200"
+                      image={item.url}
+                      alt={item.file.name}
+                      sx={{ objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Box sx={{ 
+                      height: 200, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      bgcolor: 'grey.100'
+                    }}>
+                      <Typography sx={{ fontSize: 48 }}>
+                        {getFileIcon(item.file)}
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  <CardContent>
+                    <Typography variant="subtitle2" noWrap>
+                      {item.file.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatFileSize(item.file.size)}
+                    </Typography>
+                    
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={item.approved}
+                          onChange={() => handleApproveFile(index)}
+                          color="primary"
+                        />
+                      }
+                      label="Approve"
+                      sx={{ mt: 1 }}
+                    />
+                  </CardContent>
+                  
+                  {item.approved && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        bgcolor: 'success.main',
+                        color: 'white',
+                        borderRadius: '50%',
+                        p: 0.5
+                      }}
+                    >
+                      <CheckCircleIcon fontSize="small" />
+                    </Box>
+                  )}
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelPreview} startIcon={<CancelIcon />}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmApproval} 
+            variant="contained" 
+            startIcon={<CheckCircleIcon />}
+            disabled={previewFiles.filter(item => item.approved).length === 0}
+          >
+            Confirm Approval ({previewFiles.filter(item => item.approved).length})
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

@@ -361,12 +361,9 @@ export const getCartTotals = async (cartId) => {
   }
 };
 
-export const getShippingEstimates = async (items, shippingInfo) => {
+export const getShippingEstimates = async (requestData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/pricing/shipping/estimates`, {
-      items: items,
-      shipping_info: shippingInfo
-    });
+    const response = await axios.post(`${API_BASE_URL}/pricing/shipping/estimates`, requestData);
     return response.data;
   } catch (error) {
     console.error("Error getting shipping estimates: ", error);

@@ -55,19 +55,17 @@ def create_server(config="development"):
     logger.info(f"File Storage: {filestorage.current_backend}")
     
     # Initialize services using factory pattern
-    from server.factories.service_factory import ServiceFactory
-    from server.controllers.pricing_controller import PricingController
+    from server.factories.main_factory import MainFactory
     from server.thirdparty.sinalite import SinaliteAdapter
     
-    # Create service factory and services
-    service_factory = ServiceFactory()
+    # Create main factory and services
+    main_factory = MainFactory()
     sinalite_adapter = SinaliteAdapter(server)
-    pricing_service = service_factory.get_pricing_service(sinalite_adapter)
-    cart_service = service_factory.get_cart_service(pricing_service)
-    pricing_controller = PricingController(sinalite_adapter, pricing_service, cart_service)
+    pricing_service = main_factory.get_pricing_service(sinalite_adapter)
+    cart_service = main_factory.get_cart_service(pricing_service)
     
     # Store in Flask app context for use in API routes
-    server.extensions['pricing_controller'] = pricing_controller
+    server.extensions['main_factory'] = main_factory
     server.extensions['sinalite_adapter'] = sinalite_adapter
     server.extensions['pricing_service'] = pricing_service
     server.extensions['cart_service'] = cart_service
