@@ -413,10 +413,11 @@ const ProductDetailPage = ({ product, onBack }) => {
       });
 
       // Format request according to Sinalite API documentation
+      // Sinalite API expects options as an object with string values
       const requestData = {
         items: [{
           productId: parseInt(product.vendor_product_id),
-          options: optionsObject
+          options: optionsObject  // Keep as object with string values
         }],
         shippingInfo: {
           ShipState: shippingInfo.state,
@@ -425,7 +426,9 @@ const ProductDetailPage = ({ product, onBack }) => {
         }
       };
 
+      console.log('Shipping estimate request data:', requestData);
       const estimates = await getShippingEstimates(requestData);
+      console.log('Shipping estimate response:', estimates);
       setShippingEstimates(estimates);
       setShowShippingDialog(true);
     } catch (error) {
@@ -935,18 +938,6 @@ const ProductDetailPage = ({ product, onBack }) => {
               >
                 Add to Cart
               </Button>
-              <Button
-                variant="outlined"
-                startIcon={<LocalShippingIcon />}
-                onClick={handleShippingEstimate}
-                disabled={!pricing || shippingLoading}
-                sx={{ 
-                  minHeight: { xs: '48px', sm: 'auto' }
-                }}
-                size="large"
-              >
-                {shippingLoading ? <CircularProgress size={20} /> : 'Estimate Shipping'}
-              </Button>
             </Box>
           </Paper>
         </Grid>
@@ -1181,11 +1172,12 @@ const ProductDetailPage = ({ product, onBack }) => {
                   </Box>
                   <Button
                     variant="contained"
+                    startIcon={<LocalShippingIcon />}
                     onClick={handleShippingEstimate}
                     disabled={shippingLoading}
                     sx={{ mt: 1, mr: 1 }}
                   >
-                    {shippingLoading ? <CircularProgress size={20} /> : 'Get a Quote'}
+                    {shippingLoading ? <CircularProgress size={20} /> : 'Estimate Shipping'}
                   </Button>
                 </StepContent>
               </Step>
@@ -1213,11 +1205,11 @@ const ProductDetailPage = ({ product, onBack }) => {
           {shippingEstimates.length > 0 ? (
             <List>
               {shippingEstimates.map((option, index) => {
-                // Handle both old format (object) and new format (array)
-                const carrierName = Array.isArray(option) ? option[0] : option.carrier_name;
-                const methodName = Array.isArray(option) ? option[1] : option.method_name;
-                const price = Array.isArray(option) ? option[2] : option.price;
-                const shippingDays = Array.isArray(option) ? option[3] : option.shipping_days;
+                // Handle the formatted response from backend
+                const carrierName = option.carrier_name;
+                const methodName = option.method_name;
+                const price = option.price;
+                const shippingDays = option.shipping_days;
                 
                 return (
                   <ListItem key={index} divider>
@@ -1236,9 +1228,16 @@ const ProductDetailPage = ({ product, onBack }) => {
               })}
             </List>
           ) : (
-            <Typography color="text.secondary">
-              No shipping options available
-            </Typography>
+            <Box sx={{ textAlign: 'center', py: 3 }}>
+              <LocalShippingIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                Shipping estimates not available
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                We're unable to calculate shipping costs for this item at the moment.
+                Please contact us for shipping information.
+              </Typography>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
