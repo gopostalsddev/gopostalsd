@@ -10,7 +10,8 @@ import SpinnerOverlay from "../../components/SpinnerOverlay";
 // Import local components
 import ProductCategoryList from "./components/ProductCategoryList";
 import ProductListHeader from "./components/ProductListHeader";
-import ProductList from "./components/ProductList";
+import ProductTypeList from "./components/ProductTypeList";
+import ProductDetailPage from "./components/ProductDetailPage";
 
 import { fetchEnabledPrintProductCategories } from '../../services/product_service';
 
@@ -18,7 +19,8 @@ const ShopPage = () => {
 
     const  [productCategories, setProductCategories] = useState([])
     const  [selectedProductCategory, setSelectedProductCategrory] = useState(null)
-    const  [products, setProducts] = useState([])
+    const  [selectedProduct, setSelectedProduct] = useState(null)
+    const  [productTypeCount, setProductTypeCount] = useState(0)
     const  [loading, setLoading] = useState(true)
   
     useEffect(() => {
@@ -41,7 +43,21 @@ const ShopPage = () => {
     }
   
     const handleBackToProductCategories = () => {
-      setSelectedProductCategrory(null);
+        setSelectedProductCategrory(null);
+        setSelectedProduct(null);
+        setProductTypeCount(0);
+    }
+
+    const handleProductTypesLoaded = (count) => {
+        setProductTypeCount(count);
+    }
+
+    const handleViewProduct = (product) => {
+        setSelectedProduct(product);
+    }
+
+    const handleBackToProducts = () => {
+        setSelectedProduct(null);
     }
   
     return (
@@ -57,15 +73,25 @@ const ShopPage = () => {
         <SpinnerOverlay loading={loading} /> {/* Use SpinnerOverlay for loading state */}
         
         <Box sx={{ flex: 1, mt: "64px", p: 4,}} >
-          {selectedProductCategory ? (
-            // If a category is selected, display its products
+          {selectedProduct ? (
+            // If a product is selected, display product detail page
+            <ProductDetailPage 
+              product={selectedProduct} 
+              onBack={handleBackToProducts} 
+            />
+          ) : selectedProductCategory ? (
+            // If a category is selected, display its product types
             <Box sx={{ width: '100%', p: 0 }}>
               <ProductListHeader
                 productCategoryName={selectedProductCategory ? selectedProductCategory.name : 'None'}
-                numberOfProducts={products.length}
-                backToProductCategories = {handleBackToProductCategories}
+                numberOfProducts={productTypeCount}
+                backToProductCategories={handleBackToProductCategories}
               />
-              <ProductList category={selectedProductCategory} />
+              <ProductTypeList 
+                category={selectedProductCategory} 
+                onProductClick={handleViewProduct}
+                onProductTypesLoaded={handleProductTypesLoaded}
+              />
             </Box>
           ) : (
             // Display the enabled categories as cards

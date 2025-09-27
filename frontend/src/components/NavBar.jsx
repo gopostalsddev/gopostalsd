@@ -2,12 +2,13 @@ import React from 'react';
 import { AppBar, Toolbar, Box, Typography, Stack, Button } from '@mui/material';
 import { Link } from 'react-router-dom';
 import logo from '../assets/logo.png';
+import CartIcon from '../pages/Shop/components/CartIcon';
 
 const Navbar = () => {
   return (
     <AppBar
       sx={{
-        backgroundColor: (theme) => theme.palette.primary.main,
+        background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
         position: 'fixed',
         top: 0,
         width: '100%',
@@ -27,7 +28,7 @@ const Navbar = () => {
         </Typography>
 
         {/* Navbar Links */}
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={2} alignItems="center">
           <Button
             component={Link}
             to="/"
@@ -48,6 +49,7 @@ const Navbar = () => {
           >
             Admin
           </Button>
+          <CartIcon />
         </Stack>
       </Toolbar>
     </AppBar>

@@ -110,7 +110,18 @@ const ProductViewPage = ({ category, onBack }) => {
           mb: 3,
         }}
       >
-        <Typography variant="h4">{category.name}</Typography>
+        <Typography 
+          variant="h4"
+          sx={{
+            background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: 700
+          }}
+        >
+          {category.name}
+        </Typography>
         <Button variant="outlined" onClick={onBack}>
           Back
         </Button>

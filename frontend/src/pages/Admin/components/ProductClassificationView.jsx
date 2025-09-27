@@ -494,7 +494,10 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
             sx={{ 
               mb: 2,
               fontWeight: 700,
-              color: "text.primary",
+              background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
               display: "flex",
               alignItems: "center",
               gap: 2
@@ -594,7 +597,10 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
             variant="h5" 
             sx={{ 
               fontWeight: 600,
-              color: "text.primary",
+              background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
               display: "flex",
               alignItems: "center",
               gap: 2
@@ -1067,7 +1073,10 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
           sx={{ 
             mb: 3,
             fontWeight: 600,
-            color: "text.primary",
+            background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
             display: "flex",
             alignItems: "center",
             gap: 2
@@ -1121,15 +1130,40 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
             </Button>
           </Box>
         ) : (
-          <Grid container spacing={2.5}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 2.5,
+              alignItems: 'stretch', // This ensures all cards stretch to the same height
+            }}
+          >
             {products.map((product) => (
-              <Grid item xs={12} sm={6} md={4} key={product.id}>
+              <Box
+                key={product.id}
+                sx={{
+                  flex: '1 1 300px', // flex-grow: 1, flex-shrink: 1, flex-basis: 300px
+                  minWidth: '300px',
+                  maxWidth: '400px',
+                  display: 'flex',
+                  alignItems: 'stretch', // Ensure cards stretch to full height
+                  '& > *': {
+                    width: '100%',
+                    height: '100%' // Ensure cards take full height of container
+                  }
+                }}
+              >
                 <Card 
                   sx={{ 
+                    height: '100%',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
                     cursor: "pointer",
                     border: isProductClassified(product) ? "2px solid #4caf50" : "2px solid #f44336",
                     borderRadius: 2.5,
                     boxShadow: 1,
+                    flex: 1, // Take full available space
                     "&:hover": {
                       boxShadow: 4,
                       transform: "translateY(-3px)",
@@ -1142,15 +1176,25 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
                   draggable
                   onDragStart={(e) => handleDragStart(e, product)}
                 >
-                  <CardContent sx={{ py: 2.5, px: 2.5 }}>
+                  <CardContent sx={{ 
+                    py: 2.5, 
+                    px: 2.5,
+                    flexGrow: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
                       <Typography 
                         variant="subtitle1" 
-                        noWrap 
                         sx={{ 
                           fontWeight: 600,
                           color: "text.primary",
-                          maxWidth: "70%"
+                          maxWidth: "70%",
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          hyphens: 'auto',
+                          lineHeight: 1.2
                         }}
                       >
                         {product.name}
@@ -1170,10 +1214,13 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
                     <Typography 
                       variant="body2" 
                       color="text.secondary" 
-                      noWrap
                       sx={{ 
                         mb: 1,
-                        fontSize: "0.875rem"
+                        fontSize: "0.875rem",
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        hyphens: 'auto',
+                        maxWidth: '100%'
                       }}
                     >
                       SKU: {product.sku}
@@ -1236,9 +1283,9 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         )}
       </Paper>
 

@@ -56,6 +56,9 @@ def make_http_request(third_party_adapter, method, endpoint, data=None, requires
                 time.sleep(retry_delay)
                 continue  # Retry the request
 
+            if response.status_code >= 400:
+                logger.error(f"API Error {response.status_code}: {response.text}")
+                return None
             response.raise_for_status()
             return response.json()
         except requests.exceptions.Timeout:

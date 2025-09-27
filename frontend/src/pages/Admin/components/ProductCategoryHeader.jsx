@@ -32,7 +32,18 @@ const ProductCategoryHeader = ({
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {/* Main Title with Statistics */}
-        <Typography variant="h4">Product Categories</Typography>
+        <Typography 
+          variant="h4"
+          sx={{
+            background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: 700
+          }}
+        >
+          Product Categories
+        </Typography>
         <Typography variant="h4" sx={{ color: "text.secondary" }}>
           {enabledCategories}/{totalCategories}
         </Typography>

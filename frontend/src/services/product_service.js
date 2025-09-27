@@ -63,6 +63,16 @@ export const fetchAllPrintProductsByCategory = async (category_id) => {
     }
 }
 
+export const fetchProductsByType = async (typeId) => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/print/products/type/${typeId}`);
+        return { success: true, data: response.data };
+    } catch (error) {
+        console.error("Error fetching products by type: ", error);
+        return { success: false, data: [] };
+    }
+};
+
 export const updatePrintProductCategoryDetails = async (categoryDetails) => {
   try {
     const formData = new FormData();
@@ -128,6 +138,16 @@ export const fetchAllProductTypes = async () => {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("Error fetching product types: ", error);
+    return { success: false, data: [] };
+  }
+};
+
+export const fetchProductTypesByCategory = async (categoryId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/print/product-types/category/${categoryId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error("Error fetching product types by category: ", error);
     return { success: false, data: [] };
   }
 };
@@ -247,5 +267,106 @@ export const fetchAllVendors = async () => {
   } catch (error) {
     console.error("Error fetching vendors: ", error);
     throw error;
+  }
+};
+
+// Pricing and Cart API functions
+export const fetchProductOptions = async (productId, storeCode = 6) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/pricing/products/${productId}/options?store_code=${storeCode}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching product options: ", error);
+    return [];
+  }
+};
+
+export const calculateProductPrice = async (productId, options, storeCode = 6) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/pricing/products/${productId}/price`, {
+      product_id: productId,
+      options: options,
+      store_code: storeCode
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error calculating product price: ", error);
+    return null;
+  }
+};
+
+export const fetchProductVariants = async (productId, offset = 0) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/pricing/products/${productId}/variants?offset=${offset}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching product variants: ", error);
+    return { variants: [], count: 0 };
+  }
+};
+
+export const getOrCreateCart = async (sessionId, userId = null, storeCode = 6) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/pricing/cart?session_id=${sessionId}&user_id=${userId}&store_code=${storeCode}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting/creating cart: ", error);
+    return null;
+  }
+};
+
+export const addItemToCart = async (cartId, productId, productName, productSku, selectedOptions, quantity = 1) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/pricing/cart/${cartId}/items`, {
+      product_id: productId,
+      product_name: productName,
+      product_sku: productSku,
+      selected_options: selectedOptions,
+      quantity: quantity
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error adding item to cart: ", error);
+    return null;
+  }
+};
+
+export const updateCartItemQuantity = async (cartItemId, quantity) => {
+  try {
+    const response = await axios.put(`${API_BASE_URL}/pricing/cart/items/${cartItemId}?quantity=${quantity}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating cart item quantity: ", error);
+    return null;
+  }
+};
+
+export const removeCartItem = async (cartItemId) => {
+  try {
+    const response = await axios.delete(`${API_BASE_URL}/pricing/cart/items/${cartItemId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error removing cart item: ", error);
+    return null;
+  }
+};
+
+export const getCartTotals = async (cartId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/pricing/cart/${cartId}/totals`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting cart totals: ", error);
+    return { subtotal: 0, tax: 0, total: 0, item_count: 0 };
+  }
+};
+
+export const getShippingEstimates = async (requestData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/pricing/shipping/estimates`, requestData);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting shipping estimates: ", error);
+    return [];
   }
 };
