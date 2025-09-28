@@ -52,6 +52,14 @@ class ControllerFactory:
         from server.controllers.cart_controller import CartController
         return CartController
     
+    def get_auth_controller(self):
+        """
+        Get auth controller class.
+        Controllers are static, so we just return the class.
+        """
+        from server.controllers.auth_controller import AuthController
+        return AuthController
+    
     def reset(self) -> None:
         """Reset all instances (useful for testing)."""
         pass  # No instances to reset for static controllers
