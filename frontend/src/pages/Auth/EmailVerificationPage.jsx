@@ -24,6 +24,7 @@ import {
     Refresh
 } from '@mui/icons-material'
 import { useAuth } from '../../contexts/AuthContext'
+import logo from '../../assets/logo.png'
 
 const EmailVerificationPage = () => {
     const [verificationStatus, setVerificationStatus] = useState('verifying') // 'verifying', 'success', 'error'
@@ -183,8 +184,14 @@ const EmailVerificationPage = () => {
         <Container maxWidth="sm" sx={{ py: 4 }}>
             <Paper elevation={3} sx={{ p: 4 }}>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    <Email sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-                    <Typography variant="h4" component="h1" gutterBottom>
+                    <Box sx={{ mb: 3 }}>
+                        <img 
+                            src={logo} 
+                            alt="Go Postal SD Logo" 
+                            style={{ height: '80px', width: 'auto' }}
+                        />
+                    </Box>
+                    <Typography variant="h4" component="h1" gutterBottom color="primary">
                         Email Verification
                     </Typography>
                     {email && (

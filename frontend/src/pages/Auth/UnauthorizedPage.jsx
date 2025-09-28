@@ -23,6 +23,7 @@ import {
     ArrowBack
 } from '@mui/icons-material'
 import { useAuth } from '../../contexts/AuthContext'
+import logo from '../../assets/logo.png'
 
 const UnauthorizedPage = () => {
     const { isAuthenticated, userRole } = useAuth()
@@ -51,6 +52,13 @@ const UnauthorizedPage = () => {
         <Container maxWidth="md" sx={{ py: 4 }}>
             <Paper elevation={3} sx={{ p: 4 }}>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
+                    <Box sx={{ mb: 3 }}>
+                        <img 
+                            src={logo} 
+                            alt="Go Postal SD Logo" 
+                            style={{ height: '80px', width: 'auto' }}
+                        />
+                    </Box>
                     <Block sx={{ fontSize: 80, color: 'error.main', mb: 3 }} />
                     <Typography variant="h3" component="h1" gutterBottom color="error.main">
                         Access Denied
