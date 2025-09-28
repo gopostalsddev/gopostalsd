@@ -78,6 +78,10 @@ class MainFactory:
         """Get user controller class."""
         return self._get_controller_factory().get_user_controller()
     
+    def get_cart_controller(self):
+        """Get cart controller class."""
+        return self._get_controller_factory().get_cart_controller()
+    
     def reset(self) -> None:
         """Reset all instances (useful for testing)."""
         if self._repository_factory:
