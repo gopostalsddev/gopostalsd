@@ -54,16 +54,20 @@ import {
 } from '@mui/icons-material';
 import {
   getShippingEstimates,
-  addItemToCart,
-  getOrCreateCart,
   fetchAllProductTypes
 } from '../../../services/product_service';
+import { useCartOperations } from '../../../hooks/useCart';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useProductOptions } from '../../../hooks/useProductOptions';
 import { useProductPricing } from '../../../hooks/useProductPricing';
 import { formatPrice, calculateTotalPrice, getEstimatedShipDate } from '../../../utils/priceUtils';
 import logoImage from '../../../assets/logo.png';
 
 const ProductDetailPage = ({ product, onBack }) => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { addItemToCart } = useCartOperations();
   const [selectedOptions, setSelectedOptions] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
@@ -440,6 +444,11 @@ const ProductDetailPage = ({ product, onBack }) => {
   };
 
   const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
     if (!validateForm()) {
       setError('Please fix the validation errors before adding to cart');
       return;
@@ -454,15 +463,6 @@ const ProductDetailPage = ({ product, onBack }) => {
     setSuccessMessage(null);
 
     try {
-      // Get or create cart
-      const sessionId = `session_${Date.now()}`;
-      const cart = await getOrCreateCart(sessionId, null, 6);
-      
-      if (!cart) {
-        setError('Failed to create cart. Please try again.');
-        return;
-      }
-
       // Generate option IDs in the correct order
       const optionIds = options.map(optionGroup => 
         selectedOptions[optionGroup.group]
@@ -479,21 +479,18 @@ const ProductDetailPage = ({ product, onBack }) => {
         (selectedOptions.Quantity || selectedOptions.quantity || selectedOptions.Qty || 1) : 
         quantity;
 
-      const cartItem = await addItemToCart(
-        cart.id,
+      const result = await addItemToCart(
         parseInt(product.vendor_product_id),
-        product.name,
-        product.sku,
         optionIds,
         finalQuantity
       );
 
-      if (cartItem) {
+      if (result.success) {
         setSuccessMessage(`Successfully added ${finalQuantity} ${finalQuantity > 1 ? 'items' : 'item'} to cart!`);
         setShowSuccessSnackbar(true);
         setRetryCount(0);
       } else {
-        setError('Failed to add item to cart. Please try again.');
+        setError(result.error || 'Failed to add item to cart. Please try again.');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);

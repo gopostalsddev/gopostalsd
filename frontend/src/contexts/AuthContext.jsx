@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
             // Check if user is already authenticated
             if (authService.isAuthenticated()) {
                 const currentUser = await authService.getCurrentUser()
+                console.log('AuthContext: Current user from API:', currentUser)
                 if (currentUser) {
                     setUser(currentUser)
                 } else {
@@ -57,6 +58,7 @@ export const AuthProvider = ({ children }) => {
             setError(null)
 
             const response = await authService.login(email, password)
+            console.log('AuthContext: Login response user object:', response.user)
             setUser(response.user)
             
             return { success: true, data: response }

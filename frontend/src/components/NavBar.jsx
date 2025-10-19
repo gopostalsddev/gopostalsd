@@ -32,8 +32,8 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { CartIcon } from './CartIcon';
 import logo from '../assets/logo.png';
-import CartIcon from '../pages/Shop/components/CartIcon';
 
 const Navbar = () => {
   const { isAuthenticated, currentUser, logout } = useAuth();
@@ -132,7 +132,7 @@ const Navbar = () => {
                   },
                 }}
               >
-                Shop
+                Home
               </Button>
               <Button
                 component={Link}
@@ -179,7 +179,7 @@ const Navbar = () => {
               )}
 
               {/* Cart Icon */}
-              <CartIcon />
+              <CartIcon onClick={() => navigate('/cart')} />
 
               {/* Authentication Section */}
               {isAuthenticated ? (
@@ -256,7 +256,7 @@ const Navbar = () => {
           {/* Mobile Navigation */}
           {isMobile && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CartIcon />
+              <CartIcon onClick={() => navigate('/cart')} />
               <IconButton
                 onClick={handleMobileMenuToggle}
                 sx={{ color: 'white' }}
@@ -296,7 +296,7 @@ const Navbar = () => {
           <List>
             <ListItem disablePadding>
               <ListItemButton onClick={() => handleMobileNavigation('/')}>
-                <ListItemText primary="Shop" />
+                <ListItemText primary="Home" />
               </ListItemButton>
             </ListItem>
             

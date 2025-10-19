@@ -2,6 +2,61 @@
 
 ## Recent Updates
 
+### 2024-01-XX - Square Payment Adapter Added
+
+**Changes Made:**
+- Added SquareAdapter for Square Payment API integration
+- Created PaymentService as a facade over payment adapters
+- Added payment routes with authentication and admin controls
+- Implemented comprehensive payment processing, refunds, and webhook handling
+- Added Square SDK to requirements.txt
+
+**Technical Implementation:**
+- SquareAdapter: Wraps Square Payment API with consistent interface
+- PaymentService: Provides unified payment processing across providers
+- Payment Routes: RESTful API endpoints for payment operations
+- Webhook Support: Square webhook validation and processing
+- Address Handling: Support for shipping and billing addresses
+
+**API Endpoints Added:**
+- `POST /api/payments/process` - Process payments (authenticated users)
+- `GET /api/payments/{payment_id}` - Get payment details (authenticated users)
+- `POST /api/payments/refund` - Process refunds (admin only)
+- `POST /api/payments/webhook` - Handle Square webhooks
+- `GET /api/payments/status` - Check payment service status
+
+**Documentation Updated:**
+- `docs/square-adapter.md` - Comprehensive Square adapter documentation
+- `docs/CHANGELOG.md` - Documented the new payment system
+- `docs/api-endpoints.md` - Added payment endpoints (to be updated)
+
+**Files Created:**
+- `backend/server/thirdparty/square.py` - Square adapter implementation
+- `backend/server/services/payment_service.py` - Payment service facade
+- `backend/server/routes/payment_routes.py` - Payment API routes
+- `docs/square-adapter.md` - Square adapter documentation
+
+**Files Modified:**
+- `backend/server/routes/__init__.py` - Added payment routes registration
+- `backend/requirements.txt` - Added squareup==35.0.0 dependency
+
+**Configuration Required:**
+```bash
+SQUARE_ACCESS_TOKEN=your_square_access_token
+SQUARE_APPLICATION_ID=your_square_application_id
+SQUARE_LOCATION_ID=your_square_location_id
+SQUARE_ENVIRONMENT=sandbox  # or 'production'
+```
+
+**Impact:**
+- Complete payment processing integration with Square
+- Secure payment handling with proper authentication
+- Admin-controlled refund processing
+- Webhook support for real-time payment updates
+- Consistent adapter pattern for future payment providers
+
+---
+
 ### 2024-01-XX - Reply-To Email Support Added
 
 **Changes Made:**

@@ -33,13 +33,17 @@ import {
 } from '@mui/icons-material';
 import {
   fetchProductOptions,
-  calculateProductPrice,
-  addItemToCart,
-  getOrCreateCart
+  calculateProductPrice
 } from '../../../services/product_service';
+import { useCartOperations } from '../../../hooks/useCart';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import logoImage from '../../../assets/logo.png';
 
 const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onViewProduct }) => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { addItemToCart } = useCartOperations();
   const [options, setOptions] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
   const [pricing, setPricing] = useState(null);
@@ -108,45 +112,43 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
   };
 
   const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
     if (!pricing || Object.keys(selectedOptions).length === 0) {
       setError('Please select all required options');
       return;
     }
 
     try {
-      // Get or create cart
-      const sessionId = `session_${Date.now()}`; // In a real app, this would come from session management
-      const cart = await getOrCreateCart(sessionId, null, 6);
-      
-      if (!cart) {
-        setError('Failed to create cart');
-        return;
-      }
+      setLoading(true);
+      setError(null);
 
-      // Add item to cart
+      // Add item to cart using the new cart system
       const optionIds = Object.values(selectedOptions).filter(id => id !== '');
-      const cartItem = await addItemToCart(
-        cart.id,
+      const result = await addItemToCart(
         product.vendor_product_id,
-        product.name,
-        product.sku,
         optionIds,
         quantity
       );
 
-      if (cartItem) {
-        onAddToCart(cartItem);
+      if (result.success) {
+        onAddToCart(result.cartItem);
         setDialogOpen(false);
         setError(null);
         // Reset form
         setSelectedOptions({});
         setQuantity(1);
       } else {
-        setError('Failed to add item to cart');
+        setError(result.error || 'Failed to add item to cart');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
       setError('Failed to add item to cart');
+    } finally {
+      setLoading(false);
     }
   };
 
