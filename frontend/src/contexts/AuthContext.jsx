@@ -35,16 +35,14 @@ export const AuthProvider = ({ children }) => {
             // Check if user is already authenticated
             if (authService.isAuthenticated()) {
                 const currentUser = await authService.getCurrentUser()
-                console.log('=== AUTH DEBUG: Current user from API ===')
-                console.log('Full user object:', currentUser)
-                console.log('First name:', currentUser?.first_name)
-                console.log('Last name:', currentUser?.last_name)
-                console.log('Email:', currentUser?.email)
-                console.log('Role:', currentUser?.role)
-                console.log('User ID:', currentUser?.id)
-                console.log('===========================================')
                 if (currentUser) {
-                    setUser(currentUser)
+                    // Check if user's email is verified
+                    if (!currentUser.email_verified) {
+                        // User is not verified, clear auth and don't set user
+                        authService.clearAuth()
+                    } else {
+                        setUser(currentUser)
+                    }
                 } else {
                     // Token is invalid, clear auth
                     authService.clearAuth()
@@ -65,14 +63,12 @@ export const AuthProvider = ({ children }) => {
             setError(null)
 
             const response = await authService.login(email, password)
-            console.log('=== LOGIN DEBUG: Response ===')
-            console.log('Full response:', response)
-            console.log('User object:', response.user)
-            console.log('First name:', response.user?.first_name)
-            console.log('Last name:', response.user?.last_name)
-            console.log('Email:', response.user?.email)
-            console.log('Role:', response.user?.role)
-            console.log('==============================')
+            
+            // Check if it's an email verification error
+            if (response.success === false && response.code === 'EMAIL_NOT_VERIFIED') {
+                return response // Return the error info directly
+            }
+            
             setUser(response.user)
             
             return { success: true, data: response }
@@ -174,6 +170,22 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
+    const requestEmailVerification = async (email) => {
+        try {
+            setLoading(true)
+            setError(null)
+            
+            const response = await authService.requestEmailVerification(email)
+            
+            return { success: true, data: response }
+        } catch (error) {
+            setError(error.message)
+            return { success: false, error: error.message }
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const clearError = () => {
         setError(null)
     }
@@ -210,6 +222,7 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         verifyEmail,
+        requestEmailVerification,
         requestPasswordReset,
         resetPassword,
         validatePassword,

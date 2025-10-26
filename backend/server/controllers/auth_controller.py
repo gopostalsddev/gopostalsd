@@ -162,6 +162,8 @@ class AuthController:
                 result.status = False
                 result.error = login_result['error']
                 result.details = login_result.get('code')
+                # Pass through additional error data (email verification or other)
+                result.data = login_result
             
         except Exception as e:
             logger.error(f"Error during login: {str(e)}")
@@ -247,6 +249,46 @@ class AuthController:
             logger.error(f"Error refreshing session: {str(e)}")
             result.status = False
             result.error = f"Session refresh failed: {str(e)}"
+            
+        return result
+
+    @staticmethod
+    def resend_verification_email(email: str) -> Result:
+        """
+        Resend verification email for user.
+        
+        Args:
+            email: User's email address
+            
+        Returns:
+            Result containing request result
+        """
+        result = Result()
+        
+        try:
+            # Get auth service from app context
+            from flask import current_app
+            auth_service = current_app.extensions.get('auth_service')
+            
+            if not auth_service:
+                result.status = False
+                result.error = "Authentication service not available"
+                return result
+            
+            # Resend verification email
+            resend_result = auth_service.resend_verification_email(email)
+            
+            if resend_result['success']:
+                result.data = resend_result
+            else:
+                result.status = False
+                result.error = resend_result['error']
+                result.details = resend_result.get('code')
+            
+        except Exception as e:
+            logger.error(f"Error resending verification email: {str(e)}")
+            result.status = False
+            result.error = f"Failed to resend verification email: {str(e)}"
             
         return result
 

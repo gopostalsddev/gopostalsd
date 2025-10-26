@@ -1,11 +1,11 @@
 /**
  * Email Verification Page for Go Postal SD Frontend
  * 
- * This page handles email verification after user registration.
+ * This page is shown when a user tries to log in with an unverified email.
  */
 
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
     Container,
     Paper,
@@ -14,174 +14,57 @@ import {
     Button,
     Alert,
     CircularProgress,
-    Divider,
-    Link as MuiLink
+    Divider
 } from '@mui/material'
 import {
-    Email,
+    MailOutline,
     CheckCircle,
-    Error,
     Refresh
 } from '@mui/icons-material'
 import { useAuth } from '../../contexts/AuthContext'
 import logo from '../../assets/logo.png'
 
 const EmailVerificationPage = () => {
-    const [verificationStatus, setVerificationStatus] = useState('verifying') // 'verifying', 'success', 'error'
+    const [email, setEmail] = useState('')
+    const [isResending, setIsResending] = useState(false)
+    const [resendSuccess, setResendSuccess] = useState(false)
     const [error, setError] = useState('')
-    const [isVerifying, setIsVerifying] = useState(false)
-
-    const { verifyEmail, clearError } = useAuth()
+    
     const navigate = useNavigate()
     const location = useLocation()
-
-    // Get token from URL parameters
-    const searchParams = new URLSearchParams(location.search)
-    const token = searchParams.get('token')
-    const email = location.state?.email
+    const { requestEmailVerification } = useAuth()
 
     useEffect(() => {
-        if (token) {
-            handleVerification(token)
+        // Get email from location state
+        if (location.state?.email) {
+            setEmail(location.state.email)
         } else {
-            setVerificationStatus('error')
-            setError('No verification token provided')
+            // If no email, redirect to login
+            navigate('/login')
         }
-    }, [token])
+    }, [location, navigate])
 
-    const handleVerification = async (verificationToken) => {
+    const handleResendVerification = async () => {
+        setIsResending(true)
+        setError('')
+        setResendSuccess(false)
+
         try {
-            setIsVerifying(true)
-            setError('')
-            clearError()
-
-            const result = await verifyEmail(verificationToken)
-            
-            if (result.success) {
-                setVerificationStatus('success')
-            } else {
-                setVerificationStatus('error')
-                setError(result.error || 'Email verification failed')
-            }
-        } catch (error) {
-            setVerificationStatus('error')
-            setError(error.message || 'Email verification failed')
+            await requestEmailVerification(email)
+            setResendSuccess(true)
+        } catch (err) {
+            setError(err.message || 'Failed to resend verification email. Please try again.')
         } finally {
-            setIsVerifying(false)
+            setIsResending(false)
         }
     }
 
-    const handleResendVerification = () => {
-        // This would typically redirect to a resend verification page
-        navigate('/resend-verification', { state: { email } })
-    }
-
-    const handleGoToLogin = () => {
+    const handleBackToLogin = () => {
         navigate('/login')
     }
 
-    const handleGoToHome = () => {
-        navigate('/')
-    }
-
-    const renderContent = () => {
-        switch (verificationStatus) {
-            case 'verifying':
-                return (
-                    <Box sx={{ textAlign: 'center' }}>
-                        <CircularProgress size={60} sx={{ mb: 3 }} />
-                        <Typography variant="h5" gutterBottom>
-                            Verifying Your Email
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary">
-                            Please wait while we verify your email address...
-                        </Typography>
-                    </Box>
-                )
-
-            case 'success':
-                return (
-                    <Box sx={{ textAlign: 'center' }}>
-                        <CheckCircle sx={{ fontSize: 80, color: 'success.main', mb: 3 }} />
-                        <Typography variant="h4" gutterBottom color="success.main">
-                            Email Verified Successfully!
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                            Your email address has been verified. You can now access all features of Go Postal SD.
-                        </Typography>
-                        
-                        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <Button
-                                variant="contained"
-                                size="large"
-                                onClick={handleGoToLogin}
-                                sx={{ minWidth: 150 }}
-                            >
-                                Sign In
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                size="large"
-                                onClick={handleGoToHome}
-                                sx={{ minWidth: 150 }}
-                            >
-                                Go to Home
-                            </Button>
-                        </Box>
-                    </Box>
-                )
-
-            case 'error':
-                return (
-                    <Box sx={{ textAlign: 'center' }}>
-                        <Error sx={{ fontSize: 80, color: 'error.main', mb: 3 }} />
-                        <Typography variant="h4" gutterBottom color="error.main">
-                            Verification Failed
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                            {error || 'There was an error verifying your email address.'}
-                        </Typography>
-                        
-                        <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
-                            <Typography variant="body2">
-                                <strong>Possible reasons:</strong>
-                            </Typography>
-                            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-                                <li>The verification link has expired</li>
-                                <li>The verification link has already been used</li>
-                                <li>The verification link is invalid</li>
-                            </ul>
-                        </Alert>
-                        
-                        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <Button
-                                variant="contained"
-                                size="large"
-                                startIcon={<Refresh />}
-                                onClick={handleResendVerification}
-                                sx={{ minWidth: 200 }}
-                            >
-                                Resend Verification
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                size="large"
-                                onClick={handleGoToLogin}
-                                sx={{ minWidth: 150 }}
-                            >
-                                Back to Login
-                            </Button>
-                        </Box>
-                    </Box>
-                )
-
-            default:
-                return null
-        }
-    }
-
     return (
-        <Container maxWidth="sm" sx={{ py: 4 }}>
+        <Container maxWidth="sm" sx={{ py: 8 }}>
             <Paper elevation={3} sx={{ p: 4 }}>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
                     <Box sx={{ mb: 3 }}>
@@ -192,35 +75,114 @@ const EmailVerificationPage = () => {
                         />
                     </Box>
                     <Typography variant="h4" component="h1" gutterBottom color="primary">
-                        Email Verification
+                        Verify Your Email
                     </Typography>
-                    {email && (
-                        <Typography variant="body2" color="text.secondary">
-                            Verifying email: {email}
-                        </Typography>
-                    )}
+                    <Typography variant="body1" color="text.secondary">
+                        We need to verify your email address to complete your registration
+                    </Typography>
                 </Box>
 
-                {renderContent()}
-
-                <Divider sx={{ my: 4 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Need Help?
+                <Box sx={{ textAlign: 'center', mb: 4 }}>
+                    <MailOutline sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
+                    <Typography variant="h6" gutterBottom>
+                        Check Your Email
                     </Typography>
-                </Divider>
-
-                <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        If you're having trouble verifying your email, please contact our support team.
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        We've sent a verification link to:
                     </Typography>
-                    <MuiLink
-                        component={Link}
-                        to="/contact"
-                        variant="body2"
-                        color="primary"
+                    <Typography variant="body1" fontWeight="bold" color="primary.main">
+                        {email}
+                    </Typography>
+                </Box>
+
+                <Divider sx={{ my: 4 }} />
+
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        <strong>What you need to do:</strong>
+                    </Typography>
+                    <Box component="ol" sx={{ pl: 3, textAlign: 'left' }}>
+                        <Box component="li" sx={{ mb: 1 }}>
+                            <Typography variant="body2">
+                                Check your email inbox for a message from Go Postal SD
+                            </Typography>
+                        </Box>
+                        <Box component="li" sx={{ mb: 1 }}>
+                            <Typography variant="body2">
+                                Click the verification link in the email
+                            </Typography>
+                        </Box>
+                        <Box component="li" sx={{ mb: 1 }}>
+                            <Typography variant="body2">
+                                Return to this page or try logging in again
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
+
+                <Alert 
+                    severity="info" 
+                    icon={<MailOutline />}
+                    sx={{ mb: 3 }}
+                >
+                    <Typography variant="body2">
+                        <strong>Can't find the email?</strong> Check your spam folder or click the button below to resend.
+                    </Typography>
+                </Alert>
+
+                {resendSuccess && (
+                    <Alert 
+                        severity="success" 
+                        icon={<CheckCircle />}
+                        sx={{ mb: 3 }}
                     >
-                        Contact Support
-                    </MuiLink>
+                        Verification email sent! Please check your inbox.
+                    </Alert>
+                )}
+
+                {error && (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                        {error}
+                    </Alert>
+                )}
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Button
+                        variant="contained"
+                        startIcon={<Refresh />}
+                        onClick={handleResendVerification}
+                        disabled={isResending}
+                        sx={{ mb: 1 }}
+                    >
+                        {isResending ? (
+                            <>
+                                <CircularProgress size={20} sx={{ mr: 1 }} />
+                                Sending...
+                            </>
+                        ) : (
+                            'Resend Verification Email'
+                        )}
+                    </Button>
+                    
+                    <Button
+                        variant="outlined"
+                        onClick={handleBackToLogin}
+                    >
+                        Back to Login
+                    </Button>
+                </Box>
+
+                <Box sx={{ mt: 4, textAlign: 'center' }}>
+                    <Typography variant="caption" color="text.secondary">
+                        Need help?{' '}
+                        <Button 
+                            variant="text" 
+                            size="small"
+                            onClick={() => navigate('/contact')}
+                        >
+                            Contact Support
+                        </Button>
+                    </Typography>
                 </Box>
             </Paper>
         </Container>

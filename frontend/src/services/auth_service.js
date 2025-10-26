@@ -68,6 +68,16 @@ class AuthService {
         }
     }
 
+    async requestEmailVerification(email) {
+        try {
+            const response = await axios.post(`${API_BASE_URL}/auth/resend-verification`, { email })
+            return response.data
+        } catch (error) {
+            console.error('Resend verification error:', error)
+            throw this.handleError(error)
+        }
+    }
+
     async login(email, password) {
         try {
             const response = await axios.post(`${API_BASE_URL}/auth/login`, {
@@ -84,7 +94,17 @@ class AuthService {
             
             return response.data
         } catch (error) {
-            console.error('Login error:', error)
+            // Check if it's an email verification error
+            if (error.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+                // Return the error data so LoginPage can handle it
+                return {
+                    success: false,
+                    code: 'EMAIL_NOT_VERIFIED',
+                    email: error.response.data.email,
+                    user_id: error.response.data.user_id,
+                    requires_verification: true
+                }
+            }
             throw this.handleError(error)
         }
     }
@@ -225,6 +245,11 @@ class AuthService {
             (response) => response,
             async (error) => {
                 const originalRequest = error.config
+
+                // Don't try to refresh if it's an email verification error
+                if (error.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+                    return Promise.reject(error)
+                }
 
                 if (error.response?.status === 401 && !originalRequest._retry) {
                     originalRequest._retry = true

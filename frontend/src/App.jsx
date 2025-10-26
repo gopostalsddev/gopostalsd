@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Box, Typography, Button } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -21,6 +22,7 @@ import OrderConfirmationPage from './pages/Order/OrderConfirmationPage';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import EmailVerificationPage from './pages/Auth/EmailVerificationPage';
+import VerifyEmailPage from './pages/Auth/VerifyEmailPage';
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 import UnauthorizedPage from './pages/Auth/UnauthorizedPage';
@@ -43,6 +45,7 @@ const App = () => {
               <Route path="/login" element={<Layout showFooter={false}><LoginPage /></Layout>} />
               <Route path="/register" element={<Layout showFooter={false}><RegisterPage /></Layout>} />
               <Route path="/verify-email" element={<Layout showFooter={false}><EmailVerificationPage /></Layout>} />
+              <Route path="/verify" element={<Layout showFooter={false}><VerifyEmailPage /></Layout>} />
               <Route path="/forgot-password" element={<Layout showFooter={false}><ForgotPasswordPage /></Layout>} />
               <Route path="/reset-password" element={<Layout showFooter={false}><ResetPasswordPage /></Layout>} />
               <Route path="/unauthorized" element={<Layout><UnauthorizedPage /></Layout>} />
@@ -60,7 +63,7 @@ const App = () => {
               />
               
               {/* Catch-all route for 404 */}
-              <Route path="*" element={<Layout><UnauthorizedPage /></Layout>} />
+              <Route path="*" element={<Layout><Box sx={{ textAlign: 'center', py: 8 }}><Typography variant="h4">404 - Page Not Found</Typography><Typography variant="body1" sx={{ mb: 3 }}>The page you're looking for doesn't exist.</Typography><Button variant="contained" onClick={() => window.location.href = '/'}>Go Home</Button></Box></Layout>} />
             </Routes>
           </Router>
         </CartProvider>

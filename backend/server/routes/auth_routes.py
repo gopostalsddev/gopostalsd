@@ -161,6 +161,28 @@ class EmailVerificationResource(Resource):
         else:
             return {'error': result.error, 'code': result.details}, 400
 
+@api.route('/resend-verification')
+class ResendVerificationResource(Resource):
+    """Resource for resending email verification."""
+    
+    @api.doc('resend_verification')
+    @api.expect(api.model('ResendVerification', {
+        'email': fields.String(required=True, description='User email address')
+    }))
+    def post(self):
+        """Resend email verification link."""
+        data = request.get_json()
+        
+        if not data or 'email' not in data:
+            return {'error': 'Email is required'}, 400
+        
+        result = AuthController.resend_verification_email(data['email'])
+        
+        if result.status:
+            return result.data, 200
+        else:
+            return {'error': result.error, 'code': result.details}, 400
+
 
 @api.route('/login')
 class LoginResource(Resource):
@@ -168,7 +190,6 @@ class LoginResource(Resource):
     
     @api.doc('login_user')
     @api.expect(login_model)
-    @api.marshal_with(login_response_model)
     def post(self):
         """Authenticate user login."""
         data = request.get_json()
@@ -191,9 +212,17 @@ class LoginResource(Resource):
         )
         
         if result.status:
-            return result.data, 200
+            # Successful login - marshal the response
+            from flask_restx import marshal
+            return marshal(result.data, login_response_model), 200
         else:
-            return {'error': result.error, 'code': result.details}, 401
+            # Error response
+            response = {'error': result.error, 'code': result.details}
+            # Include additional data for email verification
+            if result.data:
+                response.update(result.data)
+            
+            return response, 401
 
 @api.route('/logout')
 class LogoutResource(Resource):

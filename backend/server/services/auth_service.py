@@ -193,11 +193,13 @@ class AuthService:
             Dict containing verification result
         """
         try:
+            logger.info(f"Verifying email with token: {token[:20]}...")
             verification_token = EmailVerificationToken.query.filter_by(
                 token=token, used=False
             ).first()
 
             if not verification_token:
+                logger.warning(f"Verification token not found or already used")
                 return {
                     'success': False,
                     'error': 'Invalid or expired verification token',
@@ -238,6 +240,60 @@ class AuthService:
                 'code': 'VERIFICATION_ERROR'
             }
 
+    def resend_verification_email(self, email: str) -> Dict[str, Any]:
+        """
+        Resend email verification email.
+        
+        Args:
+            email: User's email
+            
+        Returns:
+            Dict containing result
+        """
+        try:
+            user = User.query.filter_by(email=email).first()
+            
+            if not user:
+                # Don't reveal if user exists for security
+                return {
+                    'success': True,
+                    'message': 'If an account exists with this email, a verification link has been sent'
+                }
+            
+            if user.email_verified:
+                return {
+                    'success': True,
+                    'message': 'Email already verified'
+                }
+            
+            # Create new verification token
+            verification_token = self._create_email_verification_token(user.id)
+            
+            db.session.commit()
+            
+            # Send verification email
+            self.email_service.send_verification_email(
+                email=user.email,
+                first_name=user.first_name,
+                token=verification_token.token
+            )
+            
+            logger.info(f"Verification email resent for user: {user.email}")
+            
+            return {
+                'success': True,
+                'message': 'Verification email has been sent'
+            }
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error resending verification email: {str(e)}")
+            return {
+                'success': False,
+                'error': 'Failed to resend verification email',
+                'code': 'RESEND_ERROR'
+            }
+
     def login(self, email: str, password: str, ip_address: str = None, user_agent: str = None) -> Dict[str, Any]:
         """
         Authenticate user login.
@@ -269,24 +325,48 @@ class AuthService:
                     'code': 'ACCOUNT_LOCKED'
                 }
 
-            # Check if account is active
-            if not user.is_active():
+            # Check if account is suspended or deactivated (but not pending verification)
+            if user.status.value == 'suspended':
+                return {
+                    'success': False,
+                    'error': 'Your account has been suspended',
+                    'code': 'ACCOUNT_SUSPENDED'
+                }
+            elif user.status.value == 'deactivated':
+                return {
+                    'success': False,
+                    'error': 'Your account has been deactivated',
+                    'code': 'ACCOUNT_DEACTIVATED'
+                }
+
+            # Check if email is verified (applies to pending_verification status)
+            if not user.email_verified:
+                # Invalidate any existing sessions for this user
+                UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+                db.session.commit()
+                
+                return {
+                    'success': False,
+                    'error': 'Please verify your email before logging in',
+                    'code': 'EMAIL_NOT_VERIFIED',
+                    'email': user.email,
+                    'user_id': user.id,
+                    'requires_verification': True
+                }
+            
+            # If we get here and status is not ACTIVE, there's a problem
+            if user.status != UserStatus.ACTIVE:
                 return {
                     'success': False,
                     'error': 'Account is not active',
                     'code': 'ACCOUNT_INACTIVE'
                 }
 
-            # Check if email is verified
-            if not user.email_verified:
-                return {
-                    'success': False,
-                    'error': 'Please verify your email before logging in',
-                    'code': 'EMAIL_NOT_VERIFIED'
-                }
-
             # Verify password
-            if not self.password_service.verify_password(password, user.password_hash):
+            password_matches = self.password_service.verify_password(password, user.password_hash)
+            
+            if not password_matches:
+                logger.warning(f"Password verification failed for user: {user.email}")
                 # Increment failed login attempts
                 user.failed_login_attempts += 1
                 
@@ -496,7 +576,8 @@ class AuthService:
 
             # Update user password
             user = reset_token.user
-            user.password_hash = self.password_service.hash_password(new_password)
+            new_password_hash = self.password_service.hash_password(new_password)
+            user.password_hash = new_password_hash
             user.failed_login_attempts = 0
             user.locked_until = None
 
@@ -508,6 +589,7 @@ class AuthService:
             UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
 
             db.session.commit()
+            logger.info(f"Password successfully reset for user: {user.email}")
 
             return {
                 'success': True,
@@ -541,11 +623,26 @@ class AuthService:
             if not session or session.is_expired():
                 return None
 
+            user = session.user
+            
+            # Verify user's email is verified and account is active
+            if not user.email_verified:
+                # Invalidate this session and all other sessions for this user
+                UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+                db.session.commit()
+                return None
+            
+            if user.status != UserStatus.ACTIVE:
+                # Invalidate this session and all other sessions for this user
+                UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+                db.session.commit()
+                return None
+
             # Update last accessed
             session.last_accessed = datetime.utcnow()
             db.session.commit()
 
-            return session.user
+            return user
 
         except Exception as e:
             logger.error(f"Error getting user by session: {str(e)}")

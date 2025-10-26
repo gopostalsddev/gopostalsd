@@ -21,7 +21,8 @@ class EmailService:
         frontend_url = os.getenv('FRONTEND_URL')
         
         if frontend_url:
-            return frontend_url
+            # Remove trailing slash to avoid double slashes in URLs
+            return frontend_url.rstrip('/')
         
         # Auto-detect based on environment
         environment = os.getenv('ENVIRONMENT', 'development').lower()
@@ -132,7 +133,7 @@ class EmailService:
         """Send email verification email."""
         subject = "Verify Your Email - Go Postal SD"
         
-        verification_url = f"{self.base_url}/verify-email?token={token}"
+        verification_url = f"{self.base_url}/verify?token={token}"
         
         text_content = f"""
                 Hello {first_name},

@@ -197,10 +197,6 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
                     textTransform: 'none',
                     fontWeight: 600,
                     py: 1.5,
-                    backgroundColor: 'secondary.main',
-                    '&:hover': {
-                      backgroundColor: 'secondary.dark'
-                    }
                   }}
                 >
                   Browse Products

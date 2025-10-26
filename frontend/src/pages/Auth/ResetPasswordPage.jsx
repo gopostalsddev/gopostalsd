@@ -47,6 +47,15 @@ const ResetPasswordPage = () => {
     const navigate = useNavigate()
     const location = useLocation()
 
+    // Debug logging
+    useEffect(() => {
+        console.log('=== RESET PASSWORD PAGE DEBUG ===')
+        console.log('Current location:', location.pathname)
+        console.log('Search params:', location.search)
+        console.log('Full URL:', window.location.href)
+        console.log('===================================')
+    }, [location])
+
     // Get token from URL parameters
     const searchParams = new URLSearchParams(location.search)
     const token = searchParams.get('token')

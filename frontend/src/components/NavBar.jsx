@@ -42,18 +42,6 @@ const Navbar = () => {
   const { isAuthenticated, user: currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Debug logging
-  React.useEffect(() => {
-    console.log('=== NAVBAR DEBUG ===');
-    console.log('isAuthenticated:', isAuthenticated);
-    console.log('currentUser object:', currentUser);
-    console.log('First name:', currentUser?.first_name);
-    console.log('Last name:', currentUser?.last_name);
-    console.log('Email:', currentUser?.email);
-    console.log('Role:', currentUser?.role);
-    console.log('====================');
-  }, [isAuthenticated, currentUser]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const theme = useTheme();
@@ -144,8 +132,7 @@ const Navbar = () => {
                 sx={{
                   color: 'white',
                   fontWeight: location.pathname === '/' ? 'bold' : 'normal',
-                  border: location.pathname === '/' ? '2px solid white' : '2px solid transparent',
-                  borderRadius: '8px',
+                  borderBottom: location.pathname === '/' ? '3px solid white' : '3px solid transparent',
                   '&:hover': { 
                     backgroundColor: (theme) => theme.palette.primary.dark,
                     color: 'white'
@@ -161,8 +148,7 @@ const Navbar = () => {
                 sx={{
                   color: 'white',
                   fontWeight: location.pathname === '/shop' ? 'bold' : 'normal',
-                  border: location.pathname === '/shop' ? '2px solid white' : '2px solid transparent',
-                  borderRadius: '8px',
+                  borderBottom: location.pathname === '/shop' ? '3px solid white' : '3px solid transparent',
                   '&:hover': { 
                     backgroundColor: (theme) => theme.palette.primary.dark,
                     color: 'white'
@@ -178,8 +164,7 @@ const Navbar = () => {
                 sx={{
                   color: 'white',
                   fontWeight: location.pathname === '/contact' ? 'bold' : 'normal',
-                  border: location.pathname === '/contact' ? '2px solid white' : '2px solid transparent',
-                  borderRadius: '8px',
+                  borderBottom: location.pathname === '/contact' ? '3px solid white' : '3px solid transparent',
                   '&:hover': { 
                     backgroundColor: (theme) => theme.palette.primary.dark,
                     color: 'white'

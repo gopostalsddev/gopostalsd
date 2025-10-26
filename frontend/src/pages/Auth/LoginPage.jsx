@@ -105,6 +105,11 @@ const LoginPage = () => {
             if (result.success) {
                 const from = location.state?.from?.pathname || '/'
                 navigate(from, { replace: true })
+            } else if (result.code === 'EMAIL_NOT_VERIFIED') {
+                // Redirect to email verification page
+                navigate('/verify-email', { 
+                    state: { email: formData.email } 
+                })
             }
         } catch (error) {
             console.error('Login error:', error)
