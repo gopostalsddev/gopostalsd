@@ -1,4 +1,4 @@
-git"""
+"""
 Square Payment Adapter for Go Postal SD Application
 
 This module provides a wrapper around the Square Payment API for processing payments.

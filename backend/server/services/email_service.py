@@ -13,7 +13,28 @@ class EmailService:
     def __init__(self):
         self.client = None
         self.provider = None
-        self.base_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        # Get frontend URL from environment, with better defaults
+        self.base_url = self._get_frontend_url()
+    
+    def _get_frontend_url(self) -> str:
+        """Get the frontend URL with proper environment detection."""
+        frontend_url = os.getenv('FRONTEND_URL')
+        
+        if frontend_url:
+            return frontend_url
+        
+        # Auto-detect based on environment
+        environment = os.getenv('ENVIRONMENT', 'development').lower()
+        
+        if environment == 'production':
+            # Production should always have FRONTEND_URL set
+            logger.warning("FRONTEND_URL not set in production environment!")
+            return 'https://gopostalsd.com'  # Fallback for production
+        elif environment == 'staging':
+            return 'https://staging.gopostalsd.com'
+        else:
+            # Development environment
+            return 'http://localhost:3000'
     
     def init_app(self, app: Flask, provider: Optional[str] = None):
         """
@@ -49,8 +70,10 @@ class EmailService:
             
             if self.client.is_configured:
                 logger.info(f"Email service initialized successfully with {provider_name}")
+                logger.info(f"Frontend URL configured as: {self.base_url}")
             else:
                 logger.warning(f"Email service initialized with {provider_name} but not configured")
+                logger.info(f"Frontend URL configured as: {self.base_url}")
                 
         except Exception as e:
             logger.error(f"Failed to initialize {self.provider} email service: {str(e)}")

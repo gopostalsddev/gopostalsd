@@ -7,6 +7,7 @@ It follows the same pattern as other controllers for clean separation of concern
 
 from server.controllers import Result
 import logging
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -36,33 +37,54 @@ class AuthController:
         """
         result = Result()
         
+        # Debug: Log method entry with input parameters
+        logger.debug(f"AuthController.register_user called with:")
+        logger.debug(f"  email: {email}")
+        logger.debug(f"  first_name: {first_name}")
+        logger.debug(f"  last_name: {last_name}")
+        logger.debug(f"  shipping_address: {shipping_address}")
+        logger.debug(f"  billing_address: {billing_address}")
+        logger.debug(f"  password length: {len(password) if password else 'None'}")
+        
         try:
             # Get auth service from app context
             from flask import current_app
+            logger.debug("Getting auth service from app context...")
             auth_service = current_app.extensions.get('auth_service')
             
             if not auth_service:
+                logger.error("Authentication service not available in app extensions")
                 result.status = False
                 result.error = "Authentication service not available"
                 return result
             
+            logger.debug("Auth service found, proceeding with registration...")
+            
             # Register user
+            logger.debug("Calling auth_service.register_user...")
             registration_result = auth_service.register_user(
                 email, password, first_name, last_name, shipping_address, billing_address
             )
             
+            logger.debug(f"Registration result received: {registration_result}")
+            
             if registration_result['success']:
+                logger.info(f"User registration successful for email: {email}")
                 result.data = registration_result
             else:
+                logger.warning(f"User registration failed for email: {email}, error: {registration_result['error']}")
                 result.status = False
                 result.error = registration_result['error']
                 result.details = registration_result.get('code')
             
         except Exception as e:
-            logger.error(f"Error registering user: {str(e)}")
+            logger.error(f"Exception in register_user for email {email}: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Exception traceback: {traceback.format_exc()}")
             result.status = False
             result.error = f"Registration failed: {str(e)}"
             
+        logger.debug(f"AuthController.register_user returning result: {result}")
         return result
 
     @staticmethod

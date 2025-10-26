@@ -47,13 +47,56 @@ class AuthService:
         Returns:
             Dict containing registration result
         """
+        logger.debug(f"AuthService.register_user called with email: {email}")
+        
         try:
-            # Check if user already exists
-            existing_user = User.query.filter_by(email=email).first()
-            if existing_user:
+            # Input validation
+            if not email or not isinstance(email, str) or not email.strip():
                 return {
                     'success': False,
-                    'error': 'User with this email already exists',
+                    'error': 'Email is required',
+                    'code': 'VALIDATION_ERROR'
+                }
+            
+            if not password or not isinstance(password, str) or len(password) < 8:
+                return {
+                    'success': False,
+                    'error': 'Password must be at least 8 characters long',
+                    'code': 'VALIDATION_ERROR'
+                }
+            
+            if not first_name or not isinstance(first_name, str) or not first_name.strip():
+                return {
+                    'success': False,
+                    'error': 'First name is required',
+                    'code': 'VALIDATION_ERROR'
+                }
+            
+            if not last_name or not isinstance(last_name, str) or not last_name.strip():
+                return {
+                    'success': False,
+                    'error': 'Last name is required',
+                    'code': 'VALIDATION_ERROR'
+                }
+            
+            # Validate email format
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, email.strip()):
+                return {
+                    'success': False,
+                    'error': 'Please enter a valid email address',
+                    'code': 'INVALID_EMAIL'
+                }
+            
+            # Check if user already exists
+            logger.debug(f"Checking if user exists with email: {email.strip().lower()}")
+            existing_user = User.query.filter_by(email=email.strip().lower()).first()
+            if existing_user:
+                logger.info(f"User registration failed - user already exists: {email}")
+                return {
+                    'success': False,
+                    'error': 'An account with this email already exists. Please try logging in instead.',
                     'code': 'USER_EXISTS'
                 }
 

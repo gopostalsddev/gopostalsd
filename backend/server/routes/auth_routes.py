@@ -126,7 +126,20 @@ class RegistrationResource(Resource):
         if result.status:
             return result.data, 201
         else:
-            return {'error': result.error, 'code': result.details}, 400
+            # Return appropriate HTTP status code based on error type
+            status_code = 400
+            if result.details == 'USER_EXISTS':
+                status_code = 409  # Conflict
+            elif result.details == 'ROLE_NOT_FOUND':
+                status_code = 500  # Internal Server Error
+            elif result.details == 'VALIDATION_ERROR':
+                status_code = 422  # Unprocessable Entity
+            
+            return {
+                'error': result.error, 
+                'code': result.details,
+                'message': result.error  # Add message field for consistency
+            }, status_code
 
 @api.route('/verify-email')
 class EmailVerificationResource(Resource):

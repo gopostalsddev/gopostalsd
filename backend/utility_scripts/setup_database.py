@@ -6,9 +6,9 @@ This script handles database migrations and ensures the unclassified product typ
 import sys
 from pathlib import Path
 
-# Add the server directory to the Python path
-server_dir = Path(__file__).parent / "server"
-sys.path.insert(0, str(server_dir))
+# Add the parent directory to the Python path to access server module
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
 
 def setup_database():
     """Set up the database with migrations and initial data"""

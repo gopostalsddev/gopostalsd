@@ -229,9 +229,17 @@ const RegisterPage = () => {
                 navigate('/verify-email', { 
                     state: { email: formData.email } 
                 })
+            } else {
+                // Handle specific error cases
+                if (result.error && result.error.code === 'USER_EXISTS') {
+                    // Clear the email field and show specific error
+                    setFormData(prev => ({ ...prev, email: '' }))
+                    setErrors(prev => ({ ...prev, email: 'An account with this email already exists' }))
+                }
             }
         } catch (error) {
             console.error('Registration error:', error)
+            // Error is already handled by AuthContext and displayed via the error state
         } finally {
             setIsSubmitting(false)
         }
@@ -654,6 +662,17 @@ const RegisterPage = () => {
                 {error && (
                     <Alert severity="error" sx={{ mb: 3 }}>
                         {error}
+                        {error.includes('email already exists') && (
+                            <Box sx={{ mt: 1 }}>
+                                <MuiLink 
+                                    component={Link} 
+                                    to="/login"
+                                    sx={{ textDecoration: 'underline' }}
+                                >
+                                    Click here to log in instead
+                                </MuiLink>
+                            </Box>
+                        )}
                     </Alert>
                 )}
 

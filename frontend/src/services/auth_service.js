@@ -251,15 +251,32 @@ class AuthService {
     handleError(error) {
         if (error.response) {
             // Server responded with error status
+            const errorData = error.response.data
+            let message = errorData.error || errorData.message || 'An error occurred'
+            
+            // Provide user-friendly messages for common error codes
+            if (errorData.code === 'USER_EXISTS') {
+                message = 'An account with this email already exists. Please try logging in instead.'
+            } else if (errorData.code === 'INVALID_EMAIL') {
+                message = 'Please enter a valid email address.'
+            } else if (errorData.code === 'WEAK_PASSWORD') {
+                message = 'Password is too weak. Please choose a stronger password.'
+            } else if (errorData.code === 'VALIDATION_ERROR') {
+                message = 'Please check your information and try again.'
+            } else if (errorData.code === 'ROLE_NOT_FOUND') {
+                message = 'System error. Please contact support.'
+            }
+            
             return {
-                message: error.response.data.error || 'An error occurred',
-                code: error.response.data.code,
-                status: error.response.status
+                message: message,
+                code: errorData.code,
+                status: error.response.status,
+                details: errorData
             }
         } else if (error.request) {
             // Request was made but no response received
             return {
-                message: 'Network error. Please check your connection.',
+                message: 'Network error. Please check your connection and try again.',
                 code: 'NETWORK_ERROR',
                 status: 0
             }
