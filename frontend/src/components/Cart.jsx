@@ -133,6 +133,7 @@ export function Cart() {
             size="large"
             href="/products"
             sx={{ px: 4 }}
+            
           >
             Browse Products
           </Button>

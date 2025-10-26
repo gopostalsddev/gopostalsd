@@ -23,25 +23,11 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
       {/* Header Section */}
       <Box sx={{ textAlign: 'center', mb: 6 }}>
         <Typography 
-          variant="h3" 
-          component="h1" 
-          sx={{ 
-            fontWeight: 700, 
-            mb: 2,
-            background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}
-        >
-          Our Product Categories
-        </Typography>
-        <Typography 
           variant="h6" 
           color="text.secondary" 
           sx={{ maxWidth: 600, mx: 'auto' }}
         >
-          Discover our wide range of high-quality products organized by category
+          Discover our wide range of high-quality printing products organized by category
         </Typography>
       </Box>
 
@@ -210,7 +196,11 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
                     borderRadius: 2,
                     textTransform: 'none',
                     fontWeight: 600,
-                    py: 1.5
+                    py: 1.5,
+                    backgroundColor: 'secondary.main',
+                    '&:hover': {
+                      backgroundColor: 'secondary.dark'
+                    }
                   }}
                 >
                   Browse Products

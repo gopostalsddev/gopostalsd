@@ -35,7 +35,14 @@ export const AuthProvider = ({ children }) => {
             // Check if user is already authenticated
             if (authService.isAuthenticated()) {
                 const currentUser = await authService.getCurrentUser()
-                console.log('AuthContext: Current user from API:', currentUser)
+                console.log('=== AUTH DEBUG: Current user from API ===')
+                console.log('Full user object:', currentUser)
+                console.log('First name:', currentUser?.first_name)
+                console.log('Last name:', currentUser?.last_name)
+                console.log('Email:', currentUser?.email)
+                console.log('Role:', currentUser?.role)
+                console.log('User ID:', currentUser?.id)
+                console.log('===========================================')
                 if (currentUser) {
                     setUser(currentUser)
                 } else {
@@ -58,7 +65,14 @@ export const AuthProvider = ({ children }) => {
             setError(null)
 
             const response = await authService.login(email, password)
-            console.log('AuthContext: Login response user object:', response.user)
+            console.log('=== LOGIN DEBUG: Response ===')
+            console.log('Full response:', response)
+            console.log('User object:', response.user)
+            console.log('First name:', response.user?.first_name)
+            console.log('Last name:', response.user?.last_name)
+            console.log('Email:', response.user?.email)
+            console.log('Role:', response.user?.role)
+            console.log('==============================')
             setUser(response.user)
             
             return { success: true, data: response }

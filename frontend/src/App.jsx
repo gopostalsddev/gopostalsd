@@ -11,7 +11,7 @@ import theme from './theme';
 // Import pages
 import AdminPage from './pages/Admin/AdminPage';
 import ShopPage from './pages/Shop/ShopPage';
-import AboutPage from './pages/About/AboutPage';
+import HomePage from './pages/Home/HomePage';
 import ContactPage from './pages/Contact/ContactPage';
 import CartPage from './pages/Cart/CartPage';
 import CheckoutPage from './pages/Checkout/CheckoutPage';
@@ -34,8 +34,8 @@ const App = () => {
           <Router>
             <Routes>
               {/* Public routes with layout */}
-              <Route path="/" element={<Layout><ShopPage /></Layout>} />
-              <Route path="/about" element={<Layout><AboutPage /></Layout>} />
+              <Route path="/" element={<Layout><HomePage /></Layout>} />
+              <Route path="/shop" element={<Layout><ShopPage /></Layout>} />
               <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
               <Route path="/cart" element={<Layout><CartPage /></Layout>} />
               <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />

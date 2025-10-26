@@ -28,16 +28,32 @@ import {
   AdminPanelSettings,
   ShoppingCart,
   Menu as MenuIcon,
-  Close
+  Close,
+  Home,
+  Store,
+  ContactMail
 } from '@mui/icons-material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { CartIcon } from './CartIcon';
 import logo from '../assets/logo.png';
 
 const Navbar = () => {
-  const { isAuthenticated, currentUser, logout } = useAuth();
+  const { isAuthenticated, user: currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Debug logging
+  React.useEffect(() => {
+    console.log('=== NAVBAR DEBUG ===');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('currentUser object:', currentUser);
+    console.log('First name:', currentUser?.first_name);
+    console.log('Last name:', currentUser?.last_name);
+    console.log('Email:', currentUser?.email);
+    console.log('Role:', currentUser?.role);
+    console.log('====================');
+  }, [isAuthenticated, currentUser]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const theme = useTheme();
@@ -124,8 +140,12 @@ const Navbar = () => {
               <Button
                 component={Link}
                 to="/"
+                startIcon={<Home />}
                 sx={{
                   color: 'white',
+                  fontWeight: location.pathname === '/' ? 'bold' : 'normal',
+                  border: location.pathname === '/' ? '2px solid white' : '2px solid transparent',
+                  borderRadius: '8px',
                   '&:hover': { 
                     backgroundColor: (theme) => theme.palette.primary.dark,
                     color: 'white'
@@ -136,22 +156,30 @@ const Navbar = () => {
               </Button>
               <Button
                 component={Link}
-                to="/about"
+                to="/shop"
+                startIcon={<Store />}
                 sx={{
                   color: 'white',
+                  fontWeight: location.pathname === '/shop' ? 'bold' : 'normal',
+                  border: location.pathname === '/shop' ? '2px solid white' : '2px solid transparent',
+                  borderRadius: '8px',
                   '&:hover': { 
                     backgroundColor: (theme) => theme.palette.primary.dark,
                     color: 'white'
                   },
                 }}
               >
-                About
+                Shop
               </Button>
               <Button
                 component={Link}
                 to="/contact"
+                startIcon={<ContactMail />}
                 sx={{
                   color: 'white',
+                  fontWeight: location.pathname === '/contact' ? 'bold' : 'normal',
+                  border: location.pathname === '/contact' ? '2px solid white' : '2px solid transparent',
+                  borderRadius: '8px',
                   '&:hover': { 
                     backgroundColor: (theme) => theme.palette.primary.dark,
                     color: 'white'
@@ -184,13 +212,12 @@ const Navbar = () => {
               {/* Authentication Section */}
               {isAuthenticated ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Chip
-                    label={currentUser?.role || 'User'}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                    sx={{ color: 'white', borderColor: 'white' }}
-                  />
+                  <Typography variant="body2" sx={{ color: 'white', fontWeight: 500 }}>
+                    {currentUser?.first_name && currentUser?.last_name 
+                      ? `${currentUser.first_name} ${currentUser.last_name}`
+                      : currentUser?.email?.split('@')[0] || 'User'
+                    }
+                  </Typography>
                   <IconButton
                     onClick={handleMenuOpen}
                     sx={{ color: 'white' }}
@@ -225,6 +252,12 @@ const Navbar = () => {
                       </Box>
                     </MenuItem>
                     <Divider />
+                    {currentUser?.role === 'Admin' && (
+                      <MenuItem onClick={() => { handleMenuClose(); navigate('/admin'); }}>
+                        <AdminPanelSettings sx={{ mr: 1 }} />
+                        Admin Panel
+                      </MenuItem>
+                    )}
                     <MenuItem onClick={handleLogout}>
                       <Logout sx={{ mr: 1 }} />
                       Logout
@@ -296,18 +329,27 @@ const Navbar = () => {
           <List>
             <ListItem disablePadding>
               <ListItemButton onClick={() => handleMobileNavigation('/')}>
+                <ListItemIcon>
+                  <Home />
+                </ListItemIcon>
                 <ListItemText primary="Home" />
               </ListItemButton>
             </ListItem>
             
             <ListItem disablePadding>
-              <ListItemButton onClick={() => handleMobileNavigation('/about')}>
-                <ListItemText primary="About" />
+              <ListItemButton onClick={() => handleMobileNavigation('/shop')}>
+                <ListItemIcon>
+                  <Store />
+                </ListItemIcon>
+                <ListItemText primary="Shop" />
               </ListItemButton>
             </ListItem>
             
             <ListItem disablePadding>
               <ListItemButton onClick={() => handleMobileNavigation('/contact')}>
+                <ListItemIcon>
+                  <ContactMail />
+                </ListItemIcon>
                 <ListItemText primary="Contact" />
               </ListItemButton>
             </ListItem>

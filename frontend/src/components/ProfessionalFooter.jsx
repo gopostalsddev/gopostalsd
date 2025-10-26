@@ -34,7 +34,7 @@ const ProfessionalFooter = () => {
     <Box
       component="footer"
       sx={{
-        backgroundColor: 'primary.main',
+        background: 'linear-gradient(45deg, rgb(0, 0, 0), rgb(7, 59, 102))',
         color: 'white',
         py: 4,
         mt: 'auto'
@@ -65,7 +65,7 @@ const ProfessionalFooter = () => {
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => handleNavigation('/')}
+                onClick={() => handleNavigation('/shop')}
                 sx={{ 
                   color: 'white', 
                   textAlign: 'left',
@@ -80,7 +80,7 @@ const ProfessionalFooter = () => {
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => handleNavigation('/about')}
+                onClick={() => handleNavigation('/contact')}
                 sx={{ 
                   color: 'white', 
                   textAlign: 'left',
@@ -90,7 +90,7 @@ const ProfessionalFooter = () => {
                   }
                 }}
               >
-                About Us
+                Contact
               </Link>
               <Link
                 component="button"
