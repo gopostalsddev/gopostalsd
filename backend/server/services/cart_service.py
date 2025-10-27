@@ -6,15 +6,22 @@ adding items, updating quantities, calculating totals, and managing shipping.
 """
 
 import logging
+import os
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from server.config import database as db
-from server.models.pricing import Cart, CartItem, ShippingOption, StoreCode
+from server.models.pricing import Cart, CartItem, ShippingOption, StoreCode, ProductOption
 from server.models.order import Order, OrderItem, Payment, OrderStatus, PaymentStatus
+from server.models.print_product import PrintProduct
 from server.services.pricing_service import PricingService
 from server.thirdparty.sinalite import SinaliteAdapter
 
 logger = logging.getLogger(__name__)
+
+# Module load logging
+IS_DEVELOPMENT = os.getenv('ENVIRONMENT', 'development') in ['development', 'testing']
+if IS_DEVELOPMENT:
+    print("[CART_SERVICE] Module loaded")
 
 
 class CartService:
@@ -88,32 +95,56 @@ class CartService:
             Dict containing operation result
         """
         try:
+            logger.info(f"Adding product {product_id} to cart for session {session_id}")
+            
             # Get or create cart
             cart = self.get_or_create_cart(session_id, user_id)
             
-            # Get product details from Sinalite
-            product_details = self.sinalite_adapter.get_product_details(product_id)
-            if not product_details:
+            # Get product details from our database
+            if IS_DEVELOPMENT:
+                print(f"[CART_SERVICE] Looking up product {product_id} in database")
+            
+            product = PrintProduct.query.filter_by(vendor_product_id=str(product_id)).first()
+            
+            if not product:
+                logger.error(f"Product {product_id} not found in database (vendor_product_id search)")
+                if IS_DEVELOPMENT:
+                    print(f"[CART_SERVICE] Product not found. Trying to list all products to debug...")
+                    all_products = PrintProduct.query.limit(5).all()
+                    for p in all_products:
+                        print(f"  - Product: {p.id}, vendor_product_id: {p.vendor_product_id}, name: {p.name}")
                 return {
                     'success': False,
                     'error': 'Product not found'
                 }
             
+            if IS_DEVELOPMENT:
+                print(f"[CART_SERVICE] Found product: {product.name}, SKU: {product.sku}")
+            
+            product_name = product.name
+            product_sku = product.sku
+            
+            # Verify product exists in Sinalite (for pricing)
+            # We don't actually need the product details from Sinalite, just verify it exists
+            # The pricing service will handle the Sinalite API calls
+            
             # Calculate pricing
-            pricing_result = self.pricing_service.calculate_price(
+            pricing_data = self.pricing_service.calculate_product_price(
                 product_id=product_id,
-                selected_options=selected_options,
+                options=selected_options,  # Already a list of option IDs
                 store_code=cart.store_code
             )
             
-            if not pricing_result['success']:
+            if not pricing_data:
+                error_msg = "Pricing calculation failed: No price data returned"
+                logger.error(f"Pricing calculation failed: {error_msg}")
                 return {
                     'success': False,
-                    'error': f"Pricing calculation failed: {pricing_result['error']}"
+                    'error': error_msg
                 }
             
-            pricing_data = pricing_result['data']
-            option_key = pricing_data['option_key']
+            # Generate option key from selected options
+            option_key = "-".join(map(str, sorted(selected_options)))
             
             # Check if item already exists in cart
             existing_item = CartItem.query.filter_by(
@@ -133,14 +164,14 @@ class CartService:
                 cart_item = CartItem(
                     cart_id=cart.id,
                     product_id=product_id,
-                    product_name=product_details['name'],
-                    product_sku=product_details.get('sku'),
+                    product_name=product_name,
+                    product_sku=product_sku,
                     quantity=quantity,
                     selected_options=selected_options,
                     option_key=option_key,
-                    unit_price=pricing_data['price'],
-                    total_price=pricing_data['price'] * quantity,
-                    package_info=pricing_data.get('package_info')
+                    unit_price=pricing_data.get('price', 0),
+                    total_price=pricing_data.get('price', 0) * quantity,
+                    package_info=pricing_data.get('packageInfo', {})
                 )
                 db.session.add(cart_item)
                 logger.info(f"Added new item to cart {cart.id}")
@@ -155,7 +186,7 @@ class CartService:
             }
             
         except Exception as e:
-            logger.error(f"Error adding item to cart: {str(e)}")
+            logger.error(f"Exception adding item to cart: {type(e).__name__}: {str(e)}", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
@@ -298,11 +329,17 @@ class CartService:
                     }
                 }
             
-            # Calculate totals
-            subtotal = sum(item.total_price for item in cart.items)
-            shipping_cost = self._calculate_shipping_cost(cart)
+            # Calculate totals - convert all to float to avoid Decimal/float mixing
+            subtotal = sum(float(item.total_price) for item in cart.items)
+            # Use constant $5 shipping fee for now
+            shipping_cost = 5.00
             tax_amount = self._calculate_tax(subtotal, cart.store_code)
             total = subtotal + shipping_cost + tax_amount
+            
+            if IS_DEVELOPMENT:
+                print(f"[CART_SERVICE] Cart totals: subtotal={subtotal}, shipping={shipping_cost}, tax={tax_amount}, total={total}")
+                for item in cart.items:
+                    print(f"[CART_SERVICE] Item: {item.product_name}, unit_price={item.unit_price}, total_price={item.total_price}, qty={item.quantity}")
             
             cart_data = cart.to_dict()
             cart_data.update({
@@ -368,6 +405,9 @@ class CartService:
         """
         Calculate shipping options for cart.
         
+        NOTE: Currently using constant $5 shipping fee.
+        This method is disabled to avoid Sinalite API issues.
+        
         Args:
             session_id: Session identifier
             destination_address: Destination address information
@@ -375,77 +415,25 @@ class CartService:
         Returns:
             Dict containing shipping options
         """
-        try:
-            cart = Cart.query.filter_by(session_id=session_id).first()
-            if not cart:
-                return {
-                    'success': False,
-                    'error': 'Cart not found'
-                }
-            
-            if not cart.items:
-                return {
-                    'success': False,
-                    'error': 'Cart is empty'
-                }
-            
-            # Get shipping options from Sinalite
-            shipping_result = self.sinalite_adapter.calculate_shipping(
-                cart_items=cart.items,
-                destination_address=destination_address,
-                store_code=cart.store_code
-            )
-            
-            if not shipping_result['success']:
-                return {
-                    'success': False,
-                    'error': f"Shipping calculation failed: {shipping_result['error']}"
-                }
-            
-            # Clear existing shipping options
-            ShippingOption.query.filter_by(cart_id=cart.id).delete()
-            
-            # Add new shipping options
-            shipping_options = []
-            for option_data in shipping_result['data']:
-                shipping_option = ShippingOption(
-                    cart_id=cart.id,
-                    carrier_name=option_data['carrier'],
-                    method_name=option_data['method'],
-                    price=option_data['price'],
-                    shipping_days=option_data['days'],
-                    destination_state=destination_address.get('state'),
-                    destination_zip=destination_address.get('zip_code'),
-                    destination_country=destination_address.get('country')
-                )
-                db.session.add(shipping_option)
-                shipping_options.append(shipping_option.to_dict())
-            
-            db.session.commit()
-            
-            return {
-                'success': True,
-                'shipping_options': shipping_options
-            }
-            
-        except Exception as e:
-            logger.error(f"Error calculating shipping: {str(e)}")
-            db.session.rollback()
-            return {
-                'success': False,
-                'error': f'Failed to calculate shipping: {str(e)}'
-            }
+        # Return constant shipping option for now
+        return {
+            'success': True,
+            'shipping_options': [{
+                'id': 1,
+                'carrier_name': 'Standard',
+                'method_name': 'Standard Shipping',
+                'price': 5.00,
+                'shipping_days': 7,
+                'destination_state': destination_address.get('state', ''),
+                'destination_zip': destination_address.get('zip', '') or destination_address.get('zip_code', ''),
+                'destination_country': destination_address.get('country', 'CA')
+            }]
+        }
     
     def _calculate_shipping_cost(self, cart: Cart) -> float:
         """Calculate shipping cost for cart."""
-        try:
-            # Get selected shipping option
-            shipping_option = ShippingOption.query.filter_by(cart_id=cart.id).first()
-            if shipping_option:
-                return float(shipping_option.price)
-            return 0.0
-        except Exception:
-            return 0.0
+        # Using constant $5 shipping fee for now
+        return 5.00
     
     def _calculate_tax(self, subtotal: float, store_code: int) -> float:
         """Calculate tax amount."""

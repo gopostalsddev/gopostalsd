@@ -57,11 +57,18 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
 
   const initializeSquarePayments = async () => {
     try {
+      // Check if Square SDK is loaded
+      if (!window.Square) {
+        throw new Error('Square SDK not loaded');
+      }
+      
       // Initialize Square payments
-      paymentsRef.current = window.Square.payments(
-        process.env.REACT_APP_SQUARE_APPLICATION_ID || 'sandbox-sq0idb-your-app-id',
-        process.env.REACT_APP_SQUARE_LOCATION_ID || 'your-location-id'
-      );
+      // For now, using placeholder credentials
+      // TODO: Add actual Square credentials to .env file
+      const applicationId = 'sandbox-sq0idb-your-app-id'; // Placeholder
+      const locationId = 'your-location-id'; // Placeholder
+      
+      paymentsRef.current = window.Square.payments(applicationId, locationId);
 
       // Create card payment method
       cardRef.current = await paymentsRef.current.card();
@@ -95,6 +102,10 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
           sourceId: result.token,
           paymentMethod: 'card'
         });
+      } else if (result.status === 'INVALID_REQUEST_ERROR') {
+        // Handle invalid request - likely using placeholder credentials
+        console.warn('Square credentials not configured. Payment cannot be processed.');
+        throw new Error('Payment service not configured. Please contact support.');
       } else {
         throw new Error(result.errors?.[0]?.detail || 'Payment failed');
       }

@@ -5,12 +5,90 @@ This module provides authentication middleware for protecting routes and managin
 """
 
 import logging
+import os
 from functools import wraps
 from flask import request, g, current_app
 from server.models.auth import User, UserSession
 from server.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
+
+# Module load logging
+IS_DEVELOPMENT = os.getenv('ENVIRONMENT', 'development') in ['development', 'testing']
+if IS_DEVELOPMENT:
+    print("[AUTH_MIDDLEWARE] Module loaded")
+
+
+def require_cart_auth(f):
+    """
+    Decorator to allow authenticated users or fall back to cart session.
+    For cart operations, we don't need full authentication - just verify user exists if session token provided.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if IS_DEVELOPMENT:
+            print(f"[CART AUTH] Decorator called for {f.__name__}")
+            print(f"[CART AUTH] Request method: {request.method}")
+            print(f"[CART AUTH] Request path: {request.path}")
+        
+        logger.debug(f"Cart auth check for {request.method} {request.path}")
+        
+        try:
+            # Get session token from Authorization header or query parameter
+            session_token = None
+            
+            # Check Authorization header (Bearer token)
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                session_token = auth_header[7:]  # Remove 'Bearer ' prefix
+            
+            # Check query parameter as fallback (try session_token first, then session_id)
+            if not session_token:
+                session_token = request.args.get('session_token')
+            
+            if not session_token:
+                session_token = request.args.get('session_id')
+            
+            if IS_DEVELOPMENT:
+                print(f"[CART AUTH] Session token found: {session_token is not None}")
+            
+            # For cart operations, if we have a session token, try to verify it
+            # If it fails, we'll just proceed without user context (guest cart)
+            if session_token:
+                try:
+                    from flask import current_app
+                    auth_service = current_app.extensions.get('auth_service')
+                    if auth_service:
+                        user = auth_service.get_user_by_session(session_token)
+                        if user:
+                            if IS_DEVELOPMENT:
+                                print(f"[CART AUTH] User authenticated: {user.email}")
+                            logger.debug(f"Authenticated user for cart: {user.email}")
+                            # Set user context for authenticated users
+                            g.current_user = user
+                            request.user_id = user.id
+                        else:
+                            if IS_DEVELOPMENT:
+                                print(f"[CART AUTH] No user found for session")
+                            logger.debug("No user found for cart session token")
+                except Exception as e:
+                    if IS_DEVELOPMENT:
+                        print(f"[CART AUTH] Exception in auth: {str(e)}")
+                    logger.debug(f"Could not verify cart session: {str(e)}")
+                    # Continue without user context
+            
+            if IS_DEVELOPMENT:
+                print(f"[CART AUTH] Proceeding to route handler...")
+            
+            return f(*args, **kwargs)
+        except Exception as e:
+            if IS_DEVELOPMENT:
+                print(f"[CART AUTH] FATAL ERROR in decorator: {str(e)}")
+                import traceback
+                traceback.print_exc()
+            raise
+    
+    return decorated_function
 
 
 def require_auth(f):
@@ -33,9 +111,12 @@ def require_auth(f):
         if auth_header and auth_header.startswith('Bearer '):
             session_token = auth_header[7:]  # Remove 'Bearer ' prefix
         
-        # Check query parameter as fallback
+        # Check query parameter as fallback (try session_token first, then session_id)
         if not session_token:
             session_token = request.args.get('session_token')
+        
+        if not session_token:
+            session_token = request.args.get('session_id')
         
         if not session_token:
             return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401

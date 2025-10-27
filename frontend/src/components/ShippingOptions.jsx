@@ -33,13 +33,12 @@ export function ShippingOptions() {
   const [shippingError, setShippingError] = useState(null);
 
   const handleCalculateShipping = async () => {
-    // This would typically get the address from a form or user profile
-    // For now, we'll use a default address
+    // Use default address for now (will be replaced with actual destination from cart)
     const defaultAddress = {
-      street: '123 Main St',
-      city: 'San Diego',
-      state: 'CA',
-      zip_code: '92101',
+      street: '',
+      city: '',
+      state: '',
+      zip_code: '',
       country: 'US'
     };
 

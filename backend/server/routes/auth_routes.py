@@ -13,6 +13,15 @@ from server.controllers.auth_controller import AuthController
 api = Namespace('auth', description='Authentication operations')
 
 # Define models for API documentation
+address_model = api.model('Address', {
+    'street': fields.String(description='Street address'),
+    'city': fields.String(description='City'),
+    'state': fields.String(description='State/Province'),
+    'zip_code': fields.String(description='ZIP/Postal code'),
+    'country': fields.String(description='Country'),
+    'apt': fields.String(description='Apartment/Suite number')
+})
+
 user_model = api.model('User', {
     'id': fields.Integer(description='User ID'),
     'email': fields.String(description='Email address'),
@@ -22,16 +31,10 @@ user_model = api.model('User', {
     'email_verified': fields.Boolean(description='Email verified status'),
     'status': fields.String(description='User status'),
     'created_at': fields.DateTime(description='Created timestamp'),
-    'last_login': fields.DateTime(description='Last login timestamp')
-})
-
-address_model = api.model('Address', {
-    'street': fields.String(description='Street address', required=True),
-    'city': fields.String(description='City', required=True),
-    'state': fields.String(description='State/Province', required=True),
-    'zip_code': fields.String(description='ZIP/Postal code', required=True),
-    'country': fields.String(description='Country', required=True),
-    'apt': fields.String(description='Apartment/Suite number')
+    'last_login': fields.DateTime(description='Last login timestamp'),
+    'address': fields.Nested(address_model, description='Shipping address', allow_null=True),
+    'shipping_address': fields.Nested(address_model, description='Shipping address', allow_null=True),
+    'billing_address': fields.Nested(address_model, description='Billing address', allow_null=True)
 })
 
 registration_model = api.model('RegistrationRequest', {

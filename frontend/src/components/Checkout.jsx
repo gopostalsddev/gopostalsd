@@ -18,6 +18,7 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Checkbox,
   Card,
   CardContent
 } from '@mui/material';
@@ -29,10 +30,15 @@ import {
 import { useCartOperations, useCartFormatting } from '../hooks/useCart';
 import { SquarePaymentForm } from './SquarePaymentForm';
 import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const steps = ['Cart Review', 'Shipping & Billing', 'Payment', 'Confirmation'];
 
 export function Checkout() {
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  
   const {
     cart,
     loading,
@@ -70,17 +76,76 @@ export function Checkout() {
     },
     useSameAddress: true
   });
+
+  // Populate addresses from user data when component mounts
+  useEffect(() => {
+    if (user) {
+      // Get shipping address (default to shipping_address if available, fallback to address)
+      const userShippingAddress = user.shipping_address || user.address || {};
+      
+      // Get billing address
+      const userBillingAddress = user.billing_address || {};
+      
+      setCheckoutData(prev => ({
+        ...prev,
+        shippingAddress: {
+          street: userShippingAddress.street || '',
+          city: userShippingAddress.city || '',
+          state: userShippingAddress.state || '',
+          zip_code: userShippingAddress.zip_code || '',
+          country: userShippingAddress.country || 'US',
+          apt: userShippingAddress.apt || ''
+        },
+        billingAddress: userBillingAddress.street ? {
+          street: userBillingAddress.street || '',
+          city: userBillingAddress.city || '',
+          state: userBillingAddress.state || '',
+          zip_code: userBillingAddress.zip_code || '',
+          country: userBillingAddress.country || 'US',
+          apt: userBillingAddress.apt || ''
+        } : {
+          street: userShippingAddress.street || '',
+          city: userShippingAddress.city || '',
+          state: userShippingAddress.state || '',
+          zip_code: userShippingAddress.zip_code || '',
+          country: userShippingAddress.country || 'US',
+          apt: userShippingAddress.apt || ''
+        },
+        customerInfo: {
+          email: user.email || '',
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          phone: user.phone || ''
+        }
+      }));
+    }
+  }, [user]);
   const [orderResult, setOrderResult] = useState(null);
   const [processingOrder, setProcessingOrder] = useState(false);
 
   const cartStats = getCartStats();
-
+  
   useEffect(() => {
-    if (cartStats.isEmpty) {
-      // Redirect to cart if empty
-      window.location.href = '/cart';
+    // Wait for authentication
+    if (!isAuthenticated) {
+      return;
     }
-  }, [cartStats.isEmpty]);
+    
+    // Wait for cart to finish loading (check if cart has an ID or if items array is defined)
+    if (loading) {
+      return;
+    }
+    
+    // If cart has no ID yet and is still empty, it means it hasn't loaded yet
+    if (!cart.id && cartStats.isEmpty) {
+      return;
+    }
+    
+    // Only redirect if cart is truly empty AND has been loaded (has an ID)
+    if (cart.id && cartStats.isEmpty) {
+      window.location = '/cart';
+    }
+  }, [cartStats.isEmpty, loading, isAuthenticated, cartStats.itemCount, cart.items, cart.id]);
 
   const handleNext = () => {
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -105,7 +170,7 @@ export function Checkout() {
     setCheckoutData(prev => ({
       ...prev,
       useSameAddress,
-      billingAddress: useSameAddress ? prev.shippingAddress : prev.billingAddress
+      billingAddress: useSameAddress ? { ...prev.shippingAddress } : prev.billingAddress
     }));
   };
 
@@ -195,6 +260,20 @@ export function Checkout() {
     );
   }
 
+  // Check authentication - show loading while redirecting
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ ml: 2 }}>
+            Redirecting to login...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
+
   if (error) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -252,7 +331,7 @@ export function Checkout() {
 
 // Step Components
 function CartReviewStep({ cart }) {
-  const { formatCartTotals } = useCartFormatting();
+  const { formatCartTotals, formatPrice } = useCartFormatting();
   const totals = formatCartTotals();
 
   return (
@@ -279,12 +358,27 @@ function CartReviewStep({ cart }) {
 
       <Divider sx={{ my: 2 }} />
 
-      <Box display="flex" justifyContent="space-between">
-        <Typography variant="h6">Total</Typography>
-        <Typography variant="h6" color="primary">
-          {totals.total}
-        </Typography>
-      </Box>
+      <Stack spacing={1}>
+        <Box display="flex" justifyContent="space-between">
+          <Typography variant="body1">Subtotal</Typography>
+          <Typography variant="body1">{totals.subtotal}</Typography>
+        </Box>
+        <Box display="flex" justifyContent="space-between">
+          <Typography variant="body1">Shipping</Typography>
+          <Typography variant="body1">{totals.shipping}</Typography>
+        </Box>
+        <Box display="flex" justifyContent="space-between">
+          <Typography variant="body1">Tax</Typography>
+          <Typography variant="body1">{totals.tax}</Typography>
+        </Box>
+        <Divider sx={{ my: 1 }} />
+        <Box display="flex" justifyContent="space-between">
+          <Typography variant="h6">Total</Typography>
+          <Typography variant="h6" color="primary">
+            {totals.total}
+          </Typography>
+        </Box>
+      </Stack>
     </Box>
   );
 }
@@ -349,6 +443,13 @@ function ShippingBillingStep({ checkoutData, onInputChange, onSameAddressChange,
             fullWidth
             sx={{ mb: 2 }}
           />
+          <TextField
+            label="Apartment/Suite (Optional)"
+            value={checkoutData.shippingAddress.apt}
+            onChange={(e) => onInputChange('shippingAddress', 'apt', e.target.value)}
+            fullWidth
+            sx={{ mb: 2 }}
+          />
           <Stack direction="row" spacing={2}>
             <TextField
               label="City"
@@ -378,13 +479,58 @@ function ShippingBillingStep({ checkoutData, onInputChange, onSameAddressChange,
         <Box>
           <FormControlLabel
             control={
-              <Radio
+              <Checkbox
                 checked={checkoutData.useSameAddress}
                 onChange={onSameAddressChange}
               />
             }
             label="Use same address for billing"
           />
+          {!checkoutData.useSameAddress && (
+            <>
+              <Typography variant="subtitle1" gutterBottom sx={{ mt: 3 }}>
+                Billing Address
+              </Typography>
+              <TextField
+                label="Street Address"
+                value={checkoutData.billingAddress.street}
+                onChange={(e) => onInputChange('billingAddress', 'street', e.target.value)}
+                required={!checkoutData.useSameAddress}
+                fullWidth
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                label="Apartment/Suite (Optional)"
+                value={checkoutData.billingAddress.apt}
+                onChange={(e) => onInputChange('billingAddress', 'apt', e.target.value)}
+                fullWidth
+                sx={{ mb: 2 }}
+              />
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="City"
+                  value={checkoutData.billingAddress.city}
+                  onChange={(e) => onInputChange('billingAddress', 'city', e.target.value)}
+                  required={!checkoutData.useSameAddress}
+                  fullWidth
+                />
+                <TextField
+                  label="State"
+                  value={checkoutData.billingAddress.state}
+                  onChange={(e) => onInputChange('billingAddress', 'state', e.target.value)}
+                  required={!checkoutData.useSameAddress}
+                  fullWidth
+                />
+                <TextField
+                  label="ZIP Code"
+                  value={checkoutData.billingAddress.zip_code}
+                  onChange={(e) => onInputChange('billingAddress', 'zip_code', e.target.value)}
+                  required={!checkoutData.useSameAddress}
+                  fullWidth
+                />
+              </Stack>
+            </>
+          )}
         </Box>
       </Stack>
     </Box>

@@ -30,6 +30,13 @@ def configure_logging(environment):
             'handlers': ['console', 'file'],
             'level': 'DEBUG' if environment in ['development', 'testing'] else 'INFO',
         },
+        'loggers': {
+            'dev': {
+                'handlers': ['console'],
+                'level': 'DEBUG' if environment in ['development', 'testing'] else 'INFO',
+                'propagate': False,
+            }
+        }
     }
 
     # Apply logging configuration

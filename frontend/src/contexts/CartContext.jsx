@@ -95,9 +95,14 @@ export function CartProvider({ children }) {
     try {
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: true });
       const sessionId = getSessionId();
+      
       const response = await api.get(`/cart/?session_id=${sessionId}`);
       
-      if (response.data) {
+      // Backend returns { success: true, cart: {...} }
+      if (response.data && response.data.cart) {
+        dispatch({ type: CART_ACTIONS.SET_CART, payload: response.data.cart });
+      } else if (response.data) {
+        // Fallback if response structure is different
         dispatch({ type: CART_ACTIONS.SET_CART, payload: response.data });
       }
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
@@ -110,7 +115,14 @@ export function CartProvider({ children }) {
 
   // Load cart on mount and when authentication changes
   useEffect(() => {
-    loadCart();
+    // Small delay to ensure auth is fully initialized
+    const timer = setTimeout(() => {
+      if (isAuthenticated) {
+        loadCart();
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
   // Add item to cart
@@ -131,8 +143,9 @@ export function CartProvider({ children }) {
         params: { session_id: sessionId }
       });
       
+      // Backend returns the cart object directly (cart_service returns result['cart'])
       if (response.data) {
-        dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: response.data });
+        dispatch({ type: CART_ACTIONS.SET_CART, payload: response.data });
         dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
         return { success: true };
       }
@@ -160,11 +173,14 @@ export function CartProvider({ children }) {
         params: { session_id: sessionId }
       });
       
-      if (response.data) {
-        dispatch({ type: CART_ACTIONS.UPDATE_QUANTITY, payload: response.data });
-        dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
-        return { success: true };
+      // Backend returns the cart object directly
+      if (response.data && response.data.cart) {
+        dispatch({ type: CART_ACTIONS.SET_CART, payload: response.data.cart });
+      } else if (response.data) {
+        dispatch({ type: CART_ACTIONS.SET_CART, payload: response.data });
       }
+      dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
+      return { success: true };
     } catch (error) {
       console.error('Error updating quantity:', error);
       dispatch({ type: CART_ACTIONS.SET_ERROR, payload: 'Failed to update quantity' });

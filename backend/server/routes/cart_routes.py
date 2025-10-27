@@ -11,7 +11,27 @@ from server.services.cart_service import CartService
 from server.services.pricing_service import PricingService
 from server.thirdparty.sinalite import SinaliteAdapter
 from server.factories.main_factory import MainFactory
-from server.middleware.auth_middleware import require_auth, get_user_id
+from server.middleware.auth_middleware import require_auth, require_cart_auth, get_user_id
+import os
+import logging
+
+# Check if we're in development mode
+IS_DEVELOPMENT = os.getenv('ENVIRONMENT', 'development') in ['development', 'testing']
+
+logger = logging.getLogger(__name__)
+
+def log_api_request(method, path, data=None, headers=None):
+    if IS_DEVELOPMENT:
+        print(f"🌐 API Request: {method} {path}")
+        if data:
+            print(f"   Data: {data}")
+
+def log_api_response(path, status_code, data=None):
+    if IS_DEVELOPMENT:
+        emoji = "✅" if 200 <= status_code < 300 else "❌" if status_code >= 400 else "⚠️"
+        print(f"{emoji} API Response: {status_code} {path}")
+        if data:
+            print(f"   Data: {data}")
 
 # Create namespace for cart operations
 api = Namespace('cart', description='Cart operations')
@@ -107,25 +127,35 @@ class CartResource(Resource):
 class AddToCartResource(Resource):
     """Resource for adding items to cart."""
     
-    @require_auth
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
     @api.doc('add_to_cart')
-    @api.expect(add_to_cart_model)
-    @api.marshal_with(cart_model)
+    # @api.expect(add_to_cart_model)  # Disabled - causing silent 400 errors
+    # @api.marshal_with(cart_model)   # Disabled - causing silent 400 errors
+    @require_cart_auth
     def post(self):
         """Add item to cart."""
         data = request.get_json()
+        session_id = request.args.get('session_id', 'default_session')
+        user_id = getattr(request, 'user_id', None)  # Get from decorator, not query params
+        
+        logger.info(f"Add to cart request - Session: {session_id}, User: {user_id}")
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            error = {'error': 'Request body is required'}
+            logger.warning(f"Add to cart failed: No request body")
+            return error, 400
         
         # Validate required fields
         required_fields = ['product_id', 'selected_options']
         for field in required_fields:
             if field not in data:
-                return {'error': f'{field} is required'}, 400
+                error = {'error': f'{field} is required'}
+                logger.warning(f"Add to cart failed: Missing field '{field}'")
+                return error, 400
         
-        session_id = request.args.get('session_id', 'default_session')
-        user_id = request.args.get('user_id', type=int)
+        logger.info(f"Adding product {data['product_id']} to cart with options: {data['selected_options']}")
         
         cart_service = get_cart_service()
         result = cart_service.add_item_to_cart(
@@ -137,9 +167,12 @@ class AddToCartResource(Resource):
         )
         
         if result['success']:
+            logger.info(f"Successfully added item to cart")
             return result['cart'], 201
         else:
-            return {'error': result['error']}, 400
+            error = {'error': result['error']}
+            logger.error(f"Failed to add item to cart: {result['error']}")
+            return error, 400
 
 @api.route('/items/<int:cart_item_id>/quantity')
 @api.doc(security='Bearer')
