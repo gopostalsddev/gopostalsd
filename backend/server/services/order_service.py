@@ -64,6 +64,12 @@ class OrderService:
                     'error': 'Cart is empty'
                 }
             
+            # Ensure we associate the order with the authenticated user if available
+            if user_id is None and cart.user_id:
+                user_id = cart.user_id
+            elif user_id and not cart.user_id:
+                cart.user_id = user_id
+
             # Generate order number
             order_number = self._generate_order_number()
             

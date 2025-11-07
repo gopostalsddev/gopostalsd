@@ -10,7 +10,7 @@ from flask_restx import Namespace, Resource, fields
 from server.services.order_service import OrderService
 from server.services.payment_service import PaymentService
 from server.services.email_service import EmailService
-from server.middleware.auth_middleware import require_auth, require_role
+from server.middleware.auth_middleware import require_auth, require_role, optional_auth, get_user_id
 from server.factories.main_factory import MainFactory
 
 # Create namespace for order operations
@@ -112,6 +112,7 @@ class OrderResource(Resource):
     @api.doc('create_order')
     @api.expect(create_order_model)
     @api.marshal_with(order_model)
+    @optional_auth
     def post(self):
         """Create order from cart."""
         data = request.get_json()
@@ -136,7 +137,9 @@ class OrderResource(Resource):
                 return {'error': f'shipping_address.{field} is required'}, 400
         
         session_id = request.args.get('session_id', 'default_session')
-        user_id = request.args.get('user_id', type=int)
+        user_id = get_user_id()
+        if not user_id:
+            user_id = request.args.get('user_id', type=int)
         
         order_service = get_order_service()
         result = order_service.create_order_from_cart(
