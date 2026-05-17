@@ -1,149 +1,121 @@
-import React, { useState, useEffect } from "react";
-import { Box } from "@mui/material";
-
-// Import global components
-import Navbar from "../../components/NavBar";
-import Footer from "../../components/Footer";
-import SpinnerOverlay from "../../components/SpinnerOverlay";
-
-// Import local components
-import ProductCategoryHeader from "./components/ProductCategoryHeader";
-import ProductCategoryTable from "./components/ProductCategoryTable";
-import EditCategoryModal from "./components/EditCategoryModal";
-import ProductClassificationView from "./components/ProductClassificationView";
-
+import React from "react";
 import {
-  fetchPrintProductCategories,
-  updatePrintProductCategoryStatus,
-  updatePrintProductCategoryDetails,
-  syncPrintProductCategories,
-} from "../../services/product_service";
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Button,
+  Stack,
+  Chip,
+} from "@mui/material";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import LocalMallOutlinedIcon from "@mui/icons-material/LocalMallOutlined";
+import SettingsApplicationsOutlinedIcon from "@mui/icons-material/SettingsApplicationsOutlined";
+import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
+import { useNavigate } from "react-router-dom";
 
 const AdminPage = () => {
-  const [productCategories, setProductCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [filterMode, setFilterMode] = useState("All");
-  const [startingLetter, setStartingLetter] = useState("");
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    loadProductCategories();
-  }, []);
-
-  const loadProductCategories = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchPrintProductCategories();
-      setProductCategories(data);
-    } catch (error) {
-      console.error("Failed to load product categories:", error);
-      alert("Failed to load product categories!");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggle = async (categoryId, currentStatus) => {
-    // Check if all products are classified before enabling
-    if (!currentStatus) {
-      const category = productCategories.find(cat => cat.id === categoryId);
-      if (category && !category.product_classification_status?.all_classified) {
-        alert("Please complete product classification before enabling this category.");
-        return;
-      }
-    }
-
-    const updatedStatus = !currentStatus;
-    const success = await updatePrintProductCategoryStatus(categoryId, updatedStatus);
-    if (success) {
-      setProductCategories(
-        productCategories.map((cat) =>
-          cat.id === categoryId ? { ...cat, enabled: updatedStatus } : cat
-        )
-      );
-    }
-  };
-
-  const handleSync = async () => {
-    setLoading(true);
-    await syncPrintProductCategories();
-    await loadProductCategories();
-    setLoading(false);
-  };
-
-  const handleCategoryAction = (category) => {
-    setSelectedCategory(category);
-  };
-
-  const handleBackToCategories = () => {
-    setSelectedCategory(null);
-  };
-
-  const handleCategoryUpdate = async () => {
-    // Simply reload categories when returning from classification view
-    // No need to update selectedCategory since we're navigating away from it
-    await loadProductCategories();
-  };
-
-  const filteredCategories = productCategories.filter((category) => {
-    if (filterMode === "Enabled" && !category.enabled) return false;
-    if (filterMode === "Disabled" && category.enabled) return false;
-    if (startingLetter && !category.name.toLowerCase().startsWith(startingLetter.toLowerCase())) {
-      return false;
-    }
-    return true;
-  });
-
-  const totalCategories = productCategories.length;
-  const enabledCategories = productCategories.filter((category) => category.enabled).length;
+  const managementTiles = [
+    {
+      title: "Product Management",
+      description:
+        "Curate the product catalog, manage categories, and ensure every listing is classification-ready before it reaches the storefront.",
+      icon: <Inventory2OutlinedIcon sx={{ fontSize: 40 }} color="primary" />,
+      actionLabel: "Manage Products",
+      onClick: () => navigate("/admin/products"),
+      highlights: ["Category curation", "Pricing alignment", "Vendor sync"],
+    },
+    {
+      title: "Order Management",
+      description:
+        "Monitor new orders, oversee fulfillment, and maintain best-in-class communication with your customers throughout the delivery cycle.",
+      icon: <LocalMallOutlinedIcon sx={{ fontSize: 40 }} color="secondary" />,
+      actionLabel: "Go to Orders",
+      onClick: () => navigate("/admin/orders"),
+      highlights: ["Fulfillment insights", "Customer updates", "Exception tracking"],
+    },
+  ];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", position: "relative" }}>
-      <Navbar />
-      <SpinnerOverlay loading={loading} />
-      <Box sx={{ flex: 1, mt: "64px", p: 4 }}>
-        {selectedCategory ? (
-          <ProductClassificationView
-            category={selectedCategory}
-            onBack={handleBackToCategories}
-            onCategoryUpdate={handleCategoryUpdate}
-          />
-        ) : (
-          
-          <>
-            <ProductCategoryHeader
-              loading={loading}
-              handleSync={handleSync}
-              totalCategories={totalCategories}
-              enabledCategories={enabledCategories}
-              filterMode={filterMode}
-              setFilterMode={setFilterMode}
-              startingLetter={startingLetter}
-              setStartingLetter={setStartingLetter}
-            />
-            <ProductCategoryTable
-              productCategories={filteredCategories}
-              handleToggle={handleToggle}
-              onEdit={handleCategoryAction}
-              onEditCategory={(category) => setEditingCategory(category)}
-            />
-            <EditCategoryModal
-              open={Boolean(editingCategory)}
-              category={editingCategory}
-              onClose={() => setEditingCategory(null)}
-              onSave={async (updatedCategory) => {
-                setLoading(true);
-                const success = await updatePrintProductCategoryDetails(updatedCategory);
-                if (success) await loadProductCategories();
-                setEditingCategory(null);
-                setLoading(false);
-              }}
-            />
-          </>
-        )}
+    <Box
+      sx={{
+        flex: 1,
+        backgroundColor: (theme) => theme.palette.grey[50],
+        py: { xs: 4, md: 6 },
+      }}
+    >
+      <Box
+        sx={{
+          maxWidth: "1300px",
+          mx: "auto",
+          px: { xs: 3, md: 6 },
+        }}
+      >
+        <Box sx={{ textAlign: "center", mb: 6 }}>
+        <Typography variant="h3" fontWeight={700} gutterBottom>
+          Welcome to the Go Postal SD Admin Console
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 720, mx: "auto" }}>
+          Select a management workspace to get started. Each module is optimized for deep operational work with the
+          tools and insights your team relies on every day.
+          </Typography>
+        </Box>
+
+        <Grid
+          container
+          spacing={4}
+          sx={{ mb: 4, justifyContent: "center" }}
+        >
+          {managementTiles.map((tile) => (
+            <Grid
+              key={tile.title}
+              item
+              xs={12}
+              md={6}
+              sx={{ display: "flex", justifyContent: "center" }}
+            >
+              <Card
+                elevation={5}
+                sx={{
+                  width: "100%",
+                  maxWidth: 520,
+                  height: "100%",
+                  borderRadius: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  p: 2,
+                }}
+              >
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Stack spacing={2}>
+                    <Box>{tile.icon}</Box>
+                    <Typography variant="h5" fontWeight={700}>
+                      {tile.title}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      {tile.description}
+                    </Typography>
+                    <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
+                      {tile.highlights.map((label) => (
+                        <Chip key={label} label={label} color="primary" variant="outlined" sx={{ textTransform: "capitalize" }} />
+                      ))}
+                    </Stack>
+                  </Stack>
+                </CardContent>
+                <CardActions sx={{ justifyContent: "flex-end", px: 2, pb: 2 }}>
+                  <Button variant="contained" size="large" onClick={tile.onClick}>
+                    {tile.actionLabel}
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       </Box>
-      <Footer />
     </Box>
   );
 };

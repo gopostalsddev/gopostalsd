@@ -1,7 +1,7 @@
 
 from enum import Enum
 from server.config import database as db
-from server.models.user import User, Role, Address
+from server.models.auth import User, Role, Address
 from server.controllers.helpers import Result
 import re
 

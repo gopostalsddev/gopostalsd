@@ -233,6 +233,29 @@ class PrintProductTypesResource(Resource):
         else:
             return {"error": result.error}, 500
 
+    @api.doc(description="Create a new product type")
+    @api.expect(create_product_type_parser)
+    @api.response(201, "Product type created successfully")
+    @api.response(400, "Bad request")
+    @api.response(500, "Server error")
+    def post(self):
+        """Create a new product type"""
+        args = create_product_type_parser.parse_args()
+        
+        data = {
+            "name": args.get("name"),
+            "category_id": args.get("category_id"),
+            "description": args.get("description"),
+            "image": args.get("image")
+        }
+        
+        result = PrintProductController.create_print_product_type(data)
+
+        if result.status:
+            return result.data, 201
+        else:
+            return {"error": result.error}, 400, {"Content-Type": "application/json"}
+
 @api.route("/product-types/category/<int:category_id>")
 @api.param("category_id", "The category ID to filter product types")
 class PrintProductTypesByCategoryResource(Resource):

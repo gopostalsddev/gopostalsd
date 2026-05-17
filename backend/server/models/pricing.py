@@ -135,6 +135,15 @@ class CartItem(db.Model):
     
     def to_dict(self):
         """Convert cart item to dictionary"""
+        # Ensure selected_options is properly serialized
+        selected_options = self.selected_options
+        if selected_options is None:
+            selected_options = []
+        elif isinstance(selected_options, str):
+            # If it's stored as a string, parse it
+            import json
+            selected_options = json.loads(selected_options)
+        
         return {
             'id': self.id,
             'cart_id': self.cart_id,
@@ -142,7 +151,7 @@ class CartItem(db.Model):
             'product_name': self.product_name,
             'product_sku': self.product_sku,
             'quantity': self.quantity,
-            'selected_options': self.selected_options,
+            'selected_options': selected_options,
             'option_key': self.option_key,
             'unit_price': float(self.unit_price),
             'total_price': float(self.total_price),

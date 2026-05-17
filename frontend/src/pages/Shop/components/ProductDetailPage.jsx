@@ -54,16 +54,20 @@ import {
 } from '@mui/icons-material';
 import {
   getShippingEstimates,
-  addItemToCart,
-  getOrCreateCart,
   fetchAllProductTypes
 } from '../../../services/product_service';
+import { useCartOperations } from '../../../hooks/useCart';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useProductOptions } from '../../../hooks/useProductOptions';
 import { useProductPricing } from '../../../hooks/useProductPricing';
 import { formatPrice, calculateTotalPrice, getEstimatedShipDate } from '../../../utils/priceUtils';
 import logoImage from '../../../assets/logo.png';
 
 const ProductDetailPage = ({ product, onBack }) => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { addItemToCart } = useCartOperations();
   const [selectedOptions, setSelectedOptions] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
@@ -237,14 +241,16 @@ const ProductDetailPage = ({ product, onBack }) => {
 
   const validateFile = (file) => {
     const maxSize = 10 * 1024 * 1024; // 10MB
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    // Temporarily restrict to PDF only - uncomment image types below when ready
+    const allowedTypes = ['application/pdf'];
+    // const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']; // Enable image support later
     
     if (file.size > maxSize) {
       return `File ${file.name} is too large. Maximum size is 10MB.`;
     }
     
     if (!allowedTypes.includes(file.type)) {
-      return `File ${file.name} has an unsupported format. Please use JPG, PNG, GIF, WebP, or PDF.`;
+      return `File ${file.name} has an unsupported format. Please use PDF only.`;
     }
     
     return null;
@@ -386,6 +392,13 @@ const ProductDetailPage = ({ product, onBack }) => {
   };
 
   const handleShippingEstimate = async () => {
+    // Coming soon - show message
+    setSuccessMessage('Coming soon! Shipping calculation will be available shortly.');
+    setShowSuccessSnackbar(true);
+    return;
+
+    /*
+    // Original code commented out for future implementation
     if (!validateShippingInfo()) {
       setError('Please fill in all required shipping information');
       return;
@@ -426,9 +439,7 @@ const ProductDetailPage = ({ product, onBack }) => {
         }
       };
 
-      console.log('Shipping estimate request data:', requestData);
       const estimates = await getShippingEstimates(requestData);
-      console.log('Shipping estimate response:', estimates);
       setShippingEstimates(estimates);
       setShowShippingDialog(true);
     } catch (error) {
@@ -437,9 +448,15 @@ const ProductDetailPage = ({ product, onBack }) => {
     } finally {
       setShippingLoading(false);
     }
+    */
   };
 
   const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
     if (!validateForm()) {
       setError('Please fix the validation errors before adding to cart');
       return;
@@ -454,15 +471,6 @@ const ProductDetailPage = ({ product, onBack }) => {
     setSuccessMessage(null);
 
     try {
-      // Get or create cart
-      const sessionId = `session_${Date.now()}`;
-      const cart = await getOrCreateCart(sessionId, null, 6);
-      
-      if (!cart) {
-        setError('Failed to create cart. Please try again.');
-        return;
-      }
-
       // Generate option IDs in the correct order
       const optionIds = options.map(optionGroup => 
         selectedOptions[optionGroup.group]
@@ -479,21 +487,18 @@ const ProductDetailPage = ({ product, onBack }) => {
         (selectedOptions.Quantity || selectedOptions.quantity || selectedOptions.Qty || 1) : 
         quantity;
 
-      const cartItem = await addItemToCart(
-        cart.id,
+      const result = await addItemToCart(
         parseInt(product.vendor_product_id),
-        product.name,
-        product.sku,
         optionIds,
         finalQuantity
       );
 
-      if (cartItem) {
+      if (result.success) {
         setSuccessMessage(`Successfully added ${finalQuantity} ${finalQuantity > 1 ? 'items' : 'item'} to cart!`);
         setShowSuccessSnackbar(true);
         setRetryCount(0);
       } else {
-        setError('Failed to add item to cart. Please try again.');
+        setError(result.error || 'Failed to add item to cart. Please try again.');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -1011,7 +1016,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                         Choose Files
                       </Button>
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        Supported formats: JPG, PNG, GIF, WebP, PDF (Max 10MB each)
+                        Supported format: PDF only (Max 10MB each)
                       </Typography>
                     </Box>
                     
@@ -1280,7 +1285,8 @@ const ProductDetailPage = ({ product, onBack }) => {
             {previewFiles.map((item, index) => (
               <Grid item xs={12} sm={6} md={4} key={index}>
                 <Card sx={{ height: '100%', position: 'relative' }}>
-                  {item.file.type.startsWith('image/') ? (
+                  {/* Image preview - commented out for PDF-only restriction */}
+                  {/* {item.file.type.startsWith('image/') ? (
                     <CardMedia
                       component="img"
                       height="200"
@@ -1288,6 +1294,49 @@ const ProductDetailPage = ({ product, onBack }) => {
                       alt={item.file.name}
                       sx={{ objectFit: 'cover' }}
                     />
+                  ) : item.file.type === 'application/pdf' ? (
+                    <Box sx={{ 
+                      height: 400, 
+                      overflow: 'auto',
+                      bgcolor: 'grey.100'
+                    }}>
+                      <iframe
+                        src={item.url}
+                        title={item.file.name}
+                        width="100%"
+                        height="400px"
+                        style={{ border: 'none' }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box sx={{ 
+                      height: 200, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      bgcolor: 'grey.100'
+                    }}>
+                      <Typography sx={{ fontSize: 48 }}>
+                        {getFileIcon(item.file)}
+                      </Typography>
+                    </Box>
+                  )} */}
+                  
+                  {/* PDF-only preview */}
+                  {item.file.type === 'application/pdf' ? (
+                    <Box sx={{ 
+                      height: 400, 
+                      overflow: 'auto',
+                      bgcolor: 'grey.100'
+                    }}>
+                      <iframe
+                        src={item.url}
+                        title={item.file.name}
+                        width="100%"
+                        height="400px"
+                        style={{ border: 'none' }}
+                      />
+                    </Box>
                   ) : (
                     <Box sx={{ 
                       height: 200, 

@@ -56,7 +56,6 @@ This project is a full-stack e-commerce web application built with **React** for
 |   ├── requirements.txt         # Backend dependencies
 │   └── app.py                   # Entry point for running the server
 
-├── taskmanager/                 # Open and view read me
 ├── README.md                    # Project documentation
 └── docker-compose.yml           # For containerization (TBD)
 ```

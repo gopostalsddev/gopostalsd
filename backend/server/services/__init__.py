@@ -1,5 +1,5 @@
 from flask import Flask
-from server.services.storage import LocalFileStorage, RemoteFileStorage
+from server.services.file_storage_service import LocalFileStorage, RemoteFileStorage
 
 class FileStorage:
     def __init__(self):

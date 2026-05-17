@@ -3,8 +3,6 @@ import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress, Pap
 
 
 // Import global components
-import Navbar from "../../components/NavBar";
-import Footer from "../../components/Footer";
 import SpinnerOverlay from "../../components/SpinnerOverlay";
 
 // Import local components
@@ -69,10 +67,9 @@ const ShopPage = () => {
           position: "relative",
         }}
       >
-        <Navbar />
         <SpinnerOverlay loading={loading} /> {/* Use SpinnerOverlay for loading state */}
         
-        <Box sx={{ flex: 1, mt: "64px", p: 4,}} >
+        <Box sx={{ flex: 1, p: 4,}} >
           {selectedProduct ? (
             // If a product is selected, display product detail page
             <ProductDetailPage 
@@ -98,7 +95,6 @@ const ShopPage = () => {
             <ProductCategoryList productCategories={productCategories} handleProductCategoryClick={handleProductCategoryClick} />
           )}
         </Box>
-        <Footer />
       </Box>
     );
 };

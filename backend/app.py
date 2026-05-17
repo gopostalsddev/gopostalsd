@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module='flask_res
 
 # Get the environment from .env or default to 'development'
 environment = os.getenv("ENVIRONMENT", "development")
-debug = os.getenv("DEBUG", True)
+debug = os.getenv("DEBUG", "false").lower() == "true"
 
 # Pass the environment explicitly to the factory function
 app = create_server(config=environment)
@@ -26,7 +26,7 @@ def api():
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
-    print("Shutting down Flask server...")
+    app.logger.info("Shutting down Flask server...")
 
     def shutdown_server():
         """Gracefully shuts down Flask after sending response."""

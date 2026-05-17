@@ -58,35 +58,6 @@ cart_totals_model = api.model("CartTotals", {
     "item_count": fields.Integer(description="Number of items in cart")
 })
 
-cart_model = api.model("Cart", {
-    "id": fields.Integer(description="Cart ID"),
-    "session_id": fields.String(description="Session identifier"),
-    "user_id": fields.Integer(description="User ID"),
-    "store_code": fields.Integer(description="Store code"),
-    "created_at": fields.DateTime(description="Created timestamp"),
-    "updated_at": fields.DateTime(description="Updated timestamp")
-})
-
-cart_item_model = api.model("CartItem", {
-    "id": fields.Integer(description="Cart item ID"),
-    "cart_id": fields.Integer(description="Cart ID"),
-    "product_id": fields.Integer(description="Product ID"),
-    "product_name": fields.String(description="Product name"),
-    "product_sku": fields.String(description="Product SKU"),
-    "quantity": fields.Integer(description="Quantity"),
-    "unit_price": fields.Float(description="Unit price"),
-    "total_price": fields.Float(description="Total price"),
-    "created_at": fields.DateTime(description="Created timestamp"),
-    "updated_at": fields.DateTime(description="Updated timestamp")
-})
-
-add_to_cart_model = api.model("AddToCartRequest", {
-    "product_id": fields.Integer(description="Product ID", required=True),
-    "product_name": fields.String(description="Product name", required=True),
-    "product_sku": fields.String(description="Product SKU", required=True),
-    "selected_options": fields.List(fields.Integer, description="Selected option IDs", required=True),
-    "quantity": fields.Integer(description="Quantity", default=1)
-})
 
 # API Resources
 @api.route('/products/<int:product_id>/options')
@@ -132,80 +103,6 @@ class ProductPriceResource(Resource):
         else:
             return {'error': result.error}, 400
 
-
-@api.route('/cart/<int:cart_id>/totals')
-class CartTotalsResource(Resource):
-    """Resource for getting cart totals."""
-    
-    @api.doc('get_cart_totals')
-    @api.marshal_with(cart_totals_model)
-    def get(self, cart_id):
-        """Get cart totals including subtotal, tax, and total."""
-        result = PricingController.get_cart_totals(cart_id)
-        
-        if result.status:
-            return result.data
-        else:
-            return {'error': result.error}, 400
-
-
-@api.route('/cart')
-class CartResource(Resource):
-    """Resource for cart operations."""
-    
-    @api.doc('get_or_create_cart')
-    @api.param('session_id', 'Session identifier', required=True)
-    @api.param('user_id', 'User ID for logged-in users', type='int')
-    @api.param('store_code', 'Store code (6 for Canada, 9 for US)', type='int', default=6)
-    @api.marshal_with(cart_model)
-    def get(self):
-        """Get or create a cart."""
-        session_id = request.args.get('session_id')
-        user_id = request.args.get('user_id', type=int)
-        store_code = request.args.get('store_code', 6, type=int)
-        
-        if not session_id:
-            return {'error': 'session_id is required'}, 400
-        
-        result = PricingController.get_or_create_cart(session_id, user_id, store_code)
-        
-        if result.status:
-            return result.data
-        else:
-            return {'error': result.error}, 400
-
-
-@api.route('/cart/<int:cart_id>/items')
-class CartItemsResource(Resource):
-    """Resource for cart items."""
-    
-    @api.doc('add_item_to_cart')
-    @api.expect(add_to_cart_model)
-    @api.marshal_with(cart_item_model)
-    def post(self, cart_id):
-        """Add item to cart."""
-        data = request.get_json()
-        
-        if not data:
-            return {'error': 'Request body is required'}, 400
-        
-        product_id = data.get('product_id')
-        product_name = data.get('product_name')
-        product_sku = data.get('product_sku')
-        selected_options = data.get('selected_options', [])
-        quantity = data.get('quantity', 1)
-        
-        if not all([product_id, product_name, product_sku]):
-            return {'error': 'product_id, product_name, and product_sku are required'}, 400
-        
-        result = PricingController.add_item_to_cart(
-            cart_id, product_id, product_name, product_sku, selected_options, quantity
-        )
-        
-        if result.status:
-            return result.data
-        else:
-            return {'error': result.error}, 400
 
 
 @api.route('/shipping/estimates')

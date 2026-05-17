@@ -307,7 +307,7 @@ export const fetchProductVariants = async (productId, offset = 0) => {
 
 export const getOrCreateCart = async (sessionId, userId = null, storeCode = 6) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/pricing/cart?session_id=${sessionId}&user_id=${userId}&store_code=${storeCode}`);
+    const response = await axios.get(`${API_BASE_URL}/cart?session_id=${sessionId}&user_id=${userId}&store_code=${storeCode}`);
     return response.data;
   } catch (error) {
     console.error("Error getting/creating cart: ", error);
@@ -317,7 +317,7 @@ export const getOrCreateCart = async (sessionId, userId = null, storeCode = 6) =
 
 export const addItemToCart = async (cartId, productId, productName, productSku, selectedOptions, quantity = 1) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/pricing/cart/${cartId}/items`, {
+    const response = await axios.post(`${API_BASE_URL}/cart/${cartId}/items`, {
       product_id: productId,
       product_name: productName,
       product_sku: productSku,
@@ -333,7 +333,7 @@ export const addItemToCart = async (cartId, productId, productName, productSku, 
 
 export const updateCartItemQuantity = async (cartItemId, quantity) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/pricing/cart/items/${cartItemId}?quantity=${quantity}`);
+    const response = await axios.put(`${API_BASE_URL}/cart/items/${cartItemId}?quantity=${quantity}`);
     return response.data;
   } catch (error) {
     console.error("Error updating cart item quantity: ", error);
@@ -343,7 +343,7 @@ export const updateCartItemQuantity = async (cartItemId, quantity) => {
 
 export const removeCartItem = async (cartItemId) => {
   try {
-    const response = await axios.delete(`${API_BASE_URL}/pricing/cart/items/${cartItemId}`);
+    const response = await axios.delete(`${API_BASE_URL}/cart/items/${cartItemId}`);
     return response.data;
   } catch (error) {
     console.error("Error removing cart item: ", error);
@@ -353,7 +353,7 @@ export const removeCartItem = async (cartItemId) => {
 
 export const getCartTotals = async (cartId) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/pricing/cart/${cartId}/totals`);
+    const response = await axios.get(`${API_BASE_URL}/cart/${cartId}/totals`);
     return response.data;
   } catch (error) {
     console.error("Error getting cart totals: ", error);

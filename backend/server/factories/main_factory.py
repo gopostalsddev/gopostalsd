@@ -61,9 +61,25 @@ class MainFactory:
         """Get pricing service instance."""
         return self._get_service_factory().get_pricing_service(sinalite_adapter)
     
-    def get_cart_service(self, pricing_service: PricingService) -> CartService:
+    def get_cart_service(self, pricing_service: PricingService, sinalite_adapter: SinaliteAdapter) -> CartService:
         """Get cart service instance."""
-        return self._get_service_factory().get_cart_service(pricing_service)
+        return self._get_service_factory().get_cart_service(pricing_service, sinalite_adapter)
+    
+    def get_email_service(self):
+        """Get email service instance."""
+        return self._get_service_factory().get_email_service()
+    
+    def get_password_service(self):
+        """Get password service instance."""
+        return self._get_service_factory().get_password_service()
+    
+    def get_role_service(self):
+        """Get role service instance."""
+        return self._get_service_factory().get_role_service()
+    
+    def get_auth_service(self):
+        """Get auth service instance."""
+        return self._get_service_factory().get_auth_service()
     
     # Controller access methods
     def get_pricing_controller(self):
@@ -77,6 +93,14 @@ class MainFactory:
     def get_user_controller(self):
         """Get user controller class."""
         return self._get_controller_factory().get_user_controller()
+    
+    def get_cart_controller(self):
+        """Get cart controller class."""
+        return self._get_controller_factory().get_cart_controller()
+    
+    def get_auth_controller(self):
+        """Get auth controller class."""
+        return self._get_controller_factory().get_auth_controller()
     
     def reset(self) -> None:
         """Reset all instances (useful for testing)."""

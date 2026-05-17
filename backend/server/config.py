@@ -22,15 +22,15 @@ swagger = Api(
     validate=True
 )
 
+# Load .env file FIRST before checking environment
+# This ensures environment variables from .env are available
+load_dotenv()
+
 # Check the current environment, default to 'development'
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
 # Configure the logger
 configure_logging(ENVIRONMENT)
-
-# Only load .env in development or testing
-if ENVIRONMENT in ['development', 'testing']:
-    load_dotenv()
 
 class Config:
     # Disable SQLAlchemy event system to improve performance
@@ -38,8 +38,8 @@ class Config:
 
 class DevelopmentConfig(Config):
     # Database connection string for development environment
-    # Defaults to SQLite if DATABASE_URL environment variable is not set
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL_DEV', 'sqlite:///gopostalsd.db')
+    # Uses PostgreSQL from DATABASE_URL environment variable
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
 
     # Sinalite integration information
     SINALITE_BASE_URL =  os.getenv('SINALITE_BASE_URL_DEV', 'https://api.sinaliteuppy.com') 
@@ -52,10 +52,10 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     # Database connection string for production environment
     # Format: postgresql://username:password@host:port/database_name
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL_PROD')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
 
     # Sinalite integration information
-    SINALITE_BASE_URL = os.getenv('SINALITE_BASE_URL_PROD')
+    SINALITE_BASE_URL = os.getenv('SINALITE_BASE_URL')
     SINALITE_CLIENT_ID = os.getenv('SINALITE_CLIENT_ID')
     SINALITE_CLIENT_SECRET = os.getenv('SINALITE_CLIENT_SECRET')
 

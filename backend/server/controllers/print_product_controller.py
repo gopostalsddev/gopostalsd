@@ -341,16 +341,23 @@ class PrintProductController:
 
         # Get products for this category
         db_products = PrintProduct.query.filter_by(category_id=category_id).all()
-        print(f"DEBUG: Found {len(db_products)} products for category {category_id}")
+        logger.debug(
+            "Found %s products for category %s", len(db_products), category_id
+        )
         
         # Log each product's type_id
         for product in db_products:
-            print(f"DEBUG: Product {product.id} ({product.name}) has type_id: {product.type_id}")
+            logger.debug(
+                "Product %s (%s) has type_id: %s",
+                product.id,
+                product.name,
+                product.type_id,
+            )
         
         # Convert to dictionary format to maintain API compatibility
         filtered_products = [product.to_dict() for product in db_products]
 
-        print(f"DEBUG: Filtered products: {filtered_products}")
+        logger.debug("Filtered products: %s", filtered_products)
 
         # Always return a list even if empty
         result.data = filtered_products
@@ -850,7 +857,11 @@ class PrintProductController:
 
             # Get the product type
             product_type = db.session.get(PrintProductType, type_id)
-            print(f"DEBUG: Found product type {type_id}: {product_type.name if product_type else 'NOT FOUND'}")
+            logger.debug(
+                "Found product type %s: %s",
+                type_id,
+                product_type.name if product_type else "NOT FOUND",
+            )
 
             if not product_type:
                 result.status = False
@@ -866,14 +877,23 @@ class PrintProductController:
             # Assign the product to the type
             old_type_id = product.type_id
             product.type_id = type_id
-            print(f"DEBUG: Updating product {product_id} type_id from {old_type_id} to {type_id}")
+            logger.debug(
+                "Updating product %s type_id from %s to %s",
+                product_id,
+                old_type_id,
+                type_id,
+            )
             
             db.session.commit()
-            print(f"DEBUG: Database committed successfully")
-
+            logger.debug("Product type assignment committed for product %s", product_id)
+            
             # Verify the update
             db.session.refresh(product)
-            print(f"DEBUG: After commit, product {product_id} type_id: {product.type_id}")
+            logger.debug(
+                "After commit, product %s type_id: %s",
+                product_id,
+                product.type_id,
+            )
 
             # Update the category's classification status
             PrintProductController.update_category_classification_status(product.category_id)

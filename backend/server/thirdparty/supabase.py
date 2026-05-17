@@ -3,7 +3,7 @@ from flask import Flask
 from supabase import create_client
 import time
 
-class SupabaseStorage():
+class SupabaseAdapter:
     def __init__(self):
         self.client = None
         self.bucket = None
