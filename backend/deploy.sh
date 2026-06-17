@@ -1,3 +1,7 @@
-# deploy.sh
+#!/usr/bin/env bash
+set -e
+
+export FLASK_APP=app.py
+
 flask db upgrade
-gunicorn -b 0.0.0.0:$PORT app:app
+exec gunicorn -b "0.0.0.0:${PORT}" app:app

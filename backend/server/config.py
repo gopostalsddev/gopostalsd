@@ -32,6 +32,18 @@ ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 # Configure the logger
 configure_logging(ENVIRONMENT)
 
+
+def normalize_database_url(url):
+    """Render provides postgres:// URLs; SQLAlchemy expects postgresql://."""
+    if url and url.startswith('postgres://'):
+        return url.replace('postgres://', 'postgresql://', 1)
+    return url
+
+
+def get_database_url():
+    return normalize_database_url(os.getenv('DATABASE_URL'))
+
+
 class Config:
     # Disable SQLAlchemy event system to improve performance
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -39,7 +51,7 @@ class Config:
 class DevelopmentConfig(Config):
     # Database connection string for development environment
     # Uses PostgreSQL from DATABASE_URL environment variable
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = get_database_url()
 
     # Sinalite integration information
     SINALITE_BASE_URL =  os.getenv('SINALITE_BASE_URL_DEV', 'https://api.sinaliteuppy.com') 
@@ -52,7 +64,7 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     # Database connection string for production environment
     # Format: postgresql://username:password@host:port/database_name
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = get_database_url()
 
     # Sinalite integration information
     SINALITE_BASE_URL = os.getenv('SINALITE_BASE_URL')

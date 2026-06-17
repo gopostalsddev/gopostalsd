@@ -1,0 +1,102 @@
+# Render Blueprint for GoPostal SD
+# Docs: https://render.com/docs/blueprint-spec
+#
+# If you already have services on Render, use Dashboard → Blueprint →
+# "Generate from existing services" and merge with this file, or match
+# the `name` fields below to your existing service names.
+
+databases:
+  - name: gopostalsd-db
+    plan: free
+    databaseName: gopostalsd
+
+services:
+  # Flask API — https://gopostalsd.onrender.com
+  - type: web
+    name: gopostalsd
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash deploy.sh
+    healthCheckPath: /
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: FLASK_APP
+        value: app.py
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gopostalsd-db
+          property: connectionString
+      - key: FRONTEND_URL
+        fromService:
+          name: gopostalsd-website
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SINALITE_CLIENT_ID
+        sync: false
+      - key: SINALITE_CLIENT_SECRET
+        sync: false
+      - key: SINALITE_BASE_URL
+        value: https://apiconnect.sinalite.com
+      - key: MAILERSEND_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SQUARE_ACCESS_TOKEN
+        sync: false
+      - key: SQUARE_APPLICATION_ID
+        sync: false
+      - key: SQUARE_LOCATION_ID
+        sync: false
+
+  # React static site — https://gopostalsd-website.onrender.com
+  - type: web
+    name: gopostalsd-website
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && VITE_API_BASE_URL="${VITE_API_BASE_URL}/api" npm run build
+    staticPublishPath: ./frontend/dist
+    buildFilter:
+      paths:
+        - frontend/**
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: gopostalsd
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_SQUARE_APPLICATION_ID
+        sync: false
+      - key: VITE_SQUARE_LOCATION_ID
+        sync: false
