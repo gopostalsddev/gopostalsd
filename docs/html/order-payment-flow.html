@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoPostal SD — Order & Payment Flow</title>
+  <style>
+    :root {
+      --navy: #1e4078;
+      --blue: #2563eb;
+      --green: #059669;
+      --amber: #d97706;
+      --gray: #64748b;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: #1e293b;
+      line-height: 1.5;
+      padding: 2rem 1rem 3rem;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      color: var(--navy);
+      font-weight: 700;
+    }
+
+    header p {
+      color: var(--gray);
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    section h2 {
+      font-size: 1.1rem;
+      color: var(--navy);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .steps {
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: flex-start;
+    }
+
+    .steps li:last-child { margin-bottom: 0; }
+
+    .steps li::before {
+      content: counter(step);
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      background: var(--navy);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .steps strong { color: var(--navy); }
+
+    .formula {
+      background: #f1f5f9;
+      border-left: 4px solid var(--blue);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
+    }
+
+    .formula code {
+      font-family: "Consolas", "Courier New", monospace;
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    /* Flow diagram */
+    .diagram {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      padding: 1rem 0;
+    }
+
+    .node {
+      width: 100%;
+      max-width: 320px;
+      padding: 0.85rem 1.25rem;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 2px solid;
+    }
+
+    .node.customer { background: #eff6ff; border-color: var(--blue); color: #1e40af; }
+    .node.gopostal { background: #ecfdf5; border-color: var(--green); color: #047857; }
+    .node.sinalite { background: #fff7ed; border-color: var(--amber); color: #b45309; }
+    .node.tax { background: #f8fafc; border-color: var(--gray); color: #475569; }
+
+    .arrow {
+      width: 2px;
+      height: 28px;
+      background: var(--gray);
+      position: relative;
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--gray);
+    }
+
+    .arrow-label {
+      font-size: 0.75rem;
+      color: var(--gray);
+      text-align: center;
+      max-width: 340px;
+      padding: 0.15rem 0.5rem;
+      line-height: 1.35;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      width: 100%;
+      max-width: 520px;
+      margin-top: 0.25rem;
+    }
+
+    .split .node { max-width: none; font-size: 0.82rem; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--gray);
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend i {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .summary-card {
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .summary-card h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--gray);
+      margin-bottom: 0.35rem;
+    }
+
+    .summary-card p {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--navy);
+    }
+
+    @media print {
+      body { padding: 0; background: white; }
+      section { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>GoPostal SD — Order & Payment Flow</h1>
+      <p>How a customer order moves from checkout to fulfillment and payout</p>
+    </header>
+
+    <section>
+      <h2>The Flow</h2>
+      <ol class="steps">
+        <li>
+          <div>
+            <strong>Customer places an order</strong> directly on the GoPostal SD web application.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>GoPostal sends the order to Sinalite</strong> — our wholesale print partner receives the order request.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Sinalite quotes wholesale price</strong> — Sinalite charges its wholesale cost for production and fulfillment.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>GoPostal calculates the retail price</strong> — wholesale + GoPostal profit margin (%) + tax.
+            <div class="formula">
+              <code>Amount Due = Wholesale + (Wholesale × Markup %) + Tax</code>
+            </div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Customer sees and pays the final price</strong> — the total amount due is shown at checkout and collected via payment processing.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Funds are split behind the scenes</strong> — on successful payment, GoPostal keeps its profit %, sends wholesale cost to Sinalite, and sends tax uncle Sam.
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Diagram</h2>
+      <div class="diagram">
+        <div class="node customer">Customer</div>
+        <div class="arrow"></div>
+        <div class="arrow-label">Places order on GoPostal SD website</div>
+        <div class="arrow"></div>
+
+        <div class="node gopostal">GoPostal SD Web App</div>
+        <div class="arrow"></div>
+        <div class="arrow-label">Sends order request</div>
+        <div class="arrow"></div>
+
+        <div class="node sinalite">Sinalite (Wholesaler)</div>
+        <div class="arrow"></div>
+        <div class="arrow-label">Returns wholesale price</div>
+        <div class="arrow"></div>
+
+        <div class="node gopostal">GoPostal SD Web App</div>
+        <div class="arrow"></div>
+        <div class="arrow-label">Adds markup % + tax → shows Amount Due</div>
+        <div class="arrow"></div>
+
+        <div class="node customer">Customer</div>
+        <div class="arrow"></div>
+        <div class="arrow-label">Pays total amount</div>
+        <div class="arrow"></div>
+
+        <div class="node gopostal">GoPostal SD — Payment Processing</div>
+        <div class="arrow"></div>
+        <div class="arrow-label">Splits payment automatically</div>
+        <div class="arrow"></div>
+
+        <div class="split">
+          <div class="node gopostal">GoPostal keeps profit %</div>
+          <div class="node sinalite">Sinalite receives wholesale</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="node tax">Tax remitted to government</div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:#2563eb"></i> Customer</span>
+        <span><i style="background:#059669"></i> GoPostal SD</span>
+        <span><i style="background:#d97706"></i> Sinalite</span>
+        <span><i style="background:#64748b"></i> Tax</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>At a Glance</h2>
+      <div class="summary">
+        <div class="summary-card">
+          <h3>Customer pays</h3>
+          <p>Wholesale + Markup + Tax</p>
+        </div>
+        <div class="summary-card">
+          <h3>GoPostal keeps</h3>
+          <p>Markup % (profit)</p>
+        </div>
+        <div class="summary-card">
+          <h3>Sinalite receives</h3>
+          <p>Wholesale cost</p>
+        </div>
+        <div class="summary-card">
+          <h3>Government receives</h3>
+          <p>Tax amount</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
