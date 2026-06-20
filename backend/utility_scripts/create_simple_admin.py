@@ -7,6 +7,7 @@ This is a more direct approach if you prefer to handle it manually.
 import os
 import sys
 from pathlib import Path
+from datetime import datetime
 
 # Add the server directory to the Python path
 server_dir = Path(__file__).parent / "server"
@@ -62,6 +63,8 @@ def create_simple_admin():
             first_name="Admin",
             last_name="User", 
             email=admin_email,
+            legacy_email_address=admin_email,  # Legacy compatibility
+            legacy_creation_date=datetime.utcnow(),  # Legacy compatibility
             password_hash=password_service.hash_password("Admin123!"),
             status=UserStatus.ACTIVE,
             email_verified=True,

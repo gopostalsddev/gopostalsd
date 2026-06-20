@@ -124,6 +124,7 @@ def require_auth(f):
         # Store user in g for access in route
         g.current_user = user
         g.session_token = session_token
+        request.user_id = user.id
         
         return f(*args, **kwargs)
     
@@ -174,12 +175,42 @@ def require_role(role_name: str):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # First check if user is authenticated
-            if not hasattr(g, 'current_user') or not g.current_user:
-                return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
+            # Ensure authenticated user context exists for role-protected routes.
+            # Some endpoints only use @require_role without @require_auth.
+            user = getattr(g, 'current_user', None)
+            if not user:
+                session_token = None
+
+                auth_header = request.headers.get('Authorization')
+                if auth_header and auth_header.startswith('Bearer '):
+                    session_token = auth_header[7:]
+
+                if not session_token:
+                    session_token = request.args.get('session_token')
+
+                if not session_token:
+                    session_token = request.args.get('session_id')
+
+                if not session_token:
+                    return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
+
+                auth_service = current_app.extensions.get('auth_service')
+                if not auth_service:
+                    logger.error("Auth service not available")
+                    return {'error': 'Authentication service unavailable', 'code': 'SERVICE_UNAVAILABLE'}, 500
+
+                user = auth_service.get_user_by_session(session_token)
+                if not user:
+                    return {'error': 'Invalid or expired session', 'code': 'INVALID_SESSION'}, 401
+
+                if not user.is_active():
+                    return {'error': 'Account is not active', 'code': 'ACCOUNT_INACTIVE'}, 401
+
+                g.current_user = user
+                g.session_token = session_token
             
             # Check if user has required role
-            if g.current_user.role.name != role_name:
+            if user.role.name != role_name:
                 return {'error': 'Insufficient role', 'code': 'INSUFFICIENT_ROLE'}, 403
             
             return f(*args, **kwargs)
@@ -231,6 +262,7 @@ def optional_auth(f):
                 if user and user.is_active():
                     g.current_user = user
                     g.session_token = session_token
+                    request.user_id = user.id
         
         return f(*args, **kwargs)
     
@@ -329,7 +361,10 @@ def get_user_id():
         User ID or None
     """
     user = get_current_user()
-    return user.id if user else None
+    if user:
+        return user.id
+
+    return getattr(request, 'user_id', None)
 
 
 def get_user_email():
