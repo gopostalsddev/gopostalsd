@@ -63,16 +63,17 @@ class SquareAdapter:
         
         if SQUARE_AVAILABLE and self.access_token:
             try:
-                # Initialize Square client - credentials are passed via environment or client config
-                from square.client import ClientEnvironment
-                
-                # Get the environment enum
-                env = ClientEnvironment.SANDBOX if self.environment == 'sandbox' else ClientEnvironment.PRODUCTION
-                
-                # Square SDK v43+ uses a different initialization
+                from square.client import SquareEnvironment
+
+                env = (
+                    SquareEnvironment.SANDBOX
+                    if self.environment == 'sandbox'
+                    else SquareEnvironment.PRODUCTION
+                )
+
                 self.client = SquareClient(
-                    access_token=self.access_token,
-                    environment=env
+                    token=self.access_token,
+                    environment=env,
                 )
                 
                 self._is_configured = True
