@@ -19,16 +19,27 @@ depends_on = None
 def upgrade():
     # Get database connection
     connection = op.get_bind()
+    dialect_name = connection.engine.dialect.name
     
     # 1. Make category_id nullable in print_product_types for the wildcard type
-    op.alter_column('print_product_types', 'category_id', nullable=True)
+    if dialect_name == 'sqlite':
+        with op.batch_alter_table('print_product_types') as batch_op:
+            batch_op.alter_column('category_id', nullable=True)
+    else:
+        op.alter_column('print_product_types', 'category_id', nullable=True)
     
     # 2. Insert the unclassified product type with ID 0
-    connection.execute(text("""
-        INSERT INTO print_product_types (id, name, description, category_id, created_at, updated_at)
-        VALUES (0, 'Unclassified', 'Default type for products not yet classified', NULL, NOW(), NOW())
-        ON CONFLICT (id) DO NOTHING;
-    """))
+    if dialect_name == 'sqlite':
+        connection.execute(text("""
+            INSERT OR IGNORE INTO print_product_types (id, name, description, category_id, created_at, updated_at)
+            VALUES (0, 'Unclassified', 'Default type for products not yet classified', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """))
+    else:
+        connection.execute(text("""
+            INSERT INTO print_product_types (id, name, description, category_id, created_at, updated_at)
+            VALUES (0, 'Unclassified', 'Default type for products not yet classified', NULL, NOW(), NOW())
+            ON CONFLICT (id) DO NOTHING;
+        """))
     
     # 3. Update existing products with NULL type_id to use ID 0
     connection.execute(text("""
@@ -38,42 +49,78 @@ def upgrade():
     """))
     
     # 4. Make type_id NOT NULL with default 0 in print_products
-    op.alter_column('print_products', 'type_id', nullable=False, server_default='0')
+    if dialect_name == 'sqlite':
+        with op.batch_alter_table('print_products') as batch_op:
+            batch_op.alter_column('type_id', nullable=False, server_default='0')
+    else:
+        op.alter_column('print_products', 'type_id', nullable=False, server_default='0')
     
     # 5. Update classification status for all categories to reflect the new structure
-    connection.execute(text("""
-        UPDATE print_product_categories 
-        SET product_classification_status = (
-            SELECT json_build_object(
-                'all_classified', 
-                CASE 
-                    WHEN COUNT(p.id) = 0 THEN true
-                    ELSE COUNT(p.id) = COUNT(CASE WHEN p.type_id > 0 THEN 1 END)
-                END,
-                'total_products', COUNT(p.id),
-                'classified_products', COUNT(CASE WHEN p.type_id > 0 THEN 1 END),
-                'unclassified_products', COUNT(CASE WHEN p.type_id = 0 THEN 1 END)
+    if dialect_name == 'sqlite':
+        connection.execute(text("""
+            UPDATE print_product_categories
+            SET product_classification_status = (
+                SELECT json_object(
+                    'all_classified',
+                    CASE
+                        WHEN COUNT(p.id) = 0 THEN 1
+                        ELSE COUNT(p.id) = COUNT(CASE WHEN p.type_id > 0 THEN 1 END)
+                    END,
+                    'total_products', COUNT(p.id),
+                    'classified_products', COUNT(CASE WHEN p.type_id > 0 THEN 1 END),
+                    'unclassified_products', COUNT(CASE WHEN p.type_id = 0 THEN 1 END)
+                )
+                FROM print_products p
+                WHERE p.category_id = print_product_categories.id
             )
-            FROM print_products p 
-            WHERE p.category_id = print_product_categories.id
-        )
-        WHERE EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
-    """))
+            WHERE EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
+        """))
+    else:
+        connection.execute(text("""
+            UPDATE print_product_categories 
+            SET product_classification_status = (
+                SELECT json_build_object(
+                    'all_classified', 
+                    CASE 
+                        WHEN COUNT(p.id) = 0 THEN true
+                        ELSE COUNT(p.id) = COUNT(CASE WHEN p.type_id > 0 THEN 1 END)
+                    END,
+                    'total_products', COUNT(p.id),
+                    'classified_products', COUNT(CASE WHEN p.type_id > 0 THEN 1 END),
+                    'unclassified_products', COUNT(CASE WHEN p.type_id = 0 THEN 1 END)
+                )
+                FROM print_products p 
+                WHERE p.category_id = print_product_categories.id
+            )
+            WHERE EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
+        """))
     
     # For categories with no products, set default status
-    connection.execute(text("""
-        UPDATE print_product_categories 
-        SET product_classification_status = '{"all_classified": true, "total_products": 0, "classified_products": 0, "unclassified_products": 0}'::json
-        WHERE NOT EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
-    """))
+    if dialect_name == 'sqlite':
+        connection.execute(text("""
+            UPDATE print_product_categories
+            SET product_classification_status = '{"all_classified": true, "total_products": 0, "classified_products": 0, "unclassified_products": 0}'
+            WHERE NOT EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
+        """))
+    else:
+        connection.execute(text("""
+            UPDATE print_product_categories 
+            SET product_classification_status = '{"all_classified": true, "total_products": 0, "classified_products": 0, "unclassified_products": 0}'::json
+            WHERE NOT EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
+        """))
 
 
 def downgrade():
     # Get database connection
     connection = op.get_bind()
+    dialect_name = connection.engine.dialect.name
     
     # 1. Revert type_id to nullable in print_products
-    op.alter_column('print_products', 'type_id', nullable=True, server_default=None)
+    if dialect_name == 'sqlite':
+        with op.batch_alter_table('print_products') as batch_op:
+            batch_op.alter_column('type_id', nullable=True, server_default=None)
+    else:
+        op.alter_column('print_products', 'type_id', nullable=True, server_default=None)
     
     # 2. Update products with type_id = 0 back to NULL
     connection.execute(text("""
@@ -86,24 +133,48 @@ def downgrade():
     connection.execute(text("DELETE FROM print_product_types WHERE id = 0;"))
     
     # 4. Make category_id NOT NULL again in print_product_types
-    op.alter_column('print_product_types', 'category_id', nullable=False)
+    if dialect_name == 'sqlite':
+        with op.batch_alter_table('print_product_types') as batch_op:
+            batch_op.alter_column('category_id', nullable=False)
+    else:
+        op.alter_column('print_product_types', 'category_id', nullable=False)
     
     # 5. Revert classification status to use NULL checks
-    connection.execute(text("""
-        UPDATE print_product_categories 
-        SET product_classification_status = (
-            SELECT json_build_object(
-                'all_classified', 
-                CASE 
-                    WHEN COUNT(p.id) = 0 THEN true
-                    ELSE COUNT(p.id) = COUNT(CASE WHEN p.type_id IS NOT NULL THEN 1 END)
-                END,
-                'total_products', COUNT(p.id),
-                'classified_products', COUNT(CASE WHEN p.type_id IS NOT NULL THEN 1 END),
-                'unclassified_products', COUNT(CASE WHEN p.type_id IS NULL THEN 1 END)
+    if dialect_name == 'sqlite':
+        connection.execute(text("""
+            UPDATE print_product_categories
+            SET product_classification_status = (
+                SELECT json_object(
+                    'all_classified',
+                    CASE
+                        WHEN COUNT(p.id) = 0 THEN 1
+                        ELSE COUNT(p.id) = COUNT(CASE WHEN p.type_id IS NOT NULL THEN 1 END)
+                    END,
+                    'total_products', COUNT(p.id),
+                    'classified_products', COUNT(CASE WHEN p.type_id IS NOT NULL THEN 1 END),
+                    'unclassified_products', COUNT(CASE WHEN p.type_id IS NULL THEN 1 END)
+                )
+                FROM print_products p
+                WHERE p.category_id = print_product_categories.id
             )
-            FROM print_products p 
-            WHERE p.category_id = print_product_categories.id
-        )
-        WHERE EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
-    """)) 
+            WHERE EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
+        """))
+    else:
+        connection.execute(text("""
+            UPDATE print_product_categories 
+            SET product_classification_status = (
+                SELECT json_build_object(
+                    'all_classified', 
+                    CASE 
+                        WHEN COUNT(p.id) = 0 THEN true
+                        ELSE COUNT(p.id) = COUNT(CASE WHEN p.type_id IS NOT NULL THEN 1 END)
+                    END,
+                    'total_products', COUNT(p.id),
+                    'classified_products', COUNT(CASE WHEN p.type_id IS NOT NULL THEN 1 END),
+                    'unclassified_products', COUNT(CASE WHEN p.type_id IS NULL THEN 1 END)
+                )
+                FROM print_products p 
+                WHERE p.category_id = print_product_categories.id
+            )
+            WHERE EXISTS (SELECT 1 FROM print_products p WHERE p.category_id = print_product_categories.id)
+        """))

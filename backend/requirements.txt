@@ -51,7 +51,7 @@ pytest==8.3.4
 pytest-cov==6.0.0
 pytest-flask==1.3.0
 pytest-mock==3.14.0
-python-dateutil==2.9.0.post0
+python-dateutil==2.8.2
 python-dotenv==1.0.1
 pytz==2025.1
 realtime==2.4.2
@@ -67,7 +67,7 @@ StrEnum==0.4.15
 supabase==2.15.0
 supafunc==0.9.4
 mailersend==2.0.3
-squareup==43.2.0.20251016
+squareup==35.0.0.20240222
 typing-inspection==0.4.0
 typing_extensions==4.12.2
 urllib3==2.3.0

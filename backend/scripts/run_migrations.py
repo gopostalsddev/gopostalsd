@@ -6,9 +6,9 @@ import os
 import sys
 from pathlib import Path
 
-# Add the server directory to the Python path
-server_dir = Path(__file__).parent.parent / "server"
-sys.path.insert(0, str(server_dir))
+# Add backend root to the Python path so `server` package can be imported.
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
 
 from flask import Flask
 from flask_migrate import Migrate

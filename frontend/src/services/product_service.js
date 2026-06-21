@@ -367,6 +367,6 @@ export const getShippingEstimates = async (requestData) => {
     return response.data;
   } catch (error) {
     console.error("Error getting shipping estimates: ", error);
-    return [];
+    throw error;
   }
 };

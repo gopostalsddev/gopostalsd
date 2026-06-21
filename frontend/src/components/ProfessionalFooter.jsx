@@ -43,7 +43,7 @@ const ProfessionalFooter = () => {
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           {/* Company Info */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Box sx={{ mb: 3 }}>
               <img 
                 src={logo} 
@@ -57,11 +57,26 @@ const ProfessionalFooter = () => {
           </Grid>
 
           {/* Quick Links */}
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
             <Typography variant="h6" gutterBottom fontWeight="bold">
               Quick Links
             </Typography>
             <Stack spacing={1}>
+              <Link
+                component="button"
+                variant="body2"
+                onClick={() => handleNavigation('/services')}
+                sx={{ 
+                  color: 'white', 
+                  textAlign: 'left',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    color: 'white'
+                  }
+                }}
+              >
+                Services
+              </Link>
               <Link
                 component="button"
                 variant="body2"
@@ -95,7 +110,7 @@ const ProfessionalFooter = () => {
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => handleNavigation('/login')}
+                onClick={() => handleNavigation('/gallery')}
                 sx={{ 
                   color: 'white', 
                   textAlign: 'left',
@@ -105,12 +120,12 @@ const ProfessionalFooter = () => {
                   }
                 }}
               >
-                Login
+                Gallery
               </Link>
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => handleNavigation('/register')}
+                onClick={() => handleNavigation('/faqs')}
                 sx={{ 
                   color: 'white', 
                   textAlign: 'left',
@@ -120,13 +135,13 @@ const ProfessionalFooter = () => {
                   }
                 }}
               >
-                Sign Up
+                FAQs
               </Link>
             </Stack>
           </Grid>
 
           {/* Contact Info */}
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="bold">
               Contact Info
             </Typography>
@@ -160,7 +175,7 @@ const ProfessionalFooter = () => {
           </Grid>
 
           {/* Store Hours */}
-          <Grid item xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="bold">
               Store Hours
             </Typography>
@@ -185,6 +200,25 @@ const ProfessionalFooter = () => {
           <Typography variant="body2" color="rgba(255,255,255,0.8)">
             © {currentYear} Go Postal SD. All rights reserved.
           </Typography>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+            <Link
+              component="button"
+              variant="body2"
+              onClick={() => handleNavigation('/terms')}
+              sx={{ color: 'rgba(255,255,255,0.8)' }}
+            >
+              Terms
+            </Link>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={() => handleNavigation('/privacy')}
+              sx={{ color: 'rgba(255,255,255,0.8)' }}
+            >
+              Privacy
+            </Link>
+          </Stack>
           
           {/* Social Media Links */}
           <Stack direction="row" spacing={1}>

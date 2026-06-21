@@ -102,12 +102,7 @@ const ProductList = ({ category, onViewProduct }) => {
             >
                 {products.map((product) => (
                     <Grid 
-                        item 
-                        xs={12} 
-                        sm={6} 
-                        md={4} 
-                        lg={3} 
-                        xl={2}
+                        size={{ xs: 12, sm: 6, md: 4, lg: 3, xl: 2 }}
                         key={product.id}
                         sx={{
                             display: 'flex',

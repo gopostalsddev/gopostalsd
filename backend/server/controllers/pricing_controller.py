@@ -132,6 +132,11 @@ class PricingController:
             estimates = pricing_service.get_shipping_estimates(items, shipping_info)
             
             logger.info(f"PricingController received estimates: {estimates}")
+
+            if not estimates:
+                result.status = False
+                result.error = "Shipping estimates are currently unavailable from the provider"
+                return result
             
             result.status = True
             result.data = {
@@ -144,5 +149,5 @@ class PricingController:
             result.status = False
             result.error = "Failed to get shipping estimates"
             result.details = str(e)
-        
-            return result
+
+        return result

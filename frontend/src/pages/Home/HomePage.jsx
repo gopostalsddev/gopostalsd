@@ -1,9 +1,3 @@
-/**
- * Home Page for Go Postal SD Frontend
- * 
- * Professional home page showcasing Go Postal's services and information.
- */
-
 import React from 'react';
 import {
   Container,
@@ -19,7 +13,9 @@ import {
 import {
   Print,
   LocationOn,
-  Business
+  LocalShipping,
+  Inventory2,
+  ArrowForward
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,198 +24,223 @@ const HomePage = () => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Hero Section */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, rgb(0, 0, 0), rgb(7, 59, 102))',
+          width: '100%',
+          background:
+            'radial-gradient(circle at 12% 18%, rgba(182,73,38,0.32), transparent 28%), radial-gradient(circle at 88% 70%, rgba(255,255,255,0.12), transparent 24%), linear-gradient(160deg, #091421 0%, #0a2f4a 62%, #143a54 100%)',
           color: 'white',
-          py: { xs: 8, md: 12 },
-          position: 'relative',
-          overflow: 'hidden'
+          py: { xs: 7, md: 11 },
+          borderBottom: '1px solid rgba(255,255,255,0.16)'
         }}
       >
-        <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={8}>
-              <Typography 
-                variant="h2" 
-                fontWeight="bold" 
-                gutterBottom
-                sx={{ 
-                  fontSize: { xs: '2.5rem', md: '3.5rem' },
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
+        <Container maxWidth="xl">
+          <Box sx={{ maxWidth: 960, mx: 'auto', textAlign: 'center' }}>
+            <Chip
+              label="Little Italy, San Diego"
+              sx={{
+                mb: 2.5,
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                borderRadius: 1,
+                border: '1px solid rgba(255,255,255,0.26)'
+              }}
+            />
+
+            <Typography
+              variant="h2"
+              fontWeight={700}
+              sx={{
+                fontSize: { xs: '2.25rem', md: '4.25rem' },
+                lineHeight: 1.03,
+                mb: 1.8
+              }}
+            >
+              Welcome To Go Postal SD
+            </Typography>
+
+            <Typography
+              variant="h5"
+              sx={{
+                fontSize: { xs: '1.08rem', md: '1.45rem' },
+                opacity: 0.96,
+                mb: 3.5
+              }}
+            >
+              Your Premier Shipping And Printing Destination in Little Italy, San Diego
+            </Typography>
+
+            <Stack
+              direction="row"
+              spacing={1.2}
+              justifyContent="center"
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ mb: 4.5 }}
+            >
+              <Chip label="We Pick" sx={{ borderRadius: 1, fontWeight: 700, color: 'white', backgroundColor: 'rgba(9,20,33,0.5)' }} />
+              <Chip label="We Pack" sx={{ borderRadius: 1, fontWeight: 700, color: 'white', backgroundColor: 'rgba(9,20,33,0.5)' }} />
+              <Chip label="We Ship" sx={{ borderRadius: 1, fontWeight: 700, color: 'white', backgroundColor: 'rgba(9,20,33,0.5)' }} />
+            </Stack>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.8} justifyContent="center">
+              <Button
+                variant="contained"
+                size="large"
+                endIcon={<ArrowForward />}
+                onClick={() => navigate('/shop')}
+                sx={{ borderRadius: 1, px: 4.5, py: 1.35, backgroundColor: 'secondary.main', '&:hover': { backgroundColor: 'secondary.dark' } }}
+              >
+                Place Order Online
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                startIcon={<LocationOn />}
+                href="https://maps.google.com/?q=1501+India+St+Suite+103+San+Diego+CA+92101"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  borderRadius: 1,
+                  px: 4.5,
+                  py: 1.35,
+                  color: 'white',
+                  borderColor: 'rgba(255,255,255,0.76)',
+                  '&:hover': {
+                    borderColor: 'white',
+                    backgroundColor: 'rgba(255,255,255,0.12)'
+                  }
                 }}
               >
-                Welcome To Go Postal SD
-              </Typography>
-              <Typography 
-                variant="h5" 
-                sx={{ mb: 4, opacity: 0.95 }}
-              >
-                Your Premier Shipping And Printing Destination in Little Italy, San Diego
-              </Typography>
-              <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-                <Chip 
-                  label="We Pick" 
-                  sx={{ 
-                    backgroundColor: 'rgb(42 87 148)', 
-                    color: 'white',
-                    fontWeight: 'bold'
-                  }} 
-                />
-                <Chip 
-                  label="We Pack" 
-                  sx={{ 
-                    backgroundColor: 'rgb(42 87 148)', 
-                    color: 'white',
-                    fontWeight: 'bold'
-                  }} 
-                />
-                <Chip 
-                  label="We Ship" 
-                  sx={{ 
-                    backgroundColor: 'rgb(42 87 148)', 
-                    color: 'white',
-                    fontWeight: 'bold'
-                  }} 
-                />
-                <Chip 
-                  label="We Print"
-                  onClick={() => navigate('/shop')}
-                  sx={{ 
-                    // backgroundColor: 'rgba(211, 47, 47, 0.9)',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    backgroundColor: 'secondary.main',
-                    '&:hover': {
-                      backgroundColor: 'secondary.dark'
-                    }
-                  }} 
-                />
-              </Stack>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Business 
-                  sx={{ 
-                    fontSize: { xs: '120px', md: '180px' }, 
-                    opacity: 0.3,
-                    color: 'white'
-                  }} 
-                />
-              </Box>
-            </Grid>
-          </Grid>
+                Visit In Person
+              </Button>
+            </Stack>
+          </Box>
         </Container>
       </Box>
 
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        {/* Call to Action Section */}
-        <Box 
-          sx={{ 
-            textAlign: 'center',
-            background: 'linear-gradient(to bottom right, rgba(25, 118, 210, 0.08), rgba(211, 47, 47, 0.08))',
-            borderRadius: 4,
-            p: 6,
-            mb: 8
+      <Container maxWidth="xl" sx={{ py: { xs: 5, md: 7 } }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+            gap: 3
           }}
         >
-          
-          <Typography 
-            variant="h6" 
-            color="text.secondary" 
-            sx={{ mb: 4 }}
-          >
-            Place your printing order online or visit us in person!
-          </Typography>
-          <Stack 
-            direction={{ xs: 'column', sm: 'row' }} 
-            spacing={2} 
-            justifyContent="center"
-            sx={{ gap: 2 }}
-          >
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => navigate('/shop')}
-              startIcon={<Print />}
-              sx={{ 
-                px: 6, 
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                backgroundColor: 'secondary.main',
-                '&:hover': {
-                  backgroundColor: 'secondary.dark'
-                }
-              }}
-            >
-              Order Online
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              href="https://maps.google.com/?q=1501+India+St+Suite+103+San+Diego+CA+92101"
-              target="_blank"
-              rel="noopener noreferrer"
-              startIcon={<LocationOn />}
-              sx={{ 
-                px: 6, 
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                borderWidth: 2,
-                borderColor: 'rgb(7, 59, 102)',
-                color: 'rgb(7, 59, 102)',
-                '&:hover': {
-                  borderWidth: 2,
-                  borderColor: 'rgb(7, 59, 102)',
-                  backgroundColor: 'rgba(7, 59, 102, 0.1)'
-                }
-              }}
-            >
-              Visit In Person
-            </Button>
-          </Stack>
-        </Box>
+          <Box>
+            <Card elevation={0} sx={{ borderRadius: 1, border: '1px solid rgba(24,33,42,0.12)', height: '100%' }}>
+              <CardContent sx={{ p: 3.2 }}>
+                <LocalShipping color="primary" sx={{ mb: 1.2 }} />
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 1.1 }}>
+                  Shipping Confidence
+                </Typography>
+                <Typography color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  Get practical help with packing, pickup strategy, and shipping execution so your items move safely and predictably.
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
 
-        {/* About Section */}
-        <Box sx={{ mb: 8 }}>
-          <Typography 
-            variant="h3" 
-            gutterBottom 
-            color="primary" 
-            fontWeight="bold"
-            align="center"
-            sx={{ mb: 4 }}
-          >
-            About Us
-          </Typography>
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}>
-                Go Postal is your premier destination for shipping and printing services in Little Italy, San Diego, CA. 
-                Conveniently located at <strong>1501 India St Suite 103, San Diego, CA</strong>, our family-owned business is dedicated to providing 
-                exceptional customer service and professional printing excellence.
-              </Typography>
-              <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}>
-                We prioritize saving you time and money by offering the right printing services at competitive prices. 
-                Whether you need small black-and-white copies or large full-color prints, we handle everything with precision and care.
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}>
-                As San Diego's premier copy, print, and document services center, we handle everything from small black-and-white copies 
-                to large full-color prints. <strong>If it can be printed, Go Postal can do it!</strong>
-              </Typography>
-              <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}>
-                Place printing orders online or in person. Our convenient online ordering system allows you to submit your printing 
-                jobs from anywhere, while our in-person service provides immediate assistance and consultation for your printing needs. 
-                Support local business and experience why shopping small means getting the best printing service around!
-              </Typography>
-            </Grid>
-          </Grid>
+          <Box>
+            <Card elevation={0} sx={{ borderRadius: 1, border: '1px solid rgba(24,33,42,0.12)', height: '100%' }}>
+              <CardContent sx={{ p: 3.2 }}>
+                <Print color="primary" sx={{ mb: 1.2 }} />
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 1.1 }}>
+                  Print Precision
+                </Typography>
+                <Typography color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  From small black-and-white copies to large full-color runs, every order is handled with professional attention.
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+
+          <Box>
+            <Card elevation={0} sx={{ borderRadius: 1, border: '1px solid rgba(24,33,42,0.12)', height: '100%' }}>
+              <CardContent sx={{ p: 3.2 }}>
+                <Inventory2 color="primary" sx={{ mb: 1.2 }} />
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 1.1 }}>
+                  Local Accountability
+                </Typography>
+                <Typography color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  Family-owned service means responsive support, transparent communication, and real help when your project has deadlines.
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
         </Box>
+      </Container>
+
+      <Container maxWidth="xl" sx={{ pb: { xs: 6, md: 8 } }}>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12 }}>
+            <Card elevation={0} sx={{ borderRadius: 1, border: '1px solid rgba(24,33,42,0.12)', height: '100%' }}>
+              <CardContent sx={{ p: { xs: 3, md: 3.5 } }}>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: '0.12em' }}>
+                  About Us
+                </Typography>
+                <Typography variant="h4" fontWeight={700} sx={{ mt: 1, mb: 2.2 }}>
+                  Premier copy, print, and document services for San Diego.
+                </Typography>
+                <Typography sx={{ lineHeight: 1.85, mb: 1.8 }}>
+                  Go Postal is your premier destination for shipping and printing services in Little Italy, San Diego, CA. Conveniently located at <strong>1501 India St Suite 103, San Diego, CA</strong>, our family-owned business is dedicated to providing exceptional customer service and professional printing excellence.
+                </Typography>
+                <Typography sx={{ lineHeight: 1.85, mb: 1.8 }}>
+                  We prioritize saving you time and money by offering the right printing services at competitive prices. Whether you need small black-and-white copies or large full-color prints, we handle everything with precision and care.
+                </Typography>
+                <Typography sx={{ lineHeight: 1.85 }}>
+                  As San Diego's premier copy, print, and document services center, we handle everything from small black-and-white copies to large full-color prints. <strong>If it can be printed, Go Postal can do it!</strong>
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 1,
+                border: '1px solid rgba(24,33,42,0.12)',
+                background:
+                  'linear-gradient(165deg, rgba(244,239,231,0.9), rgba(255,255,255,0.92) 55%, rgba(182,73,38,0.09) 130%)',
+                height: '100%'
+              }}
+            >
+              <CardContent sx={{ p: { xs: 3, md: 3.5 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: '0.12em' }}>
+                  How To Order
+                </Typography>
+                <Typography variant="h4" fontWeight={700} sx={{ mt: 1, mb: 2.2 }}>
+                  Online convenience with in-person support.
+                </Typography>
+                <Typography sx={{ lineHeight: 1.9, color: 'text.secondary', mb: 2.4 }}>
+                  Place printing orders online or in person. Our convenient online ordering system allows you to submit your printing jobs from anywhere, while our in-person service provides immediate assistance and consultation for your printing needs. Support local business and experience why shopping small means getting the best printing service around!
+                </Typography>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.6} sx={{ mt: 'auto' }}>
+                  <Button
+                    variant="contained"
+                    endIcon={<ArrowForward />}
+                    onClick={() => navigate('/shop')}
+                    sx={{ borderRadius: 1 }}
+                  >
+                    Start Printing Order
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<LocationOn />}
+                    href="https://maps.google.com/?q=1501+India+St+Suite+103+San+Diego+CA+92101"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ borderRadius: 1 }}
+                  >
+                    Open Directions
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </Container>
     </Box>
   );

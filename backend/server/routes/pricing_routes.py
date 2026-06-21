@@ -111,7 +111,6 @@ class ShippingEstimatesResource(Resource):
     
     @api.doc('get_shipping_estimates')
     @api.expect(shipping_estimate_model)
-    @api.marshal_with(shipping_option_model, as_list=True)
     def post(self):
         """Get shipping estimates for cart items."""
         data = request.get_json()

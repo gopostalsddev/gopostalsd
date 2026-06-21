@@ -180,7 +180,6 @@ class OrderService:
                 buyer_phone=order.customer_phone,
                 shipping_address=order.shipping_address,
                 billing_address=order.billing_address,
-                order_id=order.order_number,
                 note=f"Order {order.order_number} payment"
             )
             
@@ -306,6 +305,55 @@ class OrderService:
             return {
                 'success': False,
                 'error': f'Failed to get user orders: {str(e)}'
+            }
+
+    def get_all_orders(self,
+                      limit: int = 50,
+                      offset: int = 0,
+                      status: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get all orders for admin management.
+
+        Args:
+            limit: Number of orders to return
+            offset: Offset for pagination
+            status: Optional status filter
+
+        Returns:
+            Dict containing orders list
+        """
+        try:
+            query = Order.query
+
+            if status:
+                try:
+                    query = query.filter_by(status=OrderStatus(status))
+                except ValueError:
+                    return {
+                        'success': False,
+                        'error': 'Invalid status filter'
+                    }
+
+            orders = query.order_by(Order.created_at.desc())\
+                .limit(limit)\
+                .offset(offset)\
+                .all()
+
+            total_count = query.count()
+
+            return {
+                'success': True,
+                'orders': [order.to_dict() for order in orders],
+                'total_count': total_count,
+                'limit': limit,
+                'offset': offset
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting all orders: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Failed to get all orders: {str(e)}'
             }
     
     def update_order_status(self, 

@@ -392,13 +392,6 @@ const ProductDetailPage = ({ product, onBack }) => {
   };
 
   const handleShippingEstimate = async () => {
-    // Coming soon - show message
-    setSuccessMessage('Coming soon! Shipping calculation will be available shortly.');
-    setShowSuccessSnackbar(true);
-    return;
-
-    /*
-    // Original code commented out for future implementation
     if (!validateShippingInfo()) {
       setError('Please fill in all required shipping information');
       return;
@@ -444,11 +437,10 @@ const ProductDetailPage = ({ product, onBack }) => {
       setShowShippingDialog(true);
     } catch (error) {
       console.error('Error getting shipping estimates:', error);
-      setError('Failed to get shipping estimates');
+      setError(error?.response?.data?.error || 'Failed to get shipping estimates');
     } finally {
       setShippingLoading(false);
     }
-    */
   };
 
   const handleAddToCart = async () => {
@@ -735,9 +727,7 @@ const ProductDetailPage = ({ product, onBack }) => {
       >
         {/* Left Column - Product Image */}
         <Grid 
-          item 
-          xs={12} 
-          lg={4}
+          size={{ xs: 12, lg: 4 }}
           sx={{
             display: 'flex',
             alignItems: 'stretch',
@@ -777,9 +767,7 @@ const ProductDetailPage = ({ product, onBack }) => {
 
         {/* Middle Column - Configuration */}
         <Grid 
-          item 
-          xs={12} 
-          lg={4}
+          size={{ xs: 12, lg: 4 }}
           sx={{
             display: 'flex',
             alignItems: 'stretch',
@@ -949,9 +937,7 @@ const ProductDetailPage = ({ product, onBack }) => {
 
         {/* Right Column - Stepper for Additional Steps */}
         <Grid 
-          item 
-          xs={12} 
-          lg={4}
+          size={{ xs: 12, lg: 4 }}
           sx={{
             display: 'flex',
             alignItems: 'stretch',
@@ -1096,7 +1082,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                       Enter your destination to get a shipping estimate.
                     </Typography>
                     <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <FormControl fullWidth>
                           <InputLabel>Country</InputLabel>
                           <Select
@@ -1117,7 +1103,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                           </Select>
                         </FormControl>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <FormControl fullWidth>
                           <InputLabel>State/Province</InputLabel>
                           <Select
@@ -1133,7 +1119,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                           </Select>
                         </FormControl>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           fullWidth
                           label="City"
@@ -1153,7 +1139,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                           helperText={validationErrors.city}
                         />
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           fullWidth
                           label="Zip/Postal Code"
@@ -1283,7 +1269,7 @@ const ProductDetailPage = ({ product, onBack }) => {
           
           <Grid container spacing={2}>
             {previewFiles.map((item, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
                 <Card sx={{ height: '100%', position: 'relative' }}>
                   {/* Image preview - commented out for PDF-only restriction */}
                   {/* {item.file.type.startsWith('image/') ? (

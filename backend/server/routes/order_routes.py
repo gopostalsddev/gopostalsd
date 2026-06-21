@@ -108,6 +108,33 @@ def get_order_service():
 @api.route('/')
 class OrderResource(Resource):
     """Resource for order operations."""
+
+    @api.doc('get_all_orders')
+    @api.marshal_with(api.model('AllOrdersResponse', {
+        'orders': fields.List(fields.Nested(order_model), description='Orders list'),
+        'total_count': fields.Integer(description='Total order count'),
+        'limit': fields.Integer(description='Limit'),
+        'offset': fields.Integer(description='Offset')
+    }))
+    @require_role('Admin')
+    def get(self):
+        """Get all orders for admin management."""
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        status = request.args.get('status')
+
+        order_service = get_order_service()
+        result = order_service.get_all_orders(limit=limit, offset=offset, status=status)
+
+        if result['success']:
+            return {
+                'orders': result['orders'],
+                'total_count': result['total_count'],
+                'limit': result['limit'],
+                'offset': result['offset']
+            }, 200
+        else:
+            return {'error': result['error']}, 400
     
     @api.doc('create_order')
     @api.expect(create_order_model)

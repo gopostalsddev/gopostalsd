@@ -259,7 +259,7 @@ const RegisterPage = () => {
                 return (
                     <Box>
                         <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <TextField
                                     fullWidth
                                     label="First Name"
@@ -272,7 +272,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <TextField
                                     fullWidth
                                     label="Last Name"
@@ -285,7 +285,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Email Address"
@@ -306,7 +306,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Password"
@@ -354,7 +354,7 @@ const RegisterPage = () => {
                                     </Box>
                                 )}
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Confirm Password"
@@ -397,7 +397,7 @@ const RegisterPage = () => {
                             Shipping Address
                         </Typography>
                         <Grid container spacing={2} sx={{ mb: 3 }}>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Street Address"
@@ -410,7 +410,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12} sm={8}>
+                            <Grid size={{ xs: 12, sm: 8 }}>
                                 <TextField
                                     fullWidth
                                     label="City"
@@ -423,7 +423,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12} sm={4}>
+                            <Grid size={{ xs: 12, sm: 4 }}>
                                 <TextField
                                     fullWidth
                                     label="ZIP Code"
@@ -436,7 +436,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <TextField
                                     fullWidth
                                     label="State"
@@ -449,7 +449,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <TextField
                                     fullWidth
                                     label="Country"
@@ -462,7 +462,7 @@ const RegisterPage = () => {
                                     disabled={isSubmitting}
                                 />
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Apartment/Suite (Optional)"
@@ -494,7 +494,7 @@ const RegisterPage = () => {
                                     Billing Address
                                 </Typography>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={12}>
+                                    <Grid size={{ xs: 12 }}>
                                         <TextField
                                             fullWidth
                                             label="Street Address"
@@ -507,7 +507,7 @@ const RegisterPage = () => {
                                             disabled={isSubmitting}
                                         />
                                     </Grid>
-                                    <Grid item xs={12} sm={8}>
+                                    <Grid size={{ xs: 12, sm: 8 }}>
                                         <TextField
                                             fullWidth
                                             label="City"
@@ -520,7 +520,7 @@ const RegisterPage = () => {
                                             disabled={isSubmitting}
                                         />
                                     </Grid>
-                                    <Grid item xs={12} sm={4}>
+                                    <Grid size={{ xs: 12, sm: 4 }}>
                                         <TextField
                                             fullWidth
                                             label="ZIP Code"
@@ -533,7 +533,7 @@ const RegisterPage = () => {
                                             disabled={isSubmitting}
                                         />
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
                                             fullWidth
                                             label="State"
@@ -546,7 +546,7 @@ const RegisterPage = () => {
                                             disabled={isSubmitting}
                                         />
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
                                             fullWidth
                                             label="Country"
@@ -559,7 +559,7 @@ const RegisterPage = () => {
                                             disabled={isSubmitting}
                                         />
                                     </Grid>
-                                    <Grid item xs={12}>
+                                    <Grid size={{ xs: 12 }}>
                                         <TextField
                                             fullWidth
                                             label="Apartment/Suite (Optional)"

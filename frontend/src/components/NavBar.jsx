@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { 
   AccountCircle, 
+  ManageAccounts,
   Login, 
   Logout, 
   AdminPanelSettings,
@@ -31,7 +32,8 @@ import {
   Close,
   Home,
   Store,
-  ContactMail
+  ContactMail,
+  ReceiptLong
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -237,6 +239,14 @@ const Navbar = () => {
                       </Box>
                     </MenuItem>
                     <Divider />
+                    <MenuItem onClick={() => { handleMenuClose(); navigate('/account'); }}>
+                      <ManageAccounts sx={{ mr: 1 }} />
+                      My Account
+                    </MenuItem>
+                    <MenuItem onClick={() => { handleMenuClose(); navigate('/track-order'); }}>
+                      <ReceiptLong sx={{ mr: 1 }} />
+                      Track Orders
+                    </MenuItem>
                     {currentUser?.role === 'Admin' && (
                       <MenuItem onClick={() => { handleMenuClose(); navigate('/admin'); }}>
                         <AdminPanelSettings sx={{ mr: 1 }} />
@@ -365,6 +375,24 @@ const Navbar = () => {
                     />
                   </ListItemButton>
                 </ListItem>
+
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={() => handleMobileNavigation('/account')}>
+                      <ListItemIcon>
+                        <ManageAccounts />
+                      </ListItemIcon>
+                      <ListItemText primary="My Account" />
+                    </ListItemButton>
+                  </ListItem>
+
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={() => handleMobileNavigation('/track-order')}>
+                      <ListItemIcon>
+                        <ReceiptLong />
+                      </ListItemIcon>
+                      <ListItemText primary="Track Orders" />
+                    </ListItemButton>
+                  </ListItem>
                 
                 <ListItem disablePadding>
                   <ListItemButton onClick={handleLogout}>

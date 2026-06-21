@@ -1,3 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
+
+:root {
+  --gp-ink: #18212a;
+  --gp-muted: #5a6470;
+  --gp-navy: #073b66;
+  --gp-copper: #b64926;
+  --gp-sand: #f4efe7;
+  --gp-paper: #fffdf9;
+  --gp-line: rgba(24, 33, 42, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body, html, #root {
   margin: 0;
   padding: 0;
@@ -6,18 +22,32 @@ body, html, #root {
   display: flex;
   flex-direction: column; /* Flexbox alignment */
   box-sizing: border-box;
+  background:
+    radial-gradient(circle at top left, rgba(182, 73, 38, 0.08), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(7, 59, 102, 0.08), transparent 32%),
+    var(--gp-sand);
+  color: var(--gp-ink);
+  font-family: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+a {
+  color: inherit;
 }
 
 /* Styling the scrollbar */
 ::-webkit-scrollbar {
-  width: 3px; /* Makes scrollbar thinner */
+  width: 8px; /* Makes scrollbar thinner */
 }
 
 ::-webkit-scrollbar-track {
-  background: #011d37; /* Matches the navbar's primary color */
+  background: #0a3650; /* Matches the navbar's primary color */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #ccc; /* Slightly lighter shade for contrast */
+  background: linear-gradient(180deg, #d97706, #0b4a6f); /* Slightly lighter shade for contrast */
   border-radius: 4px; /* Rounded edges for aesthetics */
 }

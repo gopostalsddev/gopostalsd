@@ -5,6 +5,7 @@ from server.config import DevelopmentConfig, TestingConfig, ProductionConfig
 from server.config import database, migrate, sinalite, swagger, filestorage
 from server.models import * # So that they can be detected by migrations
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 def create_server(config="development"):
@@ -19,8 +20,37 @@ def create_server(config="development"):
     """
     # Create Flask application instance
     server = Flask(__name__)
-    # Enable Cross-Origin Resource Sharing (CORS)
-    CORS(server)
+    
+    # Configure CORS with allowed origins
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    cors_origins = [
+        frontend_url,
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'https://localhost:5173',
+    ]
+    
+    # Extract base domain for Codespaces (e.g., curly-spoon-jj57pprxw5q93qjwq)
+    if 'github.dev' in frontend_url:
+        # Extract the subdomain part
+        import re
+        match = re.search(r'https?://([^.]+)\.app\.github\.dev', frontend_url)
+        if match:
+            subdomain = match.group(1)
+            # Add both port 5173 (frontend) and 5000 (backend) with this subdomain
+            cors_origins.append(f'https://{subdomain}-5173.app.github.dev')
+            cors_origins.append(f'https://{subdomain}-5000.app.github.dev')
+    
+    cors_config = {
+        'origins': cors_origins,
+        'methods': ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        'allow_headers': ['Content-Type', 'Authorization'],
+        'supports_credentials': True,
+        'max_age': 3600,
+        'expose_headers': ['Content-Type', 'Authorization']
+    }
+    CORS(server, resources={r"/api/*": cors_config})
     
     # Add startup timestamp for health checks
     from datetime import datetime

@@ -73,9 +73,7 @@ const AdminPage = () => {
           {managementTiles.map((tile) => (
             <Grid
               key={tile.title}
-              item
-              xs={12}
-              md={6}
+              size={{ xs: 12, md: 6 }}
               sx={{ display: "flex", justifyContent: "center" }}
             >
               <Card

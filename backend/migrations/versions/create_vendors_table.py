@@ -17,12 +17,15 @@ depends_on = None
 
 
 def upgrade():
+    connection = op.get_bind()
+    dialect_name = connection.engine.dialect.name
+
     # Create vendors table
     op.create_table('vendors',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
-        sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
+        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
+        sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.PrimaryKeyConstraint('id')
     )
     
@@ -34,16 +37,21 @@ def upgrade():
     op.add_column('print_products', sa.Column('vendor_id', sa.Integer(), nullable=False, server_default='0'))
     op.add_column('print_products', sa.Column('vendor_product_id', sa.String(length=255), nullable=True))
     
-    # Add foreign key constraint
-    op.create_foreign_key('fk_print_products_vendor_id', 'print_products', 'vendors', ['vendor_id'], ['id'])
+    # Add foreign key constraint where supported.
+    if dialect_name != 'sqlite':
+        op.create_foreign_key('fk_print_products_vendor_id', 'print_products', 'vendors', ['vendor_id'], ['id'])
     
     # Create index on vendor_product_id for performance
     op.create_index('ix_print_products_vendor_product_id', 'print_products', ['vendor_product_id'])
 
 
 def downgrade():
+    connection = op.get_bind()
+    dialect_name = connection.engine.dialect.name
+
     # Remove foreign key constraint
-    op.drop_constraint('fk_print_products_vendor_id', 'print_products', type_='foreignkey')
+    if dialect_name != 'sqlite':
+        op.drop_constraint('fk_print_products_vendor_id', 'print_products', type_='foreignkey')
     
     # Remove index
     op.drop_index('ix_print_products_vendor_product_id', table_name='print_products')

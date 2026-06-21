@@ -13,29 +13,40 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 try:
+    # Newer Square SDK exports `Square` directly.
     from square import Square as SquareClient
-    # Try to use the square module directly
     SQUARE_AVAILABLE = True
+    SDK_CLIENT_KIND = "square"
     # Define aliases for compatibility
     SquareAddress = None  # Will be used if needed
     Money = None
     CreatePaymentRequest = None
 except ImportError as e:
-    SQUARE_AVAILABLE = False
-    logger.warning(f"Square SDK not available: {e}")
-    # Define dummy classes for when SDK is not available
-    class Square:
-        pass
-    class Client:
-        pass
-    class Money:
-        pass
-    class CreatePaymentRequest:
-        pass
-    class Address:
-        pass
-    # Alias for code that uses SquareAddress
-    SquareAddress = Address
+    try:
+        # Older Square SDK exposes `Client` under square.client.
+        from square.client import Client as SquareClient
+        SQUARE_AVAILABLE = True
+        SDK_CLIENT_KIND = "client"
+        SquareAddress = None
+        Money = None
+        CreatePaymentRequest = None
+    except ImportError:
+        SQUARE_AVAILABLE = False
+        logger.warning(f"Square SDK not available: {e}")
+        SDK_CLIENT_KIND = None
+        # Define dummy classes for when SDK is not available
+        class Square:
+            pass
+        class Client:
+            pass
+        class Money:
+            pass
+        class CreatePaymentRequest:
+            pass
+        class Address:
+            pass
+        # Alias for code that uses SquareAddress
+        SquareAddress = Address
 
 
 class SquareAdapter:
@@ -63,18 +74,24 @@ class SquareAdapter:
         
         if SQUARE_AVAILABLE and self.access_token:
             try:
-                from square.client import SquareEnvironment
+                if SDK_CLIENT_KIND == "square":
+                    # Newer SDK accepts environment enum values or strings.
+                    try:
+                        from square.client import ClientEnvironment
+                        env = ClientEnvironment.SANDBOX if self.environment == 'sandbox' else ClientEnvironment.PRODUCTION
+                    except Exception:
+                        env = self.environment
 
-                env = (
-                    SquareEnvironment.SANDBOX
-                    if self.environment == 'sandbox'
-                    else SquareEnvironment.PRODUCTION
-                )
-
-                self.client = SquareClient(
-                    token=self.access_token,
-                    environment=env,
-                )
+                    self.client = SquareClient(
+                        access_token=self.access_token,
+                        environment=env
+                    )
+                else:
+                    # Older SDK client initialization path.
+                    self.client = SquareClient(
+                        access_token=self.access_token,
+                        environment=self.environment
+                    )
                 
                 self._is_configured = True
                 logger.info(f"Square client initialized for {self.environment} environment")
@@ -141,42 +158,38 @@ class SquareAdapter:
             if not idempotency_key:
                 idempotency_key = f"gopostalsd_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{amount}"
             
-            # Create money object
-            money = Money(amount=amount, currency=currency)
-            
-            # Build payment request
-            payment_request = CreatePaymentRequest(
-                source_id=source_id,
-                idempotency_key=idempotency_key,
-                amount_money=money,
-                location_id=self.location_id
-            )
-            
+            # Build payment request as a dictionary to support both old and new SDK variants.
+            payment_request = {
+                'source_id': source_id,
+                'idempotency_key': idempotency_key,
+                'amount_money': {
+                    'amount': amount,
+                    'currency': currency
+                }
+            }
+
+            if self.location_id:
+                payment_request['location_id'] = self.location_id
+
             # Add buyer information if provided
-            if buyer_email or buyer_phone:
-                buyer_info = {}
-                if buyer_email:
-                    buyer_info['email_address'] = buyer_email
-                if buyer_phone:
-                    buyer_info['phone_number'] = buyer_phone
-                payment_request.buyer_email_address = buyer_email
-                payment_request.buyer_phone_number = buyer_phone
-            
+            if buyer_email:
+                payment_request['buyer_email_address'] = buyer_email
+            if buyer_phone:
+                payment_request['buyer_phone_number'] = buyer_phone
+
             # Add addresses if provided
             if shipping_address:
-                shipping_addr = self._create_square_address(shipping_address)
-                payment_request.shipping_address = shipping_addr
-            
+                payment_request['shipping_address'] = self._create_square_address(shipping_address)
+
             if billing_address:
-                billing_addr = self._create_square_address(billing_address)
-                payment_request.billing_address = billing_addr
-            
+                payment_request['billing_address'] = self._create_square_address(billing_address)
+
             # Add order and note information
             if order_id:
-                payment_request.order_id = order_id
+                payment_request['order_id'] = order_id
             if note:
-                payment_request.note = note
-            
+                payment_request['note'] = note
+
             # Process payment
             result = self.client.payments.create_payment(payment_request)
             

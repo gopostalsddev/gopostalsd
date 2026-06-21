@@ -37,6 +37,9 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(60), nullable=False)
     last_name = db.Column(db.String(60), nullable=False)
+    # Legacy compatibility columns for older local SQLite schemas.
+    legacy_email_address = db.Column('email_address', db.String(120), nullable=True)
+    legacy_creation_date = db.Column('creation_date', db.DateTime, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=True)  # Nullable for OAuth users
     status = db.Column(db.Enum(UserStatus), default=UserStatus.PENDING_VERIFICATION, nullable=False)

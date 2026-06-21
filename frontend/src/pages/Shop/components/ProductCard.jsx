@@ -364,7 +364,7 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
 
           <Grid container spacing={3}>
             {/* Product Image */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <CardMedia
                 component="img"
                 height="300"
@@ -375,7 +375,7 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
             </Grid>
 
             {/* Product Options */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Typography variant="h6" gutterBottom>
                 Configure Your Product
               </Typography>

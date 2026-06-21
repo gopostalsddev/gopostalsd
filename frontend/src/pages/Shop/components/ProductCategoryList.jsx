@@ -42,12 +42,7 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
       >
         {productCategories.map((category) => (
           <Grid 
-            item 
-            xs={12} 
-            sm={6} 
-            md={4} 
-            lg={3}
-            xl={2}
+            size={{ xs: 12, sm: 6, md: 4, lg: 3, xl: 2 }}
             key={category.id}
             sx={{
               display: 'flex',

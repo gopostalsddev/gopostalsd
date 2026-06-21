@@ -137,7 +137,7 @@ const ProductViewPage = ({ category, onBack }) => {
       ) : (
         <Grid container spacing={3} sx={{ justifyContent: "center" }}>
           {products.map((product) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
             <Card
               sx={{
                 height: "100%",

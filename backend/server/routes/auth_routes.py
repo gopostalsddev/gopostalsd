@@ -97,7 +97,6 @@ class RegistrationResource(Resource):
     
     @api.doc('register_user')
     @api.expect(registration_model)
-    @api.marshal_with(registration_response_model)
     def post(self):
         """Register a new user."""
         data = request.get_json()

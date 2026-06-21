@@ -161,18 +161,7 @@ const UnauthorizedPage = () => {
                         </Typography>
                         <MuiLink
                             component={Link}
-                            to="/help"
-                            variant="body2"
-                            color="primary"
-                        >
-                            Help Center
-                        </MuiLink>
-                        <Typography variant="body2" color="text.secondary">
-                            •
-                        </Typography>
-                        <MuiLink
-                            component={Link}
-                            to="/faq"
+                            to="/faqs"
                             variant="body2"
                             color="primary"
                         >

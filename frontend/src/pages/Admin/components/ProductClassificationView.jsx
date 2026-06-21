@@ -659,7 +659,7 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
 
         <Grid container spacing={3}>
           {/* Left Side - Product Type Selection and Details (1/4 width) */}
-          <Grid item xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Box sx={{ 
               width: { xs: "100%", sm: 600 },
               height: '100%', // Fixed height - never changes
@@ -891,7 +891,7 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
           </Grid>
 
           {/* Right Side - Products in Selected Type (3/4 width) */}
-          <Grid item xs={12} md={9}>
+          <Grid size={{ xs: 12, md: 9 }}>
             <Typography 
               variant="h6" 
               sx={{ 

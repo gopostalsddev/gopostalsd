@@ -659,8 +659,8 @@ X-RateLimit-Reset: 1640995200
 ## API Documentation
 
 Interactive API documentation is available at:
-- **Swagger UI**: `/api/docs`
-- **ReDoc**: `/api/redoc`
+- **Swagger UI (local)**: `http://localhost:5000/`
+- **Swagger UI (deployed)**: `<backend-base-url>/`
 
 The API documentation includes:
 - Complete endpoint descriptions
