@@ -44,29 +44,6 @@ def upgrade():
             sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),
         )
 
-    zip_col = next(
-        (column for column in inspector.get_columns('addresses') if column['name'] == 'zip_code'),
-        None,
-    )
-    if zip_col and 'INT' in str(zip_col['type']).upper():
-        if bind.dialect.name == 'postgresql':
-            op.alter_column(
-                'addresses',
-                'zip_code',
-                existing_type=zip_col['type'],
-                type_=sa.String(length=20),
-                postgresql_using='zip_code::varchar',
-                existing_nullable=zip_col.get('nullable', False),
-            )
-        else:
-            op.alter_column(
-                'addresses',
-                'zip_code',
-                existing_type=zip_col['type'],
-                type_=sa.String(length=20),
-                existing_nullable=zip_col.get('nullable', False),
-            )
-
 
 def downgrade():
     pass

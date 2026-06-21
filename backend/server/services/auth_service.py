@@ -151,8 +151,6 @@ class AuthService:
             # Create user
             user = User(
                 email=email,
-                legacy_email_address=email,
-                legacy_creation_date=datetime.utcnow(),
                 password_hash=password_hash,
                 first_name=first_name,
                 last_name=last_name,
