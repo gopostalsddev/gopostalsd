@@ -1,6 +1,6 @@
 """Expand addresses.zip_code to string
 
-Revision ID: expand_addresses_zip_code_to_string
+Revision ID: zip_code_to_string
 Revises: fix_roles_varchar_length
 Create Date: 2026-06-21 20:33:00.000000
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'expand_addresses_zip_code_to_string'
+revision = 'zip_code_to_string'
 down_revision = 'fix_roles_varchar_length'
 branch_labels = None
 depends_on = None
