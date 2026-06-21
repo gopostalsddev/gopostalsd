@@ -103,6 +103,13 @@ class AuthService:
             # Get default role (RegisteredCustomer)
             default_role = Role.query.filter_by(name='RegisteredCustomer').first()
             if not default_role:
+                # Fresh environments may not have seeded roles yet.
+                # Attempt one-time initialization before failing.
+                from server.services.role_service import RoleService
+                RoleService()._initialize_default_roles()
+                default_role = Role.query.filter_by(name='RegisteredCustomer').first()
+
+            if not default_role:
                 return {
                     'success': False,
                     'error': 'Default role not found',
