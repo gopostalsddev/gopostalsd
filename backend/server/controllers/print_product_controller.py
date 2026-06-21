@@ -54,6 +54,56 @@ class PrintProductSuccessMessages(Enum):
 class PrintProductController:
 
     @staticmethod
+    def ensure_default_product_types_for_categories(default_suffix: str = "General") -> Result:
+        """Ensure each category has at least one product type.
+
+        Creates one default product type for categories that currently have none.
+        """
+        result = Result()
+
+        try:
+            categories = PrintProductCategory.query.all()
+            created = []
+
+            for category in categories:
+                has_types = PrintProductType.query.filter_by(category_id=category.id).first() is not None
+                if has_types:
+                    continue
+
+                candidate_name = f"{category.name} {default_suffix}".strip()
+                # Guard against per-category name collisions.
+                if PrintProductType.query.filter_by(category_id=category.id, name=candidate_name).first():
+                    candidate_name = f"{category.name} Default"
+
+                new_type = PrintProductType(
+                    name=candidate_name,
+                    category_id=category.id,
+                    description=f"Default product type for {category.name}",
+                    image=None,
+                )
+                db.session.add(new_type)
+                created.append(category.id)
+
+            if created:
+                db.session.commit()
+            else:
+                db.session.rollback()
+
+            result.status = True
+            result.data = {
+                "message": "Default product type bootstrap completed",
+                "categories_scanned": len(categories),
+                "categories_updated": len(created),
+            }
+        except Exception as e:
+            db.session.rollback()
+            result.status = False
+            result.error = f"Failed to ensure default product types: {str(e)}"
+            logger.error(f"Error ensuring default product types: {str(e)}")
+
+        return result
+
+    @staticmethod
     def get_all_product_categories() -> Result:
         """Retrieve all product categories from the database."""
 

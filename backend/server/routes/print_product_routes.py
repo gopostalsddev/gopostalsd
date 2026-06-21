@@ -256,6 +256,23 @@ class PrintProductTypesResource(Resource):
         else:
             return {"error": result.error}, 400, {"Content-Type": "application/json"}
 
+
+@api.route("/product-types/ensure-defaults")
+class PrintProductTypesEnsureDefaultsResource(Resource):
+    """Resource for creating default product types for empty categories"""
+
+    @api.doc(description="Ensure each category has at least one product type")
+    @api.response(200, "Default product types ensured")
+    @api.response(500, "Server error")
+    def post(self):
+        """Create default product types for categories that have none"""
+        result = PrintProductController.ensure_default_product_types_for_categories()
+
+        if result.status:
+            return result.data, 200
+        else:
+            return {"error": result.error}, 500, {"Content-Type": "application/json"}
+
 @api.route("/product-types/category/<int:category_id>")
 @api.param("category_id", "The category ID to filter product types")
 class PrintProductTypesByCategoryResource(Resource):
