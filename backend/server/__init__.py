@@ -23,16 +23,25 @@ def create_server(config="development"):
     
     # Configure CORS with allowed origins
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
+    render_external_url = os.getenv('RENDER_EXTERNAL_URL')
+
+    env_origins = [frontend_url, render_frontend_url, render_external_url]
     cors_origins = [
-        frontend_url,
         'http://localhost:5173',
         'http://localhost:3000',
         'http://localhost:8080',
         'https://localhost:5173',
+        'https://gopostalsd-website.onrender.com',
+        'https://gopostalsd.onrender.com',
     ]
+
+    for origin in env_origins:
+        if origin and origin not in cors_origins:
+            cors_origins.append(origin)
     
     # Extract base domain for Codespaces (e.g., curly-spoon-jj57pprxw5q93qjwq)
-    if 'github.dev' in frontend_url:
+    if frontend_url and 'github.dev' in frontend_url:
         # Extract the subdomain part
         import re
         match = re.search(r'https?://([^.]+)\.app\.github\.dev', frontend_url)
