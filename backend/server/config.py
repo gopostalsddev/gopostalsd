@@ -77,6 +77,9 @@ class ProductionConfig(Config):
     SINALITE_CLIENT_ID = os.getenv('SINALITE_CLIENT_ID')
     SINALITE_CLIENT_SECRET = os.getenv('SINALITE_CLIENT_SECRET')
 
+    ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
+
     if not SINALITE_CLIENT_ID or not SINALITE_CLIENT_SECRET:
         raise ValueError("SINALITE_CLIENT_ID and SINALITE_CLIENT_SECRET must be set in production!")
 

@@ -80,6 +80,11 @@ def create_server(config="development"):
     # Initialize database support
     database.init_app(server)
 
+    if config == "production":
+        with server.app_context():
+            from server.startup_admin import ensure_production_admin
+            ensure_production_admin(server)
+
     # Initialize database support
     migrate.init_app(server, database)
 
