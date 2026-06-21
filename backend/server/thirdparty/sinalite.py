@@ -27,7 +27,7 @@ class SinaliteAdapter:
 
     def init_app(self, app: Flask) -> bool:
         """Initialize the adapter with Flask app configuration."""
-        self.auth_base_url = os.getenv("SINALITE_BASE_URL_DEV")
+        self.auth_base_url = os.getenv("SINALITE_BASE_URL_DEV") or app.config["SINALITE_BASE_URL"]
         self.base_url = app.config["SINALITE_BASE_URL"]
         self.client_id = app.config["SINALITE_CLIENT_ID"]
         self.client_secret = app.config["SINALITE_CLIENT_SECRET"]

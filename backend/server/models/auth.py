@@ -270,19 +270,3 @@ class Address(db.Model):
 
     def __repr__(self):
         return f"<Address {self.street}, {self.city}, {self.country}>"
-
-
-class Account(db.Model):
-    """
-    Legacy account model (keeping for backward compatibility).
-    """
-    __tablename__ = 'accounts'
-    username = db.Column(db.String(100), primary_key=True)
-
-
-class HashingAlgorithm(db.Model):
-    """
-    Legacy hashing algorithm model (keeping for backward compatibility).
-    """
-    __tablename__ = 'hashing_algorithms'
-    id = db.Column(db.Integer, primary_key=True)
