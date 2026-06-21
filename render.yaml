@@ -46,6 +46,11 @@ services:
           name: gopostalsd-website
           type: web
           envVarKey: RENDER_EXTERNAL_URL
+      - key: RENDER_FRONTEND_URL
+        fromService:
+          name: gopostalsd-website
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY

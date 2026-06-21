@@ -18,8 +18,13 @@ class EmailService:
     
     def _get_frontend_url(self) -> str:
         """Get the frontend URL with proper environment detection."""
+        # Prefer an explicit Render frontend URL when present because it is
+        # guaranteed to be routable even if a custom domain is misconfigured.
+        render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
+        if render_frontend_url:
+            return render_frontend_url.rstrip('/')
+
         frontend_url = os.getenv('FRONTEND_URL')
-        
         if frontend_url:
             # Remove trailing slash to avoid double slashes in URLs
             return frontend_url.rstrip('/')
@@ -30,7 +35,7 @@ class EmailService:
         if environment == 'production':
             # Production should always have FRONTEND_URL set
             logger.warning("FRONTEND_URL not set in production environment!")
-            return 'https://gopostalsd.com'  # Fallback for production
+            return 'https://gopostalsd-website.onrender.com'  # Safe fallback for production
         elif environment == 'staging':
             return 'https://staging.gopostalsd.com'
         else:
