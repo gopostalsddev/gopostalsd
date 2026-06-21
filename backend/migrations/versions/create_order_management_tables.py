@@ -39,9 +39,32 @@ def upgrade():
         create_type=False,
     )
 
-    bind = op.get_bind()
-    order_status_enum.create(bind, checkfirst=True)
-    payment_status_enum.create(bind, checkfirst=True)
+    # In some PostgreSQL environments, SQLAlchemy's enum checkfirst may miss
+    # existing types across schemas/metadata state. Use duplicate-safe DDL.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            CREATE TYPE orderstatus AS ENUM (
+                'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END $$;
+        """
+    )
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            CREATE TYPE paymentstatus AS ENUM (
+                'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END $$;
+        """
+    )
 
     op.create_table(
         'orders',
