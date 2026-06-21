@@ -1,6 +1,6 @@
 from .auth import (
-    User, Role, Permission, UserSession, PasswordResetToken, 
-    EmailVerificationToken, OAuthAccount, Address, Account, HashingAlgorithm,
+    User, Role, Permission, UserSession, PasswordResetToken,
+    EmailVerificationToken, OAuthAccount, Address,
     UserStatus, AuthProvider
 )
 from .print_product import PrintProductCategory, PrintProductType, PrintProduct, Vendor
@@ -15,7 +15,7 @@ from .order import (
 # Exposed models
 __all__ = [
     'User', 'Role', 'Permission', 'UserSession', 'PasswordResetToken',
-    'EmailVerificationToken', 'OAuthAccount', 'Address', 'Account', 'HashingAlgorithm',
+    'EmailVerificationToken', 'OAuthAccount', 'Address',
     'UserStatus', 'AuthProvider', 'PrintProductCategory', 'PrintProductType', 
     'PrintProduct', 'Vendor', 'ProductOption', 'ProductPricing', 'Cart', 
     'CartItem', 'ShippingOption', 'ProductVariant', 'StoreCode',
