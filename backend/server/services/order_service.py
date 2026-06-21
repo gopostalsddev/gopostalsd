@@ -452,6 +452,9 @@ Go Postal SD Team
                 for item in order.items
             ])
 
+            shipping_html = format_address(shipping_address).replace("\n", "<br>")
+            billing_html = format_address(billing_address).replace("\n", "<br>")
+
             html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -501,11 +504,11 @@ Go Postal SD Team
       <div class="addresses">
         <div class="address">
           <h3>Shipping Address</h3>
-          <p>{format_address(shipping_address).replace('\n', '<br>')}</p>
+          <p>{shipping_html}</p>
         </div>
         <div class="address">
           <h3>Billing Address</h3>
-          <p>{format_address(billing_address).replace('\n', '<br>')}</p>
+          <p>{billing_html}</p>
         </div>
       </div>
       <div class="footer">
