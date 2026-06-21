@@ -26,6 +26,7 @@ def upgrade():
         'CANCELLED',
         'REFUNDED',
         name='orderstatus',
+        create_type=False,
     )
     payment_status_enum = sa.Enum(
         'PENDING',
@@ -35,6 +36,7 @@ def upgrade():
         'REFUNDED',
         'PARTIALLY_REFUNDED',
         name='paymentstatus',
+        create_type=False,
     )
 
     bind = op.get_bind()
