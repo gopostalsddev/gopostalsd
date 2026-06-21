@@ -1,7 +1,9 @@
 import logging
 import os
+from datetime import datetime
 
 from flask import Flask
+from sqlalchemy import or_
 
 from server.config import database
 from server.models.auth import Address, Role, User, UserStatus
@@ -50,7 +52,12 @@ def ensure_production_admin(app: Flask) -> None:
             database.session.add(default_address)
             database.session.flush()
 
-        existing = User.query.filter_by(email=admin_email).first()
+        existing = User.query.filter(
+            or_(
+                User.email == admin_email,
+                User.legacy_email_address == admin_email,
+            )
+        ).first()
         if existing:
             logger.info("Production admin already exists: %s", admin_email)
             return
@@ -60,6 +67,8 @@ def ensure_production_admin(app: Flask) -> None:
             first_name="John",
             last_name="Doe",
             email=admin_email,
+            legacy_email_address=admin_email,
+            legacy_creation_date=datetime.utcnow(),
             password_hash=password_service.hash_password(admin_password),
             status=UserStatus.ACTIVE,
             email_verified=True,
