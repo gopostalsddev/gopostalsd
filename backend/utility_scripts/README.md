@@ -11,6 +11,7 @@ This directory contains utility scripts for managing the Go Postal SD backend.
 ### User Management
 - **`create_admin_user.py`** - Create an admin user account
 - **`create_simple_admin.py`** - Create a simple admin user with minimal configuration
+- **`create_simple_customer.py`** - Create John Doe as a RegisteredCustomer test user
 
 ### Migration Tools
 - **`create_auth_migration.py`** - Create authentication migration

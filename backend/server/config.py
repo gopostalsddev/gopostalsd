@@ -66,6 +66,12 @@ class ProductionConfig(Config):
     # Format: postgresql://username:password@host:port/database_name
     SQLALCHEMY_DATABASE_URI = get_database_url()
 
+    if not SQLALCHEMY_DATABASE_URI:
+        raise ValueError(
+            "DATABASE_URL must be set in production. "
+            "On Render: link your PostgreSQL instance or add DATABASE_URL in Environment."
+        )
+
     # Sinalite integration information
     SINALITE_BASE_URL = os.getenv('SINALITE_BASE_URL')
     SINALITE_CLIENT_ID = os.getenv('SINALITE_CLIENT_ID')
