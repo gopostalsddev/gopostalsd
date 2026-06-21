@@ -2,7 +2,7 @@
 
 This project is a full-stack e-commerce web application built with **React** for the frontend and **Flask** for the backend. The application uses SQLite for development and can be seamlessly upgraded to PostgreSQL for production.
 
-
+WE ARE TESTING
 ## 🔧 Features
 
 - **Frontend:** Built with React (Vite or CRA)
