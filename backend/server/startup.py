@@ -3,6 +3,7 @@ Server startup utilities for ensuring database structures and data are properly 
 """
 import logging
 import os
+from sqlalchemy import text, inspect
 from server import database as db
 from server.controllers.print_product_controller import PrintProductController
 
@@ -81,7 +82,7 @@ def verify_database_health():
     """
     try:
         # Simple database connectivity test
-        db.session.execute("SELECT 1")
+        db.session.execute(text("SELECT 1"))
         logger.info("✅ Database connection verified")
         return True
     except Exception as e:
@@ -94,9 +95,12 @@ def check_database_tables_exist():
     Returns True if tables exist, False if they need to be created.
     """
     try:
-        # Check if the main tables exist by trying to query them
-        from server.models.print_product import PrintProductType
-        db.session.execute("SELECT COUNT(*) FROM print_product_types LIMIT 1")
+        # Check table presence via SQLAlchemy inspection (SQLAlchemy 2.x safe).
+        inspector = inspect(db.engine)
+        if not inspector.has_table('print_product_types'):
+            logger.info("📋 Database tables don't exist yet: print_product_types table missing")
+            return False
+
         logger.info("✅ Database tables exist")
         return True
     except Exception as e:
