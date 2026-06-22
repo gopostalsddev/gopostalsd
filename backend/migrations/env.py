@@ -2,6 +2,7 @@ import logging
 from logging.config import fileConfig
 
 from flask import current_app
+import sqlalchemy as sa
 
 from alembic import context
 
@@ -94,9 +95,44 @@ def run_migrations_online():
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
 
+    def remap_legacy_revision_ids(connection):
+        """Map legacy zip-code migration IDs to current canonical revision."""
+        inspector = sa.inspect(connection)
+        if not inspector.has_table('alembic_version'):
+            return
+
+        row = connection.execute(
+            sa.text('SELECT version_num FROM alembic_version LIMIT 1')
+        ).first()
+        if not row:
+            return
+
+        legacy_ids = {
+            'expand_addresses_zip_code_to_string',
+            'expand_addresses_zip_code_to_str',
+        }
+        current_revision = row[0]
+        if current_revision in legacy_ids:
+            connection.execute(
+                sa.text(
+                    'UPDATE alembic_version '
+                    'SET version_num = :new_revision '
+                    'WHERE version_num = :old_revision'
+                ),
+                {
+                    'new_revision': 'zip_code_to_string',
+                    'old_revision': current_revision,
+                }
+            )
+            logger.info(
+                'Remapped legacy Alembic revision %s to zip_code_to_string',
+                current_revision,
+            )
+
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        remap_legacy_revision_ids(connection)
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
