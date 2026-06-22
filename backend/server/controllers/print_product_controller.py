@@ -347,6 +347,14 @@ class PrintProductController:
             # Get existing products in our database for this category
             existing_products = PrintProduct.query.filter_by(category_id=category_id).all()
             existing_sku_map = {product.sku: product for product in existing_products}
+
+            # If this category has exactly one non-system type, use it as the
+            # default assignment target for unclassified products.
+            category_types = PrintProductType.query.filter(
+                PrintProductType.category_id == category_id,
+                PrintProductType.id != 0,
+            ).order_by(PrintProductType.id.asc()).all()
+            default_type_id = category_types[0].id if len(category_types) == 1 else None
             
             # Sinalite vendor ID is 1 (as defined in the migration)
             SINALITE_VENDOR_ID = 1
@@ -367,6 +375,8 @@ class PrintProductController:
                     # Update vendor_product_id if it changed
                     if existing_product.vendor_product_id != str(sinalite_product.get('id')):
                         existing_product.vendor_product_id = str(sinalite_product.get('id'))
+                    if default_type_id and existing_product.type_id == 0:
+                        existing_product.type_id = default_type_id
                     products_updated += 1
                 else:
                     # Create new product - set description to None initially
@@ -375,7 +385,7 @@ class PrintProductController:
                         sku=sku,
                         description=None,  # Sinalite doesn't provide descriptions, user will define later
                         category_id=category_id,
-                        type_id=0,  # Default to unclassified
+                        type_id=default_type_id or 0,
                         vendor_id=SINALITE_VENDOR_ID,  # Sinalite vendor
                         vendor_product_id=str(sinalite_product.get('id'))  # Sinalite's product ID
                     )
