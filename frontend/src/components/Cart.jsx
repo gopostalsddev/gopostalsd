@@ -15,6 +15,7 @@ import {
   Chip,
   Stack
 } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Add as AddIcon,
   Remove as RemoveIcon,
@@ -131,7 +132,8 @@ export function Cart() {
           <Button
             variant="contained"
             size="large"
-            href="/shop"
+            component={RouterLink}
+            to="/shop"
             sx={{ px: 4 }}
             
           >
@@ -202,7 +204,8 @@ export function Cart() {
                 variant="contained"
                 size="large"
                 fullWidth
-                href="/checkout"
+                component={RouterLink}
+                to="/checkout"
                 sx={{ py: 1.5 }}
               >
                 Proceed to Checkout
@@ -214,7 +217,8 @@ export function Cart() {
                 variant="outlined"
                 size="large"
                 fullWidth
-                href="/products"
+                component={RouterLink}
+                to="/shop"
               >
                 Continue Shopping
               </Button>
