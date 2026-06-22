@@ -1,6 +1,6 @@
 """Make product option uniqueness product-scoped
 
-Revision ID: product_option_unique_per_product
+Revision ID: prod_opt_unique_per_product
 Revises: order_mgmt_tables
 Create Date: 2026-06-22 01:05:00.000000
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'product_option_unique_per_product'
+revision = 'prod_opt_unique_per_product'
 down_revision = 'order_mgmt_tables'
 branch_labels = None
 depends_on = None
