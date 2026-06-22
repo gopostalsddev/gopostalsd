@@ -143,9 +143,9 @@ export function Checkout() {
     
     // Only redirect if cart is truly empty AND has been loaded (has an ID)
     if (cart.id && cartStats.isEmpty) {
-      window.location = '/cart';
+      navigate('/cart');
     }
-  }, [cartStats.isEmpty, loading, isAuthenticated, cartStats.itemCount, cart.items, cart.id]);
+  }, [cartStats.isEmpty, loading, isAuthenticated, cartStats.itemCount, cart.items, cart.id, navigate]);
 
   const handleNext = () => {
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
