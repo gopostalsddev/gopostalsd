@@ -24,9 +24,12 @@ class ProductOption(db.Model):
     This caches option data to reduce API calls and improve performance.
     """
     __tablename__ = 'product_options'
+    __table_args__ = (
+        db.UniqueConstraint('product_id', 'sinalite_option_id', name='uq_product_options_product_option'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
-    sinalite_option_id = db.Column(db.Integer, nullable=False, unique=True)
+    sinalite_option_id = db.Column(db.Integer, nullable=False)
     product_id = db.Column(db.Integer, nullable=False)  # Sinalite product ID
     group = db.Column(db.String(100), nullable=False)  # e.g., 'qty', 'size', 'Stock'
     name = db.Column(db.String(255), nullable=False)  # e.g., '50', '9 x 12 x 9'
