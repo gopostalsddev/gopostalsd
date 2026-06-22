@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Paper,
   Typography,
@@ -11,47 +11,58 @@ import {
   FormLabel,
   Alert,
   CircularProgress,
-  Stack,
-  Chip
+  Stack
 } from '@mui/material';
 import {
   LocalShipping as ShippingIcon,
   CheckCircle as CheckIcon
 } from '@mui/icons-material';
 import { useCartOperations } from '../hooks/useCart';
+import { useAuth } from '../contexts/AuthContext';
 
 export function ShippingOptions() {
   const {
     shippingOptions,
     selectedShipping,
     setSelectedShipping,
-    calculateShippingOptions,
-    loading
+    calculateShippingOptions
   } = useCartOperations();
+  const { user } = useAuth();
 
   const [calculatingShipping, setCalculatingShipping] = useState(false);
   const [shippingError, setShippingError] = useState(null);
 
   const handleCalculateShipping = async () => {
-    // Use default address for now (will be replaced with actual destination from cart)
-    const defaultAddress = {
-      street: '',
-      city: '',
-      state: '',
-      zip_code: '',
-      country: 'US'
+    const sourceAddress = user?.shipping_address || user?.address || {};
+    const destinationAddress = {
+      street: sourceAddress.street || '',
+      city: sourceAddress.city || '',
+      state: sourceAddress.state || '',
+      zip_code: sourceAddress.zip_code || '',
+      country: sourceAddress.country || 'US',
+      apt: sourceAddress.apt || ''
     };
+
+    const requiredFields = ['street', 'city', 'state', 'zip_code'];
+    const missingFields = requiredFields.filter((field) => !destinationAddress[field]);
+
+    if (missingFields.length > 0) {
+      setShippingError(
+        `Missing required fields: ${missingFields.join(', ')}. Add your shipping address in Account or continue to Checkout.`
+      );
+      return;
+    }
 
     try {
       setCalculatingShipping(true);
       setShippingError(null);
       
-      const result = await calculateShippingOptions(defaultAddress);
+      const result = await calculateShippingOptions(destinationAddress);
       
       if (!result.success) {
         setShippingError(result.error);
       }
-    } catch (error) {
+    } catch {
       setShippingError('Failed to calculate shipping options');
     } finally {
       setCalculatingShipping(false);

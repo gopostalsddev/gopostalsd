@@ -116,9 +116,13 @@ export function useCartOperations() {
 
   // Get cart statistics
   const getCartStats = () => {
+    const derivedSubtotal = cart.items?.reduce(
+      (sum, item) => sum + (Number(item.total_price) || 0),
+      0
+    ) || 0;
     const itemCount = cart.items?.length || 0;
     const totalItems = cart.items?.reduce((total, item) => total + item.quantity, 0) || 0;
-    const subtotal = cart.subtotal || 0;
+    const subtotal = cart.subtotal ?? derivedSubtotal;
     const shipping = cart.shipping_cost || 0;
     const tax = cart.tax_amount || 0;
     const total = subtotal + shipping + tax;
@@ -202,7 +206,11 @@ export function useCartFormatting() {
 
   // Format cart totals
   const formatCartTotals = () => {
-    const subtotal = cart.subtotal || 0;
+    const derivedSubtotal = cart.items?.reduce(
+      (sum, item) => sum + (Number(item.total_price) || 0),
+      0
+    ) || 0;
+    const subtotal = cart.subtotal ?? derivedSubtotal;
     const shipping = cart.shipping_cost || 0;
     const tax = cart.tax_amount || 0;
     const total = subtotal + shipping + tax;

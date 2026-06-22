@@ -104,7 +104,7 @@ class PricingRepository:
             # Add new options
             for option in options:
                 new_option = ProductOption(
-                    sinalite_id=option['id'],
+                    sinalite_option_id=option['id'],
                     product_id=product_id,
                     group=option['group'],
                     name=option['name']
