@@ -45,6 +45,7 @@ export function Checkout() {
     error,
     selectedShipping,
     calculateShippingOptions,
+    clearEntireCart,
     getCartStats
   } = useCartOperations();
 
@@ -223,6 +224,11 @@ export function Checkout() {
       const paymentResult = paymentResponse.data;
 
       if (paymentResult.success) {
+        const clearResult = await clearEntireCart();
+        if (!clearResult.success) {
+          // Do not fail checkout confirmation if cart clear fails.
+          console.warn('Order completed but cart clear failed:', clearResult.error);
+        }
         setOrderResult(paymentResult);
         setActiveStep(3); // Go to confirmation
       } else {
