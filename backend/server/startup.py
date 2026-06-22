@@ -2,6 +2,7 @@
 Server startup utilities for ensuring database structures and data are properly initialized.
 """
 import logging
+import os
 from server import database as db
 from server.controllers.print_product_controller import PrintProductController
 
@@ -42,6 +43,22 @@ def ensure_database_structures():
         except Exception as e:
             logger.error(f"❌ Error verifying unclassified type: {str(e)}")
             return False
+
+        logger.info("📋 Ensuring default product types for categories...")
+        default_types_result = PrintProductController.ensure_default_product_types_for_categories()
+        if default_types_result.status:
+            logger.info("✅ %s", default_types_result.data.get("message", "Default type bootstrap completed"))
+        else:
+            logger.warning("⚠️ Failed to ensure default product types: %s", default_types_result.error)
+
+        auto_enable_when_none = os.getenv("AUTO_ENABLE_CATEGORIES_WHEN_NONE", "true").lower() == "true"
+        if auto_enable_when_none:
+            logger.info("📋 Ensuring at least one category is enabled...")
+            enable_result = PrintProductController.enable_all_categories_if_none_enabled()
+            if enable_result.status:
+                logger.info("✅ %s", enable_result.data.get("message", "Category enable check completed"))
+            else:
+                logger.warning("⚠️ Failed to ensure enabled categories: %s", enable_result.error)
             
         # Add more database structure checks here as needed
         # For example:

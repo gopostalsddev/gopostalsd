@@ -35,6 +35,8 @@ services:
         value: app.py
       - key: LOG_LEVEL
         value: INFO
+      - key: AUTO_ENABLE_CATEGORIES_WHEN_NONE
+        value: "true"
       - key: SESSION_COOKIE_SECURE
         value: "true"
       - key: DATABASE_URL

@@ -104,6 +104,53 @@ class PrintProductController:
         return result
 
     @staticmethod
+    def enable_all_categories_if_none_enabled() -> Result:
+        """Enable all categories only when none are currently enabled."""
+        result = Result()
+
+        try:
+            categories = PrintProductCategory.query.all()
+            if not categories:
+                result.status = True
+                result.data = {
+                    "message": "No categories found",
+                    "categories_total": 0,
+                    "categories_enabled": 0,
+                    "categories_updated": 0,
+                }
+                return result
+
+            currently_enabled = [c for c in categories if c.enabled]
+            if currently_enabled:
+                result.status = True
+                result.data = {
+                    "message": "At least one category is already enabled; no changes made",
+                    "categories_total": len(categories),
+                    "categories_enabled": len(currently_enabled),
+                    "categories_updated": 0,
+                }
+                return result
+
+            for category in categories:
+                category.enabled = True
+
+            db.session.commit()
+            result.status = True
+            result.data = {
+                "message": "Enabled all categories because none were enabled",
+                "categories_total": len(categories),
+                "categories_enabled": len(categories),
+                "categories_updated": len(categories),
+            }
+        except Exception as e:
+            db.session.rollback()
+            result.status = False
+            result.error = f"Failed to enable categories: {str(e)}"
+            logger.error(f"Error enabling categories: {str(e)}")
+
+        return result
+
+    @staticmethod
     def get_all_product_categories() -> Result:
         """Retrieve all product categories from the database."""
 

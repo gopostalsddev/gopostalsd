@@ -127,4 +127,9 @@ def create_server(config="development"):
     from server.routes import register_routes
     register_routes(server)
 
+    if config == "production":
+        with server.app_context():
+            from server.startup import ensure_database_structures
+            ensure_database_structures()
+
     return server

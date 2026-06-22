@@ -1,6 +1,7 @@
 from flask_restx import Namespace, Resource, reqparse, fields
 from werkzeug.datastructures import FileStorage
 from server.controllers.print_product_controller import PrintProductController
+from server.middleware.auth_middleware import require_role
 
 
 # Define a namespace for print products
@@ -264,6 +265,7 @@ class PrintProductTypesEnsureDefaultsResource(Resource):
     @api.doc(description="Ensure each category has at least one product type")
     @api.response(200, "Default product types ensured")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def post(self):
         """Create default product types for categories that have none"""
         result = PrintProductController.ensure_default_product_types_for_categories()
@@ -272,6 +274,23 @@ class PrintProductTypesEnsureDefaultsResource(Resource):
             return result.data, 200
         else:
             return {"error": result.error}, 500, {"Content-Type": "application/json"}
+
+
+@api.route("/categories/enable-all-when-none")
+class PrintProductCategoriesEnableAllWhenNoneResource(Resource):
+    """Resource for enabling all categories when currently none are enabled"""
+
+    @api.doc(description="Enable all categories if and only if currently none are enabled")
+    @api.response(200, "Categories evaluated and updated as needed")
+    @api.response(500, "Server error")
+    @require_role("Admin")
+    def post(self):
+        """Enable all categories when no category is currently enabled"""
+        result = PrintProductController.enable_all_categories_if_none_enabled()
+
+        if result.status:
+            return result.data, 200
+        return {"error": result.error}, 500, {"Content-Type": "application/json"}
 
 @api.route("/product-types/category/<int:category_id>")
 @api.param("category_id", "The category ID to filter product types")
