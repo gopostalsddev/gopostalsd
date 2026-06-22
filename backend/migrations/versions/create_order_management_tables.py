@@ -8,6 +8,7 @@ Create Date: 2026-06-21 23:25:00.000000
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -18,7 +19,7 @@ depends_on = None
 
 
 def upgrade():
-    order_status_enum = sa.Enum(
+    order_status_enum = postgresql.ENUM(
         'PENDING',
         'PROCESSING',
         'SHIPPED',
@@ -28,7 +29,7 @@ def upgrade():
         name='orderstatus',
         create_type=False,
     )
-    payment_status_enum = sa.Enum(
+    payment_status_enum = postgresql.ENUM(
         'PENDING',
         'PROCESSING',
         'COMPLETED',
@@ -163,5 +164,5 @@ def downgrade():
     op.drop_table('orders')
 
     bind = op.get_bind()
-    sa.Enum(name='paymentstatus').drop(bind, checkfirst=True)
-    sa.Enum(name='orderstatus').drop(bind, checkfirst=True)
+    postgresql.ENUM(name='paymentstatus').drop(bind, checkfirst=True)
+    postgresql.ENUM(name='orderstatus').drop(bind, checkfirst=True)
