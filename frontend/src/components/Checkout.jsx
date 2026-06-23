@@ -562,6 +562,8 @@ function ShippingBillingStep({ checkoutData, onInputChange, onSameAddressChange,
 }
 
 function PaymentStep({ cart, checkoutData, onCreateOrder, processing }) {
+  const amount = Number.isFinite(Number(cart.total)) ? Number(cart.total) * 100 : 0;
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
@@ -569,7 +571,7 @@ function PaymentStep({ cart, checkoutData, onCreateOrder, processing }) {
       </Typography>
       
       <SquarePaymentForm
-        amount={cart.total * 100} // Convert to cents
+        amount={amount} // Convert to cents
         onPaymentSuccess={onCreateOrder}
         processing={processing}
       />

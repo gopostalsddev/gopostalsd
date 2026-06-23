@@ -33,6 +33,11 @@ const CartIcon = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const toSafeNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
   // Load cart on component mount
   useEffect(() => {
     loadCart();
@@ -89,15 +94,15 @@ const CartIcon = () => {
   };
 
   const formatPrice = (price) => {
-    return `$${parseFloat(price).toFixed(2)}`;
+    return `$${toSafeNumber(price).toFixed(2)}`;
   };
 
   const getItemCount = () => {
-    return cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
+    return cart?.items?.reduce((total, item) => total + toSafeNumber(item.quantity), 0) || 0;
   };
 
   const getTotalPrice = () => {
-    return cart?.totals?.total || 0;
+    return toSafeNumber(cart?.totals?.total);
   };
 
   return (
@@ -227,7 +232,7 @@ const CartIcon = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h6" fontWeight="bold">Total:</Typography>
                 <Typography variant="h6" fontWeight="bold" color="primary">
-                  {formatPrice(cart.totals?.total || 0)}
+                  {formatPrice(getTotalPrice())}
                 </Typography>
               </Box>
               <Button
