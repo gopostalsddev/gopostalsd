@@ -87,7 +87,7 @@ const HomePage = () => {
                 variant="outlined"
                 size="large"
                 startIcon={<LocationOn />}
-                href="https://maps.google.com/?q=1501+India+St+Suite+103+San+Diego+CA+92101"
+                href="https://www.gopostalsd.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{

@@ -106,7 +106,10 @@ class AuthService {
             this.setUser(hydratedUser)
             response.data.user = hydratedUser
             
-            return response.data
+            return {
+                ...response.data,
+                user: hydratedUser
+            }
         } catch (error) {
             // Check if it's an email verification error
             if (error.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
