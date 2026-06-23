@@ -125,6 +125,17 @@ export function Checkout() {
   const [processingOrder, setProcessingOrder] = useState(false);
 
   const cartStats = getCartStats();
+
+  const getCheckoutSessionId = () => {
+    const existingSessionId = cart.session_id || localStorage.getItem('cart_session_id');
+    if (existingSessionId) {
+      return existingSessionId;
+    }
+
+    const generatedSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('cart_session_id', generatedSessionId);
+    return generatedSessionId;
+  };
   
   useEffect(() => {
     // Wait for authentication
@@ -202,7 +213,7 @@ export function Checkout() {
       }
 
       // Get session ID for the cart
-      const sessionId = localStorage.getItem('cart_session_id') || 'default_session';
+      const sessionId = getCheckoutSessionId();
       
       // Create order
       const orderResponse = await api.post(`/orders/?session_id=${sessionId}`, {
@@ -258,7 +269,7 @@ export function Checkout() {
       case 2:
         return (
           <PaymentStep
-            cart={cart}
+            amountCents={Math.max(0, Math.round((Number(cartStats.total) || 0) * 100))}
             checkoutData={checkoutData}
             onCreateOrder={handleCreateOrder}
             processing={processingOrder}
@@ -561,8 +572,8 @@ function ShippingBillingStep({ checkoutData, onInputChange, onSameAddressChange,
   );
 }
 
-function PaymentStep({ cart, checkoutData, onCreateOrder, processing }) {
-  const amount = Number.isFinite(Number(cart.total)) ? Number(cart.total) * 100 : 0;
+function PaymentStep({ amountCents, checkoutData, onCreateOrder, processing }) {
+  const amount = Number.isFinite(Number(amountCents)) ? Number(amountCents) : 0;
 
   return (
     <Box>
