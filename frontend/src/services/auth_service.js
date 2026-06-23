@@ -91,19 +91,20 @@ class AuthService {
             this.setToken(session.session_token)
             this.setRefreshToken(session.refresh_token)
 
-            // Hydrate full user profile so address-dependent flows work immediately.
-            // Login response can be minimal; /auth/me includes shipping/billing addresses.
+            // Hydrate full user profile (addresses, status, etc.) after login.
+            // The login payload intentionally returns a minimal user object.
             let hydratedUser = user
             try {
                 const currentUser = await this.getCurrentUser()
                 if (currentUser) {
                     hydratedUser = currentUser
                 }
-            } catch (hydrateError) {
-                console.warn('Unable to hydrate user profile after login, using login payload:', hydrateError)
+            } catch (profileError) {
+                console.warn('Unable to hydrate current user profile after login:', profileError)
             }
 
             this.setUser(hydratedUser)
+            response.data.user = hydratedUser
             
             return {
                 ...response.data,
