@@ -176,6 +176,9 @@ const ProductDetailPage = ({ product, onBack }) => {
     options
   );
 
+  const hasSelectedValue = (value) =>
+    value !== undefined && value !== null && `${value}` !== '';
+
   // Manage initial loading state
   React.useEffect(() => {
     // Set initial loading to false when we have the basic product data
@@ -409,9 +412,9 @@ const ProductDetailPage = ({ product, onBack }) => {
       const optionsObject = {};
       options.forEach(optionGroup => {
         const selectedId = selectedOptions[optionGroup.group];
-        if (selectedId && selectedId !== '') {
+        if (hasSelectedValue(selectedId)) {
           // Find the option name for the selected ID
-          const selectedOption = optionGroup.options.find(opt => opt.id === selectedId);
+          const selectedOption = optionGroup.options.find(opt => String(opt.id) === String(selectedId));
           if (selectedOption) {
             optionsObject[optionGroup.group] = selectedOption.id.toString();
           }
@@ -466,7 +469,7 @@ const ProductDetailPage = ({ product, onBack }) => {
       // Generate option IDs in the correct order
       const optionIds = options.map(optionGroup => 
         selectedOptions[optionGroup.group]
-      ).filter(id => id && id !== '');
+      ).filter(hasSelectedValue);
 
       // Check if quantity is part of API options
       const hasQuantityInOptions = options.some(optionGroup => 
@@ -521,7 +524,7 @@ const ProductDetailPage = ({ product, onBack }) => {
     // Validate required options
     if (options && options.length > 0) {
       options.forEach(optionGroup => {
-        if (!selectedOptions[optionGroup.group] || selectedOptions[optionGroup.group] === '') {
+        if (!hasSelectedValue(selectedOptions[optionGroup.group])) {
           errors[optionGroup.group] = `${optionGroup.group} is required`;
         }
       });
@@ -798,7 +801,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                   >
                     <InputLabel>{optionGroup.group}</InputLabel>
                     <Select
-                      value={selectedOptions[optionGroup.group] || ''}
+                      value={selectedOptions[optionGroup.group] ?? ''}
                       onChange={(e) => handleOptionChange(optionGroup.group, e.target.value)}
                       label={optionGroup.group}
                     >

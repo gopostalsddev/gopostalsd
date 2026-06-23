@@ -53,6 +53,12 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState(null);
 
+  const hasSelectedValue = (value) =>
+    value !== undefined && value !== null && `${value}` !== '';
+
+  const hasAllRequiredOptionsSelected =
+    options.length > 0 && options.every((optionGroup) => hasSelectedValue(selectedOptions[optionGroup.group]));
+
   // Load product options when component mounts
   useEffect(() => {
     const loadOptions = async () => {
@@ -76,12 +82,12 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
   // Calculate price when options change
   useEffect(() => {
     const calculatePrice = async () => {
-      if (!product.vendor_product_id || Object.keys(selectedOptions).length === 0) {
+      if (!product.vendor_product_id || !hasAllRequiredOptionsSelected) {
         setPricing(null);
         return;
       }
 
-      const optionIds = Object.values(selectedOptions).filter(id => id !== '');
+      const optionIds = options.map((optionGroup) => selectedOptions[optionGroup.group]).filter(hasSelectedValue);
       if (optionIds.length === 0) {
         setPricing(null);
         return;
@@ -102,7 +108,7 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
     };
 
     calculatePrice();
-  }, [selectedOptions, product.vendor_product_id]);
+  }, [selectedOptions, product.vendor_product_id, hasAllRequiredOptionsSelected, options]);
 
   const handleOptionChange = (group, optionId) => {
     setSelectedOptions(prev => ({
@@ -117,7 +123,7 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
       return;
     }
 
-    if (!pricing || Object.keys(selectedOptions).length === 0) {
+    if (!pricing || !hasAllRequiredOptionsSelected) {
       setError('Please select all required options');
       return;
     }
@@ -127,7 +133,7 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
       setError(null);
 
       // Add item to cart using the new cart system
-      const optionIds = Object.values(selectedOptions).filter(id => id !== '');
+      const optionIds = options.map((optionGroup) => selectedOptions[optionGroup.group]).filter(hasSelectedValue);
       const result = await addItemToCart(
         product.vendor_product_id,
         optionIds,
@@ -175,7 +181,7 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
   };
 
   const isAddToCartDisabled = () => {
-    return !pricing || Object.keys(selectedOptions).length === 0 || pricingLoading;
+    return !pricing || !hasAllRequiredOptionsSelected || pricingLoading;
   };
 
   return (
@@ -390,7 +396,7 @@ const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onVie
                     <FormControl key={index} fullWidth sx={{ mb: 2 }}>
                       <InputLabel>{optionGroup.group}</InputLabel>
                       <Select
-                        value={selectedOptions[optionGroup.group] || ''}
+                        value={selectedOptions[optionGroup.group] ?? ''}
                         onChange={(e) => handleOptionChange(optionGroup.group, e.target.value)}
                         label={optionGroup.group}
                       >

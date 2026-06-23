@@ -10,6 +10,9 @@ export const useProductPricing = (productId, selectedOptions, options) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const hasSelectedValue = (value) =>
+    value !== undefined && value !== null && `${value}` !== '';
+
   useEffect(() => {
     const calculatePrice = async () => {
       if (!productId || Object.keys(selectedOptions).length === 0) {
@@ -18,8 +21,8 @@ export const useProductPricing = (productId, selectedOptions, options) => {
       }
 
       // Check if all required option groups have selections
-      const hasAllRequiredOptions = options.every(optionGroup => 
-        selectedOptions[optionGroup.group] && selectedOptions[optionGroup.group] !== ''
+      const hasAllRequiredOptions = options.every(optionGroup =>
+        hasSelectedValue(selectedOptions[optionGroup.group])
       );
 
       if (!hasAllRequiredOptions) {
@@ -30,7 +33,7 @@ export const useProductPricing = (productId, selectedOptions, options) => {
       // Generate the option key in the correct order
       const optionIds = options.map(optionGroup => 
         selectedOptions[optionGroup.group]
-      ).filter(id => id && id !== '');
+      ).filter(hasSelectedValue);
 
       if (optionIds.length === 0) {
         setPricing(null);
