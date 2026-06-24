@@ -5,13 +5,20 @@ This module defines all order-related API endpoints using Flask-RESTX.
 It provides order creation, payment processing, and order management functionality.
 """
 
-from flask import request
+from flask import request, g
 from flask_restx import Namespace, Resource, fields
 from server.services.order_service import OrderService
 from server.services.payment_service import PaymentService
 from server.services.email_service import EmailService
 from server.middleware.auth_middleware import require_auth, require_role, optional_auth, get_user_id
 from server.factories.main_factory import MainFactory
+from server.validation.input_validator import (
+    validate_address_input,
+    validate_email_input,
+    validate_string_input,
+    validator,
+)
+from server.routes.response_utils import error_response
 
 # Create namespace for order operations
 api = Namespace('orders', description='Order operations')
@@ -98,6 +105,19 @@ update_status_model = api.model('UpdateStatusRequest', {
 # Create main factory instance
 main_factory = MainFactory()
 
+
+def _get_required_session_id():
+    """Require and validate a session_id query parameter."""
+    session_id = request.args.get('session_id')
+    if not session_id:
+        return None, error_response('session_id is required', 400)
+
+    session_result = validate_string_input(session_id, max_length=255)
+    if not session_result.is_valid:
+        return None, error_response('Invalid session_id', 400)
+
+    return str(session_id), None
+
 def get_order_service():
     """Get order service instance."""
     payment_service = PaymentService()
@@ -110,12 +130,7 @@ class OrderResource(Resource):
     """Resource for order operations."""
 
     @api.doc('get_all_orders')
-    @api.marshal_with(api.model('AllOrdersResponse', {
-        'orders': fields.List(fields.Nested(order_model), description='Orders list'),
-        'total_count': fields.Integer(description='Total order count'),
-        'limit': fields.Integer(description='Limit'),
-        'offset': fields.Integer(description='Offset')
-    }))
+    @api.response(200, 'Orders list retrieved')
     @require_role('Admin')
     def get(self):
         """Get all orders for admin management."""
@@ -134,60 +149,89 @@ class OrderResource(Resource):
                 'offset': result['offset']
             }, 200
         else:
-            return {'error': result['error']}, 400
+            return error_response(result['error'], 400, code='ORDER_LIST_ERROR', category='business_logic')
     
     @api.doc('create_order')
     @api.expect(create_order_model)
-    @api.marshal_with(order_model)
+    @api.response(201, 'Order created', order_model)
     @optional_auth
     def post(self):
         """Create order from cart."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         # Validate required fields
         if 'customer_info' not in data or 'shipping_address' not in data:
-            return {'error': 'customer_info and shipping_address are required'}, 400
+            return error_response('customer_info and shipping_address are required', 400)
         
         customer_info = data['customer_info']
         required_customer_fields = ['email', 'first_name', 'last_name']
         for field in required_customer_fields:
             if field not in customer_info:
-                return {'error': f'customer_info.{field} is required'}, 400
+                return error_response(f'customer_info.{field} is required', 400)
+
+        email_result = validate_email_input(customer_info.get('email'))
+        if not email_result.is_valid:
+            return error_response('Invalid customer email', 400)
+
+        first_name_result = validate_string_input(customer_info.get('first_name'), max_length=100)
+        last_name_result = validate_string_input(customer_info.get('last_name'), max_length=100)
+        if not first_name_result.is_valid or not last_name_result.is_valid:
+            return error_response('Invalid customer name', 400)
+
+        phone_value = customer_info.get('phone')
+        sanitized_phone = None
+        if phone_value:
+            phone_result = validator.validate_phone(phone_value)
+            if not phone_result.is_valid:
+                return error_response('Invalid customer phone', 400)
+            sanitized_phone = phone_result.sanitized_data
         
         shipping_address = data['shipping_address']
-        required_address_fields = ['street', 'city', 'state', 'zip_code', 'country']
-        for field in required_address_fields:
-            if field not in shipping_address:
-                return {'error': f'shipping_address.{field} is required'}, 400
+        shipping_address_result = validate_address_input(shipping_address)
+        if not shipping_address_result.is_valid:
+            return error_response('Invalid shipping_address', 400)
+
+        billing_address = data.get('billing_address')
+        sanitized_billing_address = None
+        if billing_address:
+            billing_address_result = validate_address_input(billing_address)
+            if not billing_address_result.is_valid:
+                return error_response('Invalid billing_address', 400)
+            sanitized_billing_address = billing_address_result.sanitized_data
         
-        session_id = request.args.get('session_id', 'default_session')
+        session_id, session_error = _get_required_session_id()
+        if session_error:
+            return session_error
         user_id = get_user_id()
-        if not user_id:
-            user_id = request.args.get('user_id', type=int)
         
         order_service = get_order_service()
         result = order_service.create_order_from_cart(
             session_id=session_id,
-            customer_info=customer_info,
-            shipping_address=shipping_address,
-            billing_address=data.get('billing_address'),
+            customer_info={
+                'email': email_result.sanitized_data,
+                'first_name': first_name_result.sanitized_data,
+                'last_name': last_name_result.sanitized_data,
+                'phone': sanitized_phone,
+            },
+            shipping_address=shipping_address_result.sanitized_data,
+            billing_address=sanitized_billing_address,
             user_id=user_id
         )
         
         if result['success']:
             return result['order'], 201
         else:
-            return {'error': result['error']}, 400
+            return error_response(result['error'], 400, code='ORDER_CREATE_ERROR', category='business_logic')
 
 @api.route('/<int:order_id>')
 class OrderDetailResource(Resource):
     """Resource for order details."""
     
     @api.doc('get_order')
-    @api.marshal_with(order_model)
+    @api.response(200, 'Order retrieved', order_model)
     @require_auth
     def get(self, order_id):
         """Get order details."""
@@ -200,7 +244,7 @@ class OrderDetailResource(Resource):
         if result['success']:
             return result['order'], 200
         else:
-            return {'error': result['error']}, 404
+            return error_response(result['error'], 404, code='ORDER_NOT_FOUND', category='business_logic')
 
 @api.route('/<int:order_id>/payment')
 class PaymentResource(Resource):
@@ -208,20 +252,30 @@ class PaymentResource(Resource):
     
     @api.doc('process_payment')
     @api.expect(payment_model)
-    @api.marshal_with(api.model('PaymentResponse', {
-        'success': fields.Boolean(description='Payment success status'),
-        'payment': fields.Raw(description='Payment details'),
-        'order': fields.Nested(order_model, description='Updated order'),
-        'error': fields.String(description='Error message')
-    }))
+    @api.response(200, 'Payment processed for order')
+    @require_auth
     def post(self, order_id):
         """Process payment for order."""
         data = request.get_json()
         
         if not data or 'source_id' not in data:
-            return {'error': 'source_id is required'}, 400
+            return error_response('source_id is required', 400)
         
         order_service = get_order_service()
+
+        # Non-admin users can only process payment for their own orders.
+        current_user = getattr(g, 'current_user', None)
+        request_user_id = getattr(request, 'user_id', None)
+        if not current_user:
+            return error_response('Authentication required', 401, code='AUTH_REQUIRED', category='authentication')
+
+        if current_user.role.name != 'Admin':
+            ownership_result = order_service.get_order(order_id, request_user_id)
+            if not ownership_result['success']:
+                if ownership_result['error'] == 'Order not found':
+                    return error_response('Order not found', 404, code='ORDER_NOT_FOUND', category='business_logic')
+                return error_response('Access denied', 403, code='ACCESS_DENIED', category='authorization')
+
         result = order_service.process_payment(order_id, data)
         
         if result['success']:
@@ -231,29 +285,21 @@ class PaymentResource(Resource):
                 'order': result['order']
             }, 200
         else:
-            return {
-                'success': False,
-                'error': result['error']
-            }, 400
+            return error_response(result['error'], 400, code='ORDER_PAYMENT_ERROR', category='business_logic')
 
 @api.route('/user/<int:user_id>')
 class UserOrdersResource(Resource):
     """Resource for user orders."""
     
     @api.doc('get_user_orders')
-    @api.marshal_with(api.model('UserOrdersResponse', {
-        'orders': fields.List(fields.Nested(order_model), description='User orders'),
-        'total_count': fields.Integer(description='Total order count'),
-        'limit': fields.Integer(description='Limit'),
-        'offset': fields.Integer(description='Offset')
-    }))
+    @api.response(200, 'User orders retrieved')
     @require_auth
     def get(self, user_id):
         """Get user's orders."""
         # Verify user can only access their own orders
         request_user_id = getattr(request, 'user_id', None)
         if request_user_id != user_id:
-            return {'error': 'Access denied'}, 403
+            return error_response('Access denied', 403, code='ACCESS_DENIED', category='authorization')
         
         limit = request.args.get('limit', 20, type=int)
         offset = request.args.get('offset', 0, type=int)
@@ -269,7 +315,7 @@ class UserOrdersResource(Resource):
                 'offset': result['offset']
             }, 200
         else:
-            return {'error': result['error']}, 400
+            return error_response(result['error'], 400, code='USER_ORDER_LIST_ERROR', category='business_logic')
 
 @api.route('/<int:order_id>/status')
 class OrderStatusResource(Resource):
@@ -277,21 +323,21 @@ class OrderStatusResource(Resource):
     
     @api.doc('update_order_status')
     @api.expect(update_status_model)
-    @api.marshal_with(order_model)
+    @api.response(200, 'Order status updated', order_model)
     @require_role('Admin')
     def put(self, order_id):
         """Update order status."""
         data = request.get_json()
         
         if not data or 'status' not in data:
-            return {'error': 'status is required'}, 400
+            return error_response('status is required', 400)
         
         from server.models.order import OrderStatus
         
         try:
             status = OrderStatus(data['status'])
         except ValueError:
-            return {'error': 'Invalid status value'}, 400
+            return error_response('Invalid status value', 400)
         
         order_service = get_order_service()
         result = order_service.update_order_status(
@@ -304,7 +350,7 @@ class OrderStatusResource(Resource):
         if result['success']:
             return result['order'], 200
         else:
-            return {'error': result['error']}, 400
+            return error_response(result['error'], 400, code='ORDER_STATUS_UPDATE_ERROR', category='business_logic')
 
 @api.route('/statuses')
 class OrderStatusesResource(Resource):

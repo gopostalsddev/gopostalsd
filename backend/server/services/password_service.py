@@ -7,8 +7,10 @@ This module handles password hashing, verification, and strength validation.
 import hashlib
 import secrets
 import re
+import hmac
 import logging
 from typing import Dict, Any
+from flask import current_app
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,15 @@ class PasswordService:
         self.require_digits = True
         self.require_special_chars = True
         self.special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        self.hash_iterations = self._get_hash_iterations()
+
+    @staticmethod
+    def _get_hash_iterations() -> int:
+        try:
+            configured = current_app.config.get('PASSWORD_HASH_ITERATIONS', 100000)
+            return int(configured)
+        except Exception:
+            return 100000
 
     def hash_password(self, password: str) -> str:
         """
@@ -47,7 +58,7 @@ class PasswordService:
                 'sha256',
                 password.encode('utf-8'),
                 salt.encode('utf-8'),
-                100000  # 100,000 iterations
+                self.hash_iterations
             )
             
             # Combine salt and hash
@@ -77,11 +88,11 @@ class PasswordService:
                 'sha256',
                 password.encode('utf-8'),
                 salt.encode('utf-8'),
-                100000
+                self.hash_iterations
             )
             
             # Compare hashes
-            return test_hash.hex() == password_hash
+            return hmac.compare_digest(test_hash.hex(), password_hash)
             
         except Exception as e:
             logger.error(f"Error verifying password: {str(e)}")

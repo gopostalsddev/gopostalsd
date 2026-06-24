@@ -1,1 +1,10 @@
 scripts/
+
+# Environment and secrets
+.env
+*.env
+**/.env
+
+# Local runtime artifacts
+*.log
+backend/app.log

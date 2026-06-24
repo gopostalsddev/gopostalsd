@@ -4,6 +4,7 @@ from flask import redirect, request, jsonify
 import os
 import signal
 import threading
+import hmac
 
 
 
@@ -20,12 +21,26 @@ app = create_server(config=environment)
 # Create the root route
 @app.route("/api")
 def api():
-    
-    # Redirect to the Swagger documentation
-    return redirect("/")
+    if environment == "production":
+        return jsonify({"error": "Not found"}), 404
+
+    # Redirect to API documentation in non-production environments.
+    return redirect("/docs")
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
+    if environment == "production":
+        return jsonify({"error": "Not found"}), 404
+
+    remote_addr = request.remote_addr or ""
+    if remote_addr not in {"127.0.0.1", "::1"}:
+        return jsonify({"error": "Forbidden"}), 403
+
+    shutdown_token = os.getenv("SHUTDOWN_TOKEN")
+    provided_token = request.headers.get("X-Shutdown-Token", "")
+    if not shutdown_token or not hmac.compare_digest(provided_token, shutdown_token):
+        return jsonify({"error": "Forbidden"}), 403
+
     app.logger.info("Shutting down Flask server...")
 
     def shutdown_server():

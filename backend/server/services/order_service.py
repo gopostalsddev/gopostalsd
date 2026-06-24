@@ -9,7 +9,9 @@ import logging
 import uuid
 from typing import Dict, Any, Optional
 from datetime import datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import SQLAlchemyError
 from server.config import database as db
 from server.models.pricing import Cart, CartItem, ShippingOption
 from server.models.order import Order, OrderItem, Payment, OrderStatus, PaymentStatus
@@ -30,6 +32,11 @@ class OrderService:
     def __init__(self, payment_service: PaymentService, email_service: EmailService):
         self.payment_service = payment_service
         self.email_service = email_service
+
+    @staticmethod
+    def _to_money_decimal(value: Any) -> Decimal:
+        """Convert value to 2-decimal money representation."""
+        return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     
     def create_order_from_cart(self, 
                               session_id: str,
@@ -74,11 +81,11 @@ class OrderService:
             # Generate order number
             order_number = self._generate_order_number()
             
-            # Calculate totals (convert to float to avoid Decimal/float mixing)
-            subtotal = sum(float(item.total_price) for item in cart.items)
-            shipping_cost = self._get_shipping_cost(cart)
-            tax_amount = self._calculate_tax(subtotal, cart.store_code)
-            total_amount = subtotal + shipping_cost + tax_amount
+            # Calculate totals with Decimal to preserve money precision.
+            subtotal = sum((self._to_money_decimal(item.total_price) for item in cart.items), Decimal('0.00'))
+            shipping_cost = self._to_money_decimal(self._get_shipping_cost(cart))
+            tax_amount = self._to_money_decimal(self._calculate_tax(float(subtotal), cart.store_code))
+            total_amount = self._to_money_decimal(subtotal + shipping_cost + tax_amount)
             
             # Create order
             order = Order(
@@ -119,28 +126,27 @@ class OrderService:
                 )
                 db.session.add(order_item)
             
+            # Clear cart in the same transaction as order creation.
+            self._clear_cart_in_session(cart)
+
             db.session.commit()
-            
             logger.info(f"Created order {order_number} with {len(cart.items)} items")
 
-            # Send confirmation email to customer
-            self._send_order_confirmation_email(order)
-
-            # Clear cart contents after successful order creation
-            self._clear_cart(cart)
+            email_sent = self._send_order_confirmation_email(order)
+            message = 'Order created successfully' if email_sent else 'Order created successfully. Confirmation email is pending.'
             
             return {
                 'success': True,
                 'order': order.to_dict(),
-                'message': 'Order created successfully'
+                'message': message
             }
             
-        except Exception as e:
-            logger.error(f"Error creating order: {str(e)}")
+        except (SQLAlchemyError, KeyError, ValueError, TypeError, InvalidOperation):
+            logger.error("Error creating order", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to create order: {str(e)}'
+                'error': 'Failed to create order'
             }
     
     def process_payment(self, 
@@ -173,7 +179,7 @@ class OrderService:
             
             # Process payment
             payment_result = self.payment_service.process_payment(
-                amount=int(order.total_amount * 100),  # Convert to cents
+                amount=int(self._to_money_decimal(order.total_amount) * 100),  # Convert to cents
                 currency=order.currency,
                 source_id=payment_data['source_id'],
                 idempotency_key=f"order_{order.order_number}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -226,12 +232,12 @@ class OrderService:
                     'error': payment_result['error']
                 }
                 
-        except Exception as e:
-            logger.error(f"Error processing payment: {str(e)}")
+        except (SQLAlchemyError, KeyError, ValueError, TypeError, InvalidOperation):
+            logger.error("Error processing payment", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to process payment: {str(e)}'
+                'error': 'Failed to process payment'
             }
     
     def get_order(self, order_id: int, user_id: Optional[int] = None) -> Dict[str, Any]:
@@ -253,23 +259,25 @@ class OrderService:
                     'error': 'Order not found'
                 }
             
-            # Check access (user can only see their own orders unless admin)
-            if user_id and order.user_id != user_id:
-                return {
-                    'success': False,
-                    'error': 'Access denied'
-                }
+            # Authenticated users may only read orders that belong to their account.
+            # Guest orders (order.user_id is None) are never readable by other authenticated users.
+            if user_id is not None:
+                if order.user_id is None or order.user_id != user_id:
+                    return {
+                        'success': False,
+                        'error': 'Access denied'
+                    }
             
             return {
                 'success': True,
                 'order': order.to_dict()
             }
             
-        except Exception as e:
-            logger.error(f"Error getting order: {str(e)}")
+        except SQLAlchemyError:
+            logger.error("Error getting order", exc_info=True)
             return {
                 'success': False,
-                'error': f'Failed to get order: {str(e)}'
+                'error': 'Failed to get order'
             }
     
     def get_user_orders(self, user_id: int, limit: int = 20, offset: int = 0) -> Dict[str, Any]:
@@ -301,8 +309,8 @@ class OrderService:
                 'offset': offset
             }
             
-        except Exception as e:
-            if isinstance(e, ProgrammingError) and 'relation "orders" does not exist' in str(e):
+        except ProgrammingError as e:
+            if 'relation "orders" does not exist' in str(e):
                 logger.warning("Orders table missing while fetching user orders; returning empty list")
                 return {
                     'success': True,
@@ -311,10 +319,16 @@ class OrderService:
                     'limit': limit,
                     'offset': offset,
                 }
-            logger.error(f"Error getting user orders: {str(e)}")
+            logger.error("Error getting user orders", exc_info=True)
             return {
                 'success': False,
-                'error': f'Failed to get user orders: {str(e)}'
+                'error': 'Failed to get user orders'
+            }
+        except SQLAlchemyError:
+            logger.error("Error getting user orders", exc_info=True)
+            return {
+                'success': False,
+                'error': 'Failed to get user orders'
             }
 
     def get_all_orders(self,
@@ -359,11 +373,11 @@ class OrderService:
                 'offset': offset
             }
 
-        except Exception as e:
-            logger.error(f"Error getting all orders: {str(e)}")
+        except SQLAlchemyError:
+            logger.error("Error getting all orders", exc_info=True)
             return {
                 'success': False,
-                'error': f'Failed to get all orders: {str(e)}'
+                'error': 'Failed to get all orders'
             }
     
     def update_order_status(self, 
@@ -413,12 +427,12 @@ class OrderService:
                 'message': 'Order status updated successfully'
             }
             
-        except Exception as e:
-            logger.error(f"Error updating order status: {str(e)}")
+        except SQLAlchemyError:
+            logger.error("Error updating order status", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to update order status: {str(e)}'
+                'error': 'Failed to update order status'
             }
     
     def _generate_order_number(self) -> str:
@@ -435,7 +449,7 @@ class OrderService:
                 return float(shipping_option.price)
             # Default to constant $5 shipping if no option selected
             return 5.00
-        except Exception:
+        except (SQLAlchemyError, TypeError, ValueError):
             return 5.00
     
     def _calculate_tax(self, subtotal: float, store_code: int) -> float:
@@ -447,15 +461,15 @@ class OrderService:
             elif store_code == 9:  # US
                 return subtotal * 0.08  # 8% average
             return 0.0
-        except Exception:
+        except (TypeError, ValueError):
             return 0.0
     
-    def _send_order_confirmation_email(self, order: Order):
+    def _send_order_confirmation_email(self, order: Order) -> bool:
         """Send order confirmation email."""
         try:
             if not self.email_service or not self.email_service.is_configured:
                 logger.info("Email service not configured; skipping order confirmation email")
-                return
+                return False
 
             tracking_number = order.tracking_number or "Pending - you'll receive an update once your package ships."
             shipping_address = order.shipping_address or {}
@@ -589,27 +603,20 @@ Go Postal SD Team
 
             if not result.get('success'):
                 logger.error(f"Failed to send order confirmation email: {result.get('error')}")
+                return False
             else:
                 logger.info(f"Sent confirmation email for order {order.order_number} to {order.customer_email}")
+                return True
             
-        except Exception as e:
-            logger.error(f"Error sending order confirmation email: {str(e)}")
+        except (AttributeError, TypeError, ValueError, RuntimeError):
+            logger.error("Error sending order confirmation email", exc_info=True)
+            return False
 
-    def _clear_cart(self, cart: Cart):
-        """Remove all items and shipping selections from the cart after checkout."""
+    def _clear_cart_in_session(self, cart: Cart):
+        """Remove cart data using the current transaction/session."""
         if not cart:
             return
 
-        try:
-            CartItem.query.filter_by(cart_id=cart.id).delete()
-            ShippingOption.query.filter_by(cart_id=cart.id).delete()
-
-            # Optionally retain cart record for analytics but mark as updated
-            cart.updated_at = datetime.utcnow()
-
-            db.session.commit()
-
-            logger.info(f"Cleared cart {cart.id} after order completion")
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error clearing cart {cart.id if cart else 'unknown'}: {str(e)}")
+        CartItem.query.filter_by(cart_id=cart.id).delete()
+        ShippingOption.query.filter_by(cart_id=cart.id).delete()
+        cart.updated_at = datetime.utcnow()

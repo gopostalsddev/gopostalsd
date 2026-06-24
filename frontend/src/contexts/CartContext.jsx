@@ -77,9 +77,14 @@ export function CartProvider({ children }) {
 
   // Get session ID (you might want to generate this more robustly)
   const getSessionId = () => {
-    let sessionId = localStorage.getItem('cart_session_id');
+    let sessionId = sessionStorage.getItem('cart_session_id') || localStorage.getItem('cart_session_id');
     if (!sessionId) {
       sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('cart_session_id', sessionId);
+      localStorage.setItem('cart_session_id', sessionId);
+    } else {
+      // Keep both stores in sync so existing sessions survive storage strategy changes.
+      sessionStorage.setItem('cart_session_id', sessionId);
       localStorage.setItem('cart_session_id', sessionId);
     }
     return sessionId;

@@ -5,12 +5,36 @@ This module defines all authentication-related API endpoints using Flask-RESTX.
 It follows the same pattern as other route modules for consistency.
 """
 
-from flask import request
+from flask import request, current_app
 from flask_restx import Namespace, Resource, fields
 from server.controllers.auth_controller import AuthController
+from server.validation.input_validator import (
+    validate_address_input,
+    validate_email_input,
+    validate_password_input,
+    validate_string_input,
+)
+from server.middleware.rate_limit_middleware import rate_limit_by_ip
+from server.routes.response_utils import error_response
 
 # Create namespace for authentication operations
 api = Namespace('auth', description='Authentication operations')
+
+
+def _extract_bearer_token() -> str:
+    """Extract bearer token from Authorization header."""
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        return auth_header.split(' ', 1)[1].strip()
+    return ''
+
+
+def _get_auth_service():
+    return current_app.extensions.get('auth_service')
+
+
+def _get_password_service():
+    return current_app.extensions.get('password_service')
 
 # Define models for API documentation
 address_model = api.model('Address', {
@@ -97,32 +121,45 @@ class RegistrationResource(Resource):
     
     @api.doc('register_user')
     @api.expect(registration_model)
+    @rate_limit_by_ip('AUTH_REGISTER_RATE_LIMIT_COUNT', 'AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS', 'auth-register')
     def post(self):
         """Register a new user."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
-        # Validate required fields
-        required_fields = ['email', 'password', 'first_name', 'last_name', 'shipping_address']
-        for field in required_fields:
-            if field not in data:
-                return {'error': f'{field} is required'}, 400
-        
-        # Validate address fields
-        address_fields = ['street', 'city', 'state', 'zip_code', 'country']
-        for field in address_fields:
-            if field not in data['shipping_address']:
-                return {'error': f'shipping_address.{field} is required'}, 400
+        email_result = validate_email_input(data.get('email'))
+        password_result = validate_password_input(data.get('password'))
+        first_name_result = validate_string_input(data.get('first_name'), max_length=100)
+        last_name_result = validate_string_input(data.get('last_name'), max_length=100)
+
+        shipping_address_result = validate_address_input(data.get('shipping_address') or {})
+        if not shipping_address_result.is_valid:
+            return error_response('Invalid shipping_address', 400)
+
+        billing_address = data.get('billing_address')
+        billing_address_result = None
+        if billing_address:
+            billing_address_result = validate_address_input(billing_address)
+            if not billing_address_result.is_valid:
+                return error_response('Invalid billing_address', 400)
+
+        if not email_result.is_valid:
+            return error_response('Invalid email', 400)
+        if not password_result.is_valid:
+            return error_response('Invalid password', 400)
+        if not first_name_result.is_valid or not last_name_result.is_valid:
+            return error_response('Invalid first_name or last_name', 400)
         
         result = AuthController.register_user(
-            email=data['email'],
+            email=email_result.sanitized_data,
             password=data['password'],
-            first_name=data['first_name'],
-            last_name=data['last_name'],
-            shipping_address=data['shipping_address'],
-            billing_address=data.get('billing_address')
+            first_name=first_name_result.sanitized_data,
+            last_name=last_name_result.sanitized_data,
+            shipping_address=shipping_address_result.sanitized_data,
+            billing_address=billing_address_result.sanitized_data if billing_address_result else None,
+            auth_service=_get_auth_service(),
         )
         
         if result.status:
@@ -154,14 +191,40 @@ class EmailVerificationResource(Resource):
         token = request.args.get('token')
         
         if not token:
-            return {'error': 'Token is required'}, 400
+            return error_response('Token is required', 400)
         
-        result = AuthController.verify_email(token)
+        token_result = validate_string_input(token, max_length=255)
+        if not token_result.is_valid:
+            return error_response('Invalid token', 400)
+
+        result = AuthController.verify_email(token_result.sanitized_data, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error, 'code': result.details}, 400
+            return error_response(result.error, 400, code=result.details, category='authentication')
+
+    @api.doc('verify_email_post')
+    @api.expect(api.model('EmailVerificationRequest', {
+        'token': fields.String(required=True, description='Email verification token')
+    }))
+    def post(self):
+        """Verify user email with token in request body."""
+        data = request.get_json(silent=True) or {}
+        token = data.get('token')
+
+        if not token:
+            return error_response('Token is required', 400)
+
+        token_result = validate_string_input(token, max_length=255)
+        if not token_result.is_valid:
+            return error_response('Invalid token', 400)
+
+        result = AuthController.verify_email(token_result.sanitized_data, auth_service=_get_auth_service())
+
+        if result.status:
+            return result.data, 200
+        return error_response(result.error, 400, code=result.details, category='authentication')
 
 @api.route('/resend-verification')
 class ResendVerificationResource(Resource):
@@ -173,17 +236,21 @@ class ResendVerificationResource(Resource):
     }))
     def post(self):
         """Resend email verification link."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data or 'email' not in data:
-            return {'error': 'Email is required'}, 400
+            return error_response('Email is required', 400)
+
+        email_result = validate_email_input(data.get('email'))
+        if not email_result.is_valid:
+            return error_response('Invalid email', 400)
         
-        result = AuthController.resend_verification_email(data['email'])
+        result = AuthController.resend_verification_email(email_result.sanitized_data, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error, 'code': result.details}, 400
+            return error_response(result.error, 400, code=result.details, category='authentication')
 
 
 @api.route('/login')
@@ -192,25 +259,31 @@ class LoginResource(Resource):
     
     @api.doc('login_user')
     @api.expect(login_model)
+    @rate_limit_by_ip('AUTH_LOGIN_RATE_LIMIT_COUNT', 'AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'auth-login')
     def post(self):
         """Authenticate user login."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         if 'email' not in data or 'password' not in data:
-            return {'error': 'Email and password are required'}, 400
+            return error_response('Email and password are required', 400)
+
+        email_result = validate_email_input(data.get('email'))
+        if not email_result.is_valid:
+            return error_response('Invalid email or password format', 400)
         
         # Get client information
         ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
         user_agent = request.environ.get('HTTP_USER_AGENT')
         
         result = AuthController.login(
-            email=data['email'],
+            email=email_result.sanitized_data,
             password=data['password'],
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
+            auth_service=_get_auth_service(),
         )
         
         if result.status:
@@ -234,17 +307,22 @@ class LogoutResource(Resource):
     @api.param('session_token', 'Session token', required=True)
     def post(self):
         """Logout user by invalidating session."""
-        session_token = request.args.get('session_token')
+        data = request.get_json(silent=True) or {}
+        session_token = data.get('session_token') or _extract_bearer_token() or request.args.get('session_token')
         
         if not session_token:
-            return {'error': 'Session token is required'}, 400
+            return error_response('Session token is required', 400)
         
-        result = AuthController.logout(session_token)
+        token_result = validate_string_input(session_token, max_length=255)
+        if not token_result.is_valid:
+            return error_response('Invalid session token', 400)
+
+        result = AuthController.logout(token_result.sanitized_data, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error, 'code': result.details}, 400
+            return error_response(result.error, 400, code=result.details, category='authentication')
 
 @api.route('/refresh')
 class RefreshResource(Resource):
@@ -252,20 +330,25 @@ class RefreshResource(Resource):
     
     @api.doc('refresh_session')
     @api.param('refresh_token', 'Refresh token', required=True)
-    @api.marshal_with(session_model)
+    @api.response(200, 'Session refreshed successfully', session_model)
     def post(self):
         """Refresh user session with refresh token."""
-        refresh_token = request.args.get('refresh_token')
+        data = request.get_json(silent=True) or {}
+        refresh_token = data.get('refresh_token') or request.args.get('refresh_token')
         
         if not refresh_token:
-            return {'error': 'Refresh token is required'}, 400
+            return error_response('Refresh token is required', 400)
         
-        result = AuthController.refresh_session(refresh_token)
+        token_result = validate_string_input(refresh_token, max_length=255)
+        if not token_result.is_valid:
+            return error_response('Invalid refresh token', 400)
+
+        result = AuthController.refresh_session(token_result.sanitized_data, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error, 'code': result.details}, 401
+            return error_response(result.error, 401, code=result.details, category='authentication')
 
 @api.route('/password-reset/request')
 class PasswordResetRequestResource(Resource):
@@ -273,19 +356,24 @@ class PasswordResetRequestResource(Resource):
     
     @api.doc('request_password_reset')
     @api.expect(password_reset_request_model)
+    @rate_limit_by_ip('AUTH_PASSWORD_RESET_RATE_LIMIT_COUNT', 'AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS', 'auth-password-reset-request')
     def post(self):
         """Request password reset for user."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data or 'email' not in data:
-            return {'error': 'Email is required'}, 400
+            return error_response('Email is required', 400)
         
-        result = AuthController.request_password_reset(data['email'])
+        email_result = validate_email_input(data.get('email'))
+        if not email_result.is_valid:
+            return error_response('Invalid email', 400)
+
+        result = AuthController.request_password_reset(email_result.sanitized_data, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error, 'code': result.details}, 400
+            return error_response(result.error, 400, code=result.details, category='authentication')
 
 @api.route('/password-reset')
 class PasswordResetResource(Resource):
@@ -295,20 +383,27 @@ class PasswordResetResource(Resource):
     @api.expect(password_reset_model)
     def post(self):
         """Reset user password with token."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         if 'token' not in data or 'new_password' not in data:
-            return {'error': 'Token and new_password are required'}, 400
+            return error_response('Token and new_password are required', 400)
+
+        token_result = validate_string_input(data.get('token'), max_length=255)
+        password_result = validate_password_input(data.get('new_password'))
+        if not token_result.is_valid:
+            return error_response('Invalid token', 400)
+        if not password_result.is_valid:
+            return error_response('Invalid new_password', 400)
         
-        result = AuthController.reset_password(data['token'], data['new_password'])
+        result = AuthController.reset_password(token_result.sanitized_data, data['new_password'], auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error, 'code': result.details}, 400
+            return error_response(result.error, 400, code=result.details, category='authentication')
 
 @api.route('/me')
 class CurrentUserResource(Resource):
@@ -316,20 +411,24 @@ class CurrentUserResource(Resource):
     
     @api.doc('get_current_user')
     @api.param('session_token', 'Session token', required=True)
-    @api.marshal_with(user_model)
+    @api.response(200, 'Current user fetched successfully', user_model)
     def get(self):
         """Get current user by session token."""
-        session_token = request.args.get('session_token')
+        session_token = _extract_bearer_token() or request.args.get('session_token')
         
         if not session_token:
-            return {'error': 'Session token is required'}, 400
+            return error_response('Session token is required', 400)
         
-        result = AuthController.get_current_user(session_token)
+        token_result = validate_string_input(session_token, max_length=255)
+        if not token_result.is_valid:
+            return error_response('Invalid session token', 400)
+
+        result = AuthController.get_current_user(token_result.sanitized_data, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error, 'code': result.details}, 401
+            return error_response(result.error, 401, code=result.details, category='authentication')
 
 @api.route('/validate-password')
 class PasswordValidationResource(Resource):
@@ -337,17 +436,21 @@ class PasswordValidationResource(Resource):
     
     @api.doc('validate_password')
     @api.expect(password_validation_model)
-    @api.marshal_with(password_validation_response_model)
+    @api.response(200, 'Password validated', password_validation_response_model)
     def post(self):
         """Validate password strength."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data or 'password' not in data:
-            return {'error': 'Password is required'}, 400
+            return error_response('Password is required', 400)
         
-        result = AuthController.validate_password_strength(data['password'])
+        password_result = validate_string_input(data.get('password'), max_length=128)
+        if not password_result.is_valid:
+            return error_response('Invalid password', 400)
+
+        result = AuthController.validate_password_strength(data['password'], password_service=_get_password_service())
         
         if result.status:
             return result.data, 200
         else:
-            return {'error': result.error}, 400
+            return error_response(result.error, 400, code='PASSWORD_VALIDATION_ERROR', category='validation')

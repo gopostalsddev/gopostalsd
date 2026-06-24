@@ -8,43 +8,103 @@ import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 
+/**
+ * @typedef {{
+ *   message: string,
+ *   code: string,
+ *   status: number,
+ *   errorType: 'HTTP_ERROR' | 'NETWORK_ERROR' | 'TIMEOUT_ERROR' | 'UNKNOWN_ERROR',
+ *   isRetryable: boolean,
+ *   details?: any,
+ * }} AuthServiceError
+ */
+
 class AuthService {
     constructor() {
         this.tokenKey = 'gopostalsd_session_token'
         this.refreshTokenKey = 'gopostalsd_refresh_token'
         this.userKey = 'gopostalsd_user'
+        this.storage = this.getStorage()
+
+        // Remove legacy persistent auth tokens from localStorage.
+        if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.removeItem(this.tokenKey)
+            window.localStorage.removeItem(this.refreshTokenKey)
+            window.localStorage.removeItem(this.userKey)
+        }
+    }
+
+    /**
+     * Build auth headers including CSRF token for state-changing requests.
+     * @param {boolean} withContentType
+     * @returns {Record<string, string>}
+     */
+    getAuthHeaders(withContentType = false) {
+        const headers = {}
+        const token = this.getToken()
+
+        if (token) {
+            headers.Authorization = `Bearer ${token}`
+            headers['X-CSRF-Token'] = token
+        }
+
+        if (withContentType) {
+            headers['Content-Type'] = 'application/json'
+        }
+
+        return headers
+    }
+
+    getStorage() {
+        if (typeof window === 'undefined') {
+            return {
+                getItem: () => null,
+                setItem: () => {},
+                removeItem: () => {}
+            }
+        }
+
+        try {
+            return window.sessionStorage
+        } catch (_) {
+            return {
+                getItem: () => null,
+                setItem: () => {},
+                removeItem: () => {}
+            }
+        }
     }
 
     // Token management
     getToken() {
-        return localStorage.getItem(this.tokenKey)
+        return this.storage.getItem(this.tokenKey)
     }
 
     setToken(token) {
-        localStorage.setItem(this.tokenKey, token)
+        this.storage.setItem(this.tokenKey, token)
     }
 
     getRefreshToken() {
-        return localStorage.getItem(this.refreshTokenKey)
+        return this.storage.getItem(this.refreshTokenKey)
     }
 
     setRefreshToken(refreshToken) {
-        localStorage.setItem(this.refreshTokenKey, refreshToken)
+        this.storage.setItem(this.refreshTokenKey, refreshToken)
     }
 
     getUser() {
-        const userStr = localStorage.getItem(this.userKey)
+        const userStr = this.storage.getItem(this.userKey)
         return userStr ? JSON.parse(userStr) : null
     }
 
     setUser(user) {
-        localStorage.setItem(this.userKey, JSON.stringify(user))
+        this.storage.setItem(this.userKey, JSON.stringify(user))
     }
 
     clearAuth() {
-        localStorage.removeItem(this.tokenKey)
-        localStorage.removeItem(this.refreshTokenKey)
-        localStorage.removeItem(this.userKey)
+        this.storage.removeItem(this.tokenKey)
+        this.storage.removeItem(this.refreshTokenKey)
+        this.storage.removeItem(this.userKey)
     }
 
     // Authentication methods
@@ -60,7 +120,11 @@ class AuthService {
 
     async verifyEmail(token) {
         try {
-            const response = await axios.get(`${API_BASE_URL}/auth/verify-email?token=${token}`)
+            const response = await axios.post(
+                `${API_BASE_URL}/auth/verify-email`,
+                { token },
+                { headers: this.getAuthHeaders(true) }
+            )
             return response.data
         } catch (error) {
             console.error('Email verification error:', error)
@@ -70,7 +134,11 @@ class AuthService {
 
     async requestEmailVerification(email) {
         try {
-            const response = await axios.post(`${API_BASE_URL}/auth/resend-verification`, { email })
+            const response = await axios.post(
+                `${API_BASE_URL}/auth/resend-verification`,
+                { email },
+                { headers: this.getAuthHeaders(true) }
+            )
             return response.data
         } catch (error) {
             console.error('Resend verification error:', error)
@@ -130,7 +198,11 @@ class AuthService {
         try {
             const token = this.getToken()
             if (token) {
-                await axios.post(`${API_BASE_URL}/auth/logout?session_token=${token}`)
+                await axios.post(
+                    `${API_BASE_URL}/auth/logout`,
+                    { session_token: token },
+                    { headers: this.getAuthHeaders(true) }
+                )
             }
         } catch (error) {
             console.error('Logout error:', error)
@@ -147,7 +219,11 @@ class AuthService {
                 throw new Error('No refresh token available')
             }
 
-            const response = await axios.post(`${API_BASE_URL}/auth/refresh?refresh_token=${refreshToken}`)
+            const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+                refresh_token: refreshToken
+            }, {
+                headers: this.getAuthHeaders(true)
+            })
             const { session } = response.data
             
             // Update stored tokens
@@ -167,6 +243,8 @@ class AuthService {
         try {
             const response = await axios.post(`${API_BASE_URL}/auth/password-reset/request`, {
                 email
+            }, {
+                headers: this.getAuthHeaders(true)
             })
             return response.data
         } catch (error) {
@@ -180,6 +258,8 @@ class AuthService {
             const response = await axios.post(`${API_BASE_URL}/auth/password-reset`, {
                 token,
                 new_password: newPassword
+            }, {
+                headers: this.getAuthHeaders(true)
             })
             return response.data
         } catch (error) {
@@ -195,7 +275,9 @@ class AuthService {
                 return null
             }
 
-            const response = await axios.get(`${API_BASE_URL}/auth/me?session_token=${token}`)
+            const response = await axios.get(`${API_BASE_URL}/auth/me`, {
+                headers: this.getAuthHeaders()
+            })
             return response.data
         } catch (error) {
             console.error('Get current user error:', error)
@@ -209,6 +291,8 @@ class AuthService {
         try {
             const response = await axios.post(`${API_BASE_URL}/auth/validate-password`, {
                 password
+            }, {
+                headers: this.getAuthHeaders(true)
             })
             return response.data
         } catch (error) {
@@ -249,6 +333,9 @@ class AuthService {
                 const token = this.getToken()
                 if (token) {
                     config.headers.Authorization = `Bearer ${token}`
+                    if (['post', 'put', 'patch', 'delete'].includes((config.method || '').toLowerCase())) {
+                        config.headers['X-CSRF-Token'] = token
+                    }
                 }
                 return config
             },
@@ -309,26 +396,43 @@ class AuthService {
                 message = 'System error. Please contact support.'
             }
             
-            return {
+            return /** @type {AuthServiceError} */ ({
                 message: message,
                 code: errorData.code,
                 status: error.response.status,
-                details: errorData
-            }
+                errorType: 'HTTP_ERROR',
+                isRetryable: error.response.status >= 500,
+                details: {
+                    ...errorData,
+                    endpoint: error.config?.url,
+                    method: error.config?.method,
+                }
+            })
         } else if (error.request) {
             // Request was made but no response received
-            return {
-                message: 'Network error. Please check your connection and try again.',
-                code: 'NETWORK_ERROR',
-                status: 0
-            }
+            const timedOut = error.code === 'ECONNABORTED'
+            return /** @type {AuthServiceError} */ ({
+                message: timedOut
+                    ? 'Request timed out. Please try again.'
+                    : 'Network error. Please check your connection and try again.',
+                code: timedOut ? 'TIMEOUT_ERROR' : 'NETWORK_ERROR',
+                status: 0,
+                errorType: timedOut ? 'TIMEOUT_ERROR' : 'NETWORK_ERROR',
+                isRetryable: true,
+                details: {
+                    endpoint: error.config?.url,
+                    method: error.config?.method,
+                }
+            })
         } else {
             // Something else happened
-            return {
+            return /** @type {AuthServiceError} */ ({
                 message: error.message || 'An unexpected error occurred',
                 code: 'UNKNOWN_ERROR',
-                status: 0
-            }
+                status: 0,
+                errorType: 'UNKNOWN_ERROR',
+                isRetryable: false,
+            })
         }
     }
 }

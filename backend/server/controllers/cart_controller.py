@@ -44,10 +44,10 @@ class CartController:
             
             result.data = totals
             
-        except Exception as e:
-            logger.error(f"Error getting cart totals: {str(e)}")
+        except Exception:
+            logger.error("Error getting cart totals", exc_info=True)
             result.status = False
-            result.error = f"Failed to get cart totals: {str(e)}"
+            result.error = "Failed to get cart totals"
             
         return result
     
@@ -87,10 +87,10 @@ class CartController:
                 'updated_at': cart.updated_at.isoformat() if cart.updated_at else None
             }
             
-        except Exception as e:
-            logger.error(f"Error getting or creating cart: {str(e)}")
+        except Exception:
+            logger.error("Error getting or creating cart", exc_info=True)
             result.status = False
-            result.error = f"Failed to get or create cart: {str(e)}"
+            result.error = "Failed to get or create cart"
             
         return result
     
@@ -139,9 +139,9 @@ class CartController:
                 'updated_at': cart_item.updated_at.isoformat() if cart_item.updated_at else None
             }
             
-        except Exception as e:
-            logger.error(f"Error adding item to cart: {str(e)}")
+        except Exception:
+            logger.error("Error adding item to cart", exc_info=True)
             result.status = False
-            result.error = f"Failed to add item to cart: {str(e)}"
+            result.error = "Failed to add item to cart"
             
         return result

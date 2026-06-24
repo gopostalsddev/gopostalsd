@@ -9,6 +9,10 @@ from flask import request
 from flask_restx import Namespace, Resource, fields
 from server.services.payment_service import PaymentService
 from server.middleware.auth_middleware import require_auth, require_role
+from server.routes.response_utils import error_response
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create namespace for payment operations
 api = Namespace('payments', description='Payment processing operations')
@@ -77,30 +81,30 @@ class PaymentProcessResource(Resource):
     
     @api.doc('process_payment')
     @api.expect(payment_request_model)
-    @api.marshal_with(payment_response_model)
+    @api.response(201, 'Payment processed', payment_response_model)
     @require_auth
     def post(self):
         """Process a payment."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         # Validate required fields
         required_fields = ['amount', 'source_id']
         for field in required_fields:
             if field not in data:
-                return {'error': f'{field} is required'}, 400
+                return error_response(f'{field} is required', 400)
         
         # Validate amount
         if not isinstance(data['amount'], int) or data['amount'] <= 0:
-            return {'error': 'Amount must be a positive integer'}, 400
+            return error_response('Amount must be a positive integer', 400)
         
         # Initialize payment service
         payment_service = PaymentService()
         
         if not payment_service.is_configured:
-            return {'error': 'Payment service not configured'}, 500
+            return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
         
         # Process payment
         result = payment_service.process_payment(
@@ -119,25 +123,25 @@ class PaymentProcessResource(Resource):
         if result['success']:
             return result, 201
         else:
-            return {'error': result['error']}, 400
+            return error_response(result['error'], 400, code='PAYMENT_PROCESSING_ERROR', category='external_api')
 
 @api.route('/<string:payment_id>')
 class PaymentResource(Resource):
     """Resource for retrieving payment details."""
     
     @api.doc('get_payment')
-    @api.marshal_with(payment_response_model)
+    @api.response(200, 'Payment fetched', payment_response_model)
     @require_auth
     def get(self, payment_id):
         """Get payment details by ID."""
         if not payment_id:
-            return {'error': 'Payment ID is required'}, 400
+            return error_response('Payment ID is required', 400)
         
         # Initialize payment service
         payment_service = PaymentService()
         
         if not payment_service.is_configured:
-            return {'error': 'Payment service not configured'}, 500
+            return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
         
         # Get payment details
         result = payment_service.get_payment(payment_id)
@@ -145,7 +149,7 @@ class PaymentResource(Resource):
         if result['success']:
             return result, 200
         else:
-            return {'error': result['error']}, 404
+            return error_response(result['error'], 404, code='PAYMENT_NOT_FOUND', category='business_logic')
 
 @api.route('/refund')
 class RefundResource(Resource):
@@ -153,30 +157,30 @@ class RefundResource(Resource):
     
     @api.doc('refund_payment')
     @api.expect(refund_request_model)
-    @api.marshal_with(refund_response_model)
+    @api.response(201, 'Refund processed', refund_response_model)
     @require_role('Admin')  # Only admins can process refunds
     def post(self):
         """Process a refund."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         # Validate required fields
         required_fields = ['payment_id', 'amount']
         for field in required_fields:
             if field not in data:
-                return {'error': f'{field} is required'}, 400
+                return error_response(f'{field} is required', 400)
         
         # Validate amount
         if not isinstance(data['amount'], int) or data['amount'] <= 0:
-            return {'error': 'Amount must be a positive integer'}, 400
+            return error_response('Amount must be a positive integer', 400)
         
         # Initialize payment service
         payment_service = PaymentService()
         
         if not payment_service.is_configured:
-            return {'error': 'Payment service not configured'}, 500
+            return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
         
         # Process refund
         result = payment_service.refund_payment(
@@ -188,7 +192,7 @@ class RefundResource(Resource):
         if result['success']:
             return result, 201
         else:
-            return {'error': result['error']}, 400
+            return error_response(result['error'], 400, code='PAYMENT_REFUND_ERROR', category='external_api')
 
 @api.route('/webhook')
 class WebhookResource(Resource):
@@ -207,21 +211,21 @@ class WebhookResource(Resource):
             payment_service = PaymentService()
             
             if not payment_service.is_configured:
-                return {'error': 'Payment service not configured'}, 500
+                return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
             
             # Validate webhook signature
             if not payment_service.validate_webhook(payload, signature, webhook_url):
-                return {'error': 'Invalid webhook signature'}, 401
+                return error_response('Invalid webhook signature', 401, code='INVALID_WEBHOOK_SIGNATURE', category='security')
             
             # Process webhook (implement based on Square webhook events)
             # For now, just log the webhook
-            logger.info(f"Received payment webhook: {payload}")
+            logger.info("Received payment webhook")
             
             return {'status': 'success'}, 200
             
-        except Exception as e:
-            logger.error(f"Error processing webhook: {str(e)}")
-            return {'error': 'Internal server error'}, 500
+        except Exception:
+            logger.error("Error processing webhook", exc_info=True)
+            return error_response('Internal server error', 500, category='system', retryable=True)
 
 @api.route('/status')
 class PaymentStatusResource(Resource):

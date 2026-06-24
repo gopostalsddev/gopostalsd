@@ -195,12 +195,15 @@ export const AuthProvider = ({ children }) => {
             const currentUser = await authService.getCurrentUser()
             if (currentUser) {
                 setUser(currentUser)
+                return currentUser
             } else {
                 setUser(null)
+                return null
             }
         } catch (error) {
             console.error('Error refreshing user:', error)
             setUser(null)
+            return null
         }
     }
 

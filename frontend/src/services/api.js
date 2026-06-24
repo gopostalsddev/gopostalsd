@@ -19,12 +19,33 @@ const api = axios.create({
   },
 });
 
+const getAuthStorage = () => {
+  if (typeof window === 'undefined') {
+    return {
+      getItem: () => null,
+      removeItem: () => {},
+    };
+  }
+
+  try {
+    return window.sessionStorage;
+  } catch (_) {
+    return {
+      getItem: () => null,
+      removeItem: () => {},
+    };
+  }
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('gopostalsd_session_token');
+    const token = getAuthStorage().getItem('gopostalsd_session_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      if (['post', 'put', 'patch', 'delete'].includes((config.method || '').toLowerCase())) {
+        config.headers['X-CSRF-Token'] = token;
+      }
     }
     return config;
   },
@@ -41,9 +62,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('gopostalsd_session_token');
-      localStorage.removeItem('gopostalsd_refresh_token');
-      localStorage.removeItem('gopostalsd_user');
+      const storage = getAuthStorage();
+      storage.removeItem('gopostalsd_session_token');
+      storage.removeItem('gopostalsd_refresh_token');
+      storage.removeItem('gopostalsd_user');
       // Optionally redirect to login
       window.location.href = '/login';
     }

@@ -20,7 +20,8 @@ def serve_uploaded_file(filename):
 
     # Prevent traversal attacks
 
-    if "..." in filename or filename.startswith('/'):
+    normalized = filename.replace('\\', '/')
+    if normalized.startswith('/') or '..' in normalized.split('/'):
         abort(400, "Invalid filename")
 
     upload_folder = os.path.join(current_app.root_path, "uploads")

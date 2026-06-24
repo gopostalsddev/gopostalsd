@@ -19,6 +19,33 @@ if IS_DEVELOPMENT:
     logger.debug("[AUTH_MIDDLEWARE] Module loaded")
 
 
+def _extract_session_token() -> str:
+    """Extract session token from Authorization header only."""
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        return auth_header[7:]
+    return ''
+
+
+def enforce_csrf_protection() -> None:
+    """Enforce CSRF protection for authenticated state-changing API requests."""
+    if request.method not in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+        return
+
+    if not request.path.startswith('/api/'):
+        return
+
+    session_token = _extract_session_token()
+    if not session_token:
+        return
+
+    csrf_header = request.headers.get('X-CSRF-Token')
+    if not csrf_header or csrf_header != session_token:
+        from flask import abort
+        logger.warning("Blocked request with missing or invalid CSRF token for path %s", request.path)
+        abort(403, description='Missing or invalid CSRF token')
+
+
 def require_cart_auth(f):
     """
     Decorator to allow authenticated users or fall back to cart session.
@@ -30,19 +57,7 @@ def require_cart_auth(f):
         
         try:
             # Get session token from Authorization header or query parameter
-            session_token = None
-            
-            # Check Authorization header (Bearer token)
-            auth_header = request.headers.get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                session_token = auth_header[7:]  # Remove 'Bearer ' prefix
-            
-            # Check query parameter as fallback (try session_token first, then session_id)
-            if not session_token:
-                session_token = request.args.get('session_token')
-            
-            if not session_token:
-                session_token = request.args.get('session_id')
+            session_token = _extract_session_token()
             
             if IS_DEVELOPMENT:
                 logger.debug("[CART AUTH] Session token found: %s", session_token is not None)
@@ -88,20 +103,7 @@ def require_auth(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get session token from Authorization header or query parameter
-        session_token = None
-        
-        # Check Authorization header (Bearer token)
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            session_token = auth_header[7:]  # Remove 'Bearer ' prefix
-        
-        # Check query parameter as fallback (try session_token first, then session_id)
-        if not session_token:
-            session_token = request.args.get('session_token')
-        
-        if not session_token:
-            session_token = request.args.get('session_id')
+        session_token = _extract_session_token()
         
         if not session_token:
             return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
@@ -180,16 +182,7 @@ def require_role(role_name: str):
             user = getattr(g, 'current_user', None)
             if not user:
                 session_token = None
-
-                auth_header = request.headers.get('Authorization')
-                if auth_header and auth_header.startswith('Bearer '):
-                    session_token = auth_header[7:]
-
-                if not session_token:
-                    session_token = request.args.get('session_token')
-
-                if not session_token:
-                    session_token = request.args.get('session_id')
+                session_token = _extract_session_token()
 
                 if not session_token:
                     return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
@@ -237,17 +230,7 @@ def optional_auth(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get session token from Authorization header or query parameter
-        session_token = None
-        
-        # Check Authorization header (Bearer token)
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            session_token = auth_header[7:]  # Remove 'Bearer ' prefix
-        
-        # Check query parameter as fallback
-        if not session_token:
-            session_token = request.args.get('session_token')
+        session_token = _extract_session_token()
         
         # Initialize g.current_user as None
         g.current_user = None

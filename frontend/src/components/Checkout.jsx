@@ -123,16 +123,23 @@ export function Checkout() {
   }, [user]);
   const [orderResult, setOrderResult] = useState(null);
   const [processingOrder, setProcessingOrder] = useState(false);
+  const [checkoutStepError, setCheckoutStepError] = useState(null);
 
   const cartStats = getCartStats();
 
   const getCheckoutSessionId = () => {
-    const existingSessionId = cart.session_id || localStorage.getItem('cart_session_id');
+    const existingSessionId =
+      cart.session_id ||
+      sessionStorage.getItem('cart_session_id') ||
+      localStorage.getItem('cart_session_id');
     if (existingSessionId) {
+      sessionStorage.setItem('cart_session_id', existingSessionId);
+      localStorage.setItem('cart_session_id', existingSessionId);
       return existingSessionId;
     }
 
     const generatedSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('cart_session_id', generatedSessionId);
     localStorage.setItem('cart_session_id', generatedSessionId);
     return generatedSessionId;
   };
@@ -187,9 +194,12 @@ export function Checkout() {
   };
 
   const handleCalculateShipping = async () => {
+    setCheckoutStepError(null);
     const result = await calculateShippingOptions(checkoutData.shippingAddress);
     if (result.success) {
       handleNext();
+    } else {
+      setCheckoutStepError(result.error || 'Unable to calculate shipping. Please review your address and try again.');
     }
   };
 
@@ -334,6 +344,11 @@ export function Checkout() {
       </Stepper>
 
       <Paper elevation={2} sx={{ p: 4 }}>
+        {checkoutStepError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {checkoutStepError}
+          </Alert>
+        )}
         {renderStepContent(activeStep)}
       </Paper>
 
@@ -349,14 +364,14 @@ export function Checkout() {
         <Box sx={{ flex: '1 1 auto' }} />
         
         {activeStep === 0 && (
-          <Button onClick={handleCalculateShipping}>
-            Calculate Shipping
+          <Button onClick={handleNext}>
+            Continue to Shipping
           </Button>
         )}
         
         {activeStep === 1 && (
-          <Button onClick={handleNext}>
-            Continue to Payment
+          <Button onClick={handleCalculateShipping}>
+            Calculate Shipping & Continue to Payment
           </Button>
         )}
       </Box>

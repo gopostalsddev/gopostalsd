@@ -13,8 +13,16 @@ from typing import Any, Dict, List, Optional, Union, Callable
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 from email_validator import validate_email, EmailNotValidError
-from marshmallow import Schema, fields, ValidationError as MarshmallowValidationError
-from marshmallow.validate import Length, Range, OneOf, Regexp, Email
+try:
+    from marshmallow import Schema, fields, ValidationError as MarshmallowValidationError
+    from marshmallow.validate import Length, Range, OneOf, Regexp, Email
+    MARSHMALLOW_AVAILABLE = True
+except ImportError:
+    Schema = object
+    fields = None
+    MarshmallowValidationError = Exception
+    Length = Range = OneOf = Regexp = Email = None
+    MARSHMALLOW_AVAILABLE = False
 import logging
 
 logger = logging.getLogger(__name__)
@@ -453,45 +461,51 @@ def validate_file_input(file_data: Dict[str, Any], allowed_types: List[str] = No
     return validator.validate_file_upload(file_data, allowed_types, max_size)
 
 
-# Marshmallow schemas for API validation
-class UserRegistrationSchema(Schema):
-    """Schema for user registration validation."""
-    email = fields.Email(required=True, validate=Length(max=255))
-    password = fields.Str(required=True, validate=Length(min=8, max=128))
-    first_name = fields.Str(required=True, validate=Length(min=1, max=100))
-    last_name = fields.Str(required=True, validate=Length(min=1, max=100))
-    shipping_address = fields.Dict(required=True)
-    billing_address = fields.Dict(required=False)
+if MARSHMALLOW_AVAILABLE:
+    # Marshmallow schemas for API validation
+    class UserRegistrationSchema(Schema):
+        """Schema for user registration validation."""
+        email = fields.Email(required=True, validate=Length(max=255))
+        password = fields.Str(required=True, validate=Length(min=8, max=128))
+        first_name = fields.Str(required=True, validate=Length(min=1, max=100))
+        last_name = fields.Str(required=True, validate=Length(min=1, max=100))
+        shipping_address = fields.Dict(required=True)
+        billing_address = fields.Dict(required=False)
 
 
-class AddressSchema(Schema):
-    """Schema for address validation."""
-    street = fields.Str(required=True, validate=Length(min=1, max=200))
-    city = fields.Str(required=True, validate=Length(min=1, max=100))
-    state = fields.Str(required=True, validate=Length(min=1, max=50))
-    zip_code = fields.Str(required=True, validate=Length(min=1, max=20))
-    country = fields.Str(required=True, validate=Length(min=1, max=100))
-    apt = fields.Str(required=False, validate=Length(max=50))
+    class AddressSchema(Schema):
+        """Schema for address validation."""
+        street = fields.Str(required=True, validate=Length(min=1, max=200))
+        city = fields.Str(required=True, validate=Length(min=1, max=100))
+        state = fields.Str(required=True, validate=Length(min=1, max=50))
+        zip_code = fields.Str(required=True, validate=Length(min=1, max=20))
+        country = fields.Str(required=True, validate=Length(min=1, max=100))
+        apt = fields.Str(required=False, validate=Length(max=50))
 
 
-class ProductSchema(Schema):
-    """Schema for product validation."""
-    name = fields.Str(required=True, validate=Length(min=1, max=200))
-    description = fields.Str(required=False, validate=Length(max=2000))
-    price = fields.Decimal(required=True, places=2)
-    category = fields.Str(required=True, validate=Length(min=1, max=100))
-    sku = fields.Str(required=True, validate=Length(min=1, max=100))
+    class ProductSchema(Schema):
+        """Schema for product validation."""
+        name = fields.Str(required=True, validate=Length(min=1, max=200))
+        description = fields.Str(required=False, validate=Length(max=2000))
+        price = fields.Decimal(required=True, places=2)
+        category = fields.Str(required=True, validate=Length(min=1, max=100))
+        sku = fields.Str(required=True, validate=Length(min=1, max=100))
 
 
-class CartItemSchema(Schema):
-    """Schema for cart item validation."""
-    product_id = fields.Int(required=True, validate=Range(min=1))
-    quantity = fields.Int(required=True, validate=Range(min=1, max=100))
-    selected_options = fields.List(fields.Int(), required=False)
+    class CartItemSchema(Schema):
+        """Schema for cart item validation."""
+        product_id = fields.Int(required=True, validate=Range(min=1))
+        quantity = fields.Int(required=True, validate=Range(min=1, max=100))
+        selected_options = fields.List(fields.Int(), required=False)
 
 
-# Global schema instances
-user_registration_schema = UserRegistrationSchema()
-address_schema = AddressSchema()
-product_schema = ProductSchema()
-cart_item_schema = CartItemSchema()
+    # Global schema instances
+    user_registration_schema = UserRegistrationSchema()
+    address_schema = AddressSchema()
+    product_schema = ProductSchema()
+    cart_item_schema = CartItemSchema()
+else:
+    user_registration_schema = None
+    address_schema = None
+    product_schema = None
+    cart_item_schema = None

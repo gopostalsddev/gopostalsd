@@ -8,6 +8,7 @@ It follows the same pattern as print_product_routes.py.
 from flask_restx import Namespace, Resource, fields
 from flask import request
 from server.controllers.pricing_controller import PricingController
+from server.routes.response_utils import error_response
 
 # Define a namespace for pricing
 api = Namespace("Pricing", description="Operations related to product pricing and shipping")
@@ -66,7 +67,7 @@ class ProductOptionsResource(Resource):
     
     @api.doc('get_product_options')
     @api.param('store_code', 'Store code (6 for Canada, 9 for US)', type='int', default=6)
-    @api.marshal_with(product_options_model, as_list=True)
+    @api.response(200, 'Product options retrieved successfully', [product_options_model])
     def get(self, product_id):
         """Get available options for a product."""
         store_code = request.args.get('store_code', 6, type=int)
@@ -76,7 +77,7 @@ class ProductOptionsResource(Resource):
         if result.status:
             return result.data['options']
         else:
-            return {'error': result.error}, 400
+            return error_response(result.error, 400, code='PRICING_OPTIONS_ERROR', category='business_logic')
 
 
 @api.route('/products/<int:product_id>/price')
@@ -85,13 +86,13 @@ class ProductPriceResource(Resource):
     
     @api.doc('calculate_product_price')
     @api.expect(pricing_request_model)
-    @api.marshal_with(pricing_response_model)
+    @api.response(200, 'Pricing calculated successfully', pricing_response_model)
     def post(self, product_id):
         """Calculate price for a product with selected options."""
         data = request.get_json()
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         options = data.get('options', [])
         store_code = data.get('store_code', 6)
@@ -101,7 +102,7 @@ class ProductPriceResource(Resource):
         if result.status:
             return result.data
         else:
-            return {'error': result.error}, 400
+            return error_response(result.error, 400, code='PRICING_CALCULATION_ERROR', category='business_logic')
 
 
 
@@ -116,20 +117,20 @@ class ShippingEstimatesResource(Resource):
         data = request.get_json()
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         items = data.get('items', [])
         shipping_info = data.get('shippingInfo', data.get('shipping_info', {}))
         
         if not items or not shipping_info:
-            return {'error': 'items and shippingInfo are required'}, 400
+            return error_response('items and shippingInfo are required', 400)
         
         result = PricingController.get_shipping_estimates(items, shipping_info)
         
         if result.status:
             return result.data['shipping_options']
         else:
-            return {'error': result.error}, 400
+            return error_response(result.error, 400, code='SHIPPING_ESTIMATE_ERROR', category='business_logic')
 
 
 # Note: The api namespace is exported directly and registered in routes/__init__.py

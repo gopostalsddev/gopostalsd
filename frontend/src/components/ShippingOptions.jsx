@@ -27,13 +27,13 @@ export function ShippingOptions() {
     setSelectedShipping,
     calculateShippingOptions
   } = useCartOperations();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const [calculatingShipping, setCalculatingShipping] = useState(false);
   const [shippingError, setShippingError] = useState(null);
 
   const handleCalculateShipping = async () => {
-    const sourceAddress = user?.shipping_address || user?.address || {};
+    let sourceAddress = user?.shipping_address || user?.address || {};
     const destinationAddress = {
       street: sourceAddress.street || '',
       city: sourceAddress.city || '',
@@ -44,7 +44,21 @@ export function ShippingOptions() {
     };
 
     const requiredFields = ['street', 'city', 'state', 'zip_code'];
-    const missingFields = requiredFields.filter((field) => !destinationAddress[field]);
+    let missingFields = requiredFields.filter((field) => !destinationAddress[field]);
+
+    // Freshly logged-in sessions can have a stale in-memory user object until profile fetch completes.
+    if (missingFields.length > 0) {
+      const refreshedUser = await refreshUser();
+      sourceAddress = refreshedUser?.shipping_address || refreshedUser?.address || sourceAddress;
+
+      destinationAddress.street = sourceAddress.street || '';
+      destinationAddress.city = sourceAddress.city || '';
+      destinationAddress.state = sourceAddress.state || '';
+      destinationAddress.zip_code = sourceAddress.zip_code || '';
+      destinationAddress.country = sourceAddress.country || 'US';
+      destinationAddress.apt = sourceAddress.apt || '';
+      missingFields = requiredFields.filter((field) => !destinationAddress[field]);
+    }
 
     if (missingFields.length > 0) {
       setShippingError(

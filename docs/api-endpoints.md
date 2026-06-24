@@ -364,7 +364,7 @@ Authorization: Bearer <jwt_token>
 **Description:** Get or create a cart
 
 **Parameters:**
-- `session_id` (query): Session ID (default: "default_session")
+- `session_id` (query): Required session identifier for the client cart
 - `user_id` (query): User ID (optional)
 - `store_code` (query): Store code (default: 6)
 
