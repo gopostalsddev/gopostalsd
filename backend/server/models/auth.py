@@ -179,7 +179,10 @@ class UserSession(db.Model):
 
     def is_expired(self):
         """Check if session is expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires
 
     @staticmethod
     def generate_tokens():
@@ -294,7 +297,10 @@ class OAuthAccount(db.Model):
         """Check if OAuth token is expired."""
         if not self.token_expires_at:
             return False
-        return datetime.now(timezone.utc) > self.token_expires_at
+        expires = self.token_expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires
 
 
 class Address(db.Model):
