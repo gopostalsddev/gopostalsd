@@ -168,6 +168,27 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
+  const getErrorMessage = (errorLike, fallback) => {
+    if (!errorLike) {
+      return fallback;
+    }
+
+    if (typeof errorLike === 'string') {
+      return errorLike;
+    }
+
+    if (typeof errorLike === 'object') {
+      return (
+        errorLike.error ||
+        errorLike.message ||
+        errorLike.code ||
+        fallback
+      );
+    }
+
+    return fallback;
+  };
+
   // Custom hooks for product options and pricing
   const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
   const { pricing, loading: pricingLoading, error: pricingError } = useProductPricing(
@@ -440,7 +461,7 @@ const ProductDetailPage = ({ product, onBack }) => {
       setShowShippingDialog(true);
     } catch (error) {
       console.error('Error getting shipping estimates:', error);
-      setError(error?.response?.data?.error || 'Failed to get shipping estimates');
+      setError(getErrorMessage(error?.response?.data?.error, 'Failed to get shipping estimates'));
     } finally {
       setShippingLoading(false);
     }
@@ -483,7 +504,7 @@ const ProductDetailPage = ({ product, onBack }) => {
         quantity;
 
       const result = await addItemToCart(
-        parseInt(product.vendor_product_id),
+        product.vendor_product_id,
         optionIds,
         finalQuantity
       );
@@ -493,11 +514,11 @@ const ProductDetailPage = ({ product, onBack }) => {
         setShowSuccessSnackbar(true);
         setRetryCount(0);
       } else {
-        setError(result.error || 'Failed to add item to cart. Please try again.');
+        setError(getErrorMessage(result.error, 'Failed to add item to cart. Please try again.'));
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      const errorMessage = error.response?.data?.error || 'Failed to add item to cart. Please try again.';
+      const errorMessage = getErrorMessage(error?.response?.data?.error, 'Failed to add item to cart. Please try again.');
       setError(errorMessage);
     }
   };

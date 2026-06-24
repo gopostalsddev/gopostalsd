@@ -42,6 +42,12 @@ class CartService:
     def _to_money_decimal(value: Any) -> Decimal:
         """Convert value to 2-decimal money representation."""
         return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def _get_print_product(product_id: Any) -> Optional[PrintProduct]:
+        """Lookup print products using vendor_product_id as a string value."""
+        product_lookup_id = str(product_id).strip()
+        return PrintProduct.query.filter_by(vendor_product_id=product_lookup_id).first()
     
     def get_or_create_cart(self, session_id: str, user_id: Optional[int] = None) -> Cart:
         """
@@ -118,9 +124,7 @@ class CartService:
             if IS_DEVELOPMENT:
                 logger.debug("[CART_SERVICE] Looking up product %s in database", product_id)
             
-            product = PrintProduct.query.filter_by(vendor_product_id=product_id).first()
-            if not product:
-                product = PrintProduct.query.filter_by(vendor_product_id=str(product_id)).first()
+            product = self._get_print_product(product_id)
             
             if not product:
                 logger.error(f"Product {product_id} not found in database (vendor_product_id search)")
