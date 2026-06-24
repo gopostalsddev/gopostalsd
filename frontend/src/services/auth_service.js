@@ -44,17 +44,20 @@ class AuthService {
     }
 
     /**
-     * Build auth headers including CSRF token for state-changing requests.
+     * Build auth headers. CSRF is only attached for state-changing requests.
      * @param {boolean} withContentType
+     * @param {boolean} includeCsrfToken
      * @returns {Record<string, string>}
      */
-    getAuthHeaders(withContentType = false) {
+    getAuthHeaders(withContentType = false, includeCsrfToken = false) {
         const headers = {}
         const token = this.getToken()
 
         if (token) {
             headers.Authorization = `Bearer ${token}`
-            headers['X-CSRF-Token'] = token
+            if (includeCsrfToken) {
+                headers['X-CSRF-Token'] = token
+            }
         }
 
         if (withContentType) {
@@ -210,7 +213,7 @@ class AuthService {
                 await axios.post(
                     `${API_BASE_URL}/auth/logout`,
                     { session_token: token },
-                    { headers: this.getAuthHeaders(true) }
+                        { headers: this.getAuthHeaders(true, true) }
                 )
             }
         } catch (error) {
@@ -231,7 +234,7 @@ class AuthService {
             const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
                 refresh_token: refreshToken
             }, {
-                headers: this.getAuthHeaders(true)
+                headers: this.getAuthHeaders(true, true)
             })
             const { session } = response.data
             
@@ -301,7 +304,7 @@ class AuthService {
             const response = await axios.post(`${API_BASE_URL}/auth/validate-password`, {
                 password
             }, {
-                headers: this.getAuthHeaders(true)
+                headers: this.getAuthHeaders(true, true)
             })
             return response.data
         } catch (error) {
