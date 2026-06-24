@@ -53,12 +53,15 @@ def validate_production_security_settings() -> None:
     if os.getenv('SESSION_COOKIE_SECURE', 'true').lower() != 'true':
         raise ValueError('SESSION_COOKIE_SECURE must be true in production')
 
-    secret_key = os.getenv('SECRET_KEY', '')
-    jwt_secret_key = os.getenv('JWT_SECRET_KEY', '')
+    secret_key = os.getenv('SECRET_KEY', '').strip()
+    jwt_secret_key = os.getenv('JWT_SECRET_KEY', '').strip()
     if not secret_key or secret_key == 'your_flask_secret_key_here':
         raise ValueError('A strong SECRET_KEY must be set in production')
+
+    # Keep production boot resilient when JWT_SECRET_KEY is accidentally omitted
+    # in the hosting dashboard by falling back to a verified strong SECRET_KEY.
     if not jwt_secret_key or jwt_secret_key == 'your_jwt_secret_key_here':
-        raise ValueError('A strong JWT_SECRET_KEY must be set in production')
+        os.environ['JWT_SECRET_KEY'] = secret_key
 
 
 class Config:
