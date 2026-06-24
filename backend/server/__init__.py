@@ -62,7 +62,8 @@ def create_server(config="development"):
         'max_age': 3600,
         'expose_headers': ['Content-Type', 'Authorization']
     }
-    CORS(server, resources={r"/api/*": cors_config})
+    # Match all API endpoints (e.g., /api/auth/me), not just repeated slash paths.
+    CORS(server, resources={r"/api/.*": cors_config})
 
     # Enforce CSRF validation for authenticated state-changing requests.
     from server.middleware.auth_middleware import enforce_csrf_protection
