@@ -6,6 +6,7 @@ Implements the Repository pattern for clean data access separation.
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
+from sqlalchemy.dialects.postgresql import insert
 from server import database as db
 from server.models.pricing import (
     ProductOption, ProductPricing, Cart, CartItem, 
@@ -98,43 +99,49 @@ class PricingRepository:
     def cache_options(self, product_id: int, options: List[Dict]) -> None:
         """Cache product options for future use."""
         try:
-            option_ids = {int(option['id']) for option in options}
+            now = datetime.utcnow()
 
-            # Remove stale options cached for this product only.
-            ProductOption.query.filter(
-                ProductOption.product_id == product_id,
-                ~ProductOption.sinalite_option_id.in_(option_ids)
-            ).delete(synchronize_session=False)
-
-            # Upsert options to avoid duplicate-key violations on legacy unique indexes.
+            # Deduplicate payload by option id in case upstream sends repeats.
+            deduped_options = {}
             for option in options:
-                sinalite_option_id = int(option['id'])
+                deduped_options[int(option['id'])] = option
 
-                existing = ProductOption.query.filter_by(
-                    product_id=product_id,
-                    sinalite_option_id=sinalite_option_id,
-                ).first()
+            option_ids = set(deduped_options.keys())
 
-                if not existing:
-                    existing = ProductOption.query.filter_by(
-                        sinalite_option_id=sinalite_option_id,
-                    ).first()
+            if option_ids:
+                upsert_rows = [
+                    {
+                        'sinalite_option_id': option_id,
+                        'product_id': product_id,
+                        'group': option_data['group'],
+                        'name': option_data['name'],
+                        'updated_at': now,
+                    }
+                    for option_id, option_data in deduped_options.items()
+                ]
 
-                if existing:
-                    existing.product_id = product_id
-                    existing.group = option['group']
-                    existing.name = option['name']
-                    existing.updated_at = datetime.utcnow()
-                else:
-                    db.session.add(ProductOption(
-                        sinalite_option_id=sinalite_option_id,
-                        product_id=product_id,
-                        group=option['group'],
-                        name=option['name']
-                    ))
+                upsert_stmt = insert(ProductOption).values(upsert_rows)
+                upsert_stmt = upsert_stmt.on_conflict_do_update(
+                    constraint='product_options_sinalite_option_id_key',
+                    set_={
+                        'product_id': upsert_stmt.excluded.product_id,
+                        'group': upsert_stmt.excluded.group,
+                        'name': upsert_stmt.excluded.name,
+                        'updated_at': upsert_stmt.excluded.updated_at,
+                    },
+                )
+                db.session.execute(upsert_stmt)
+
+                # Remove stale options cached for this product only.
+                ProductOption.query.filter(
+                    ProductOption.product_id == product_id,
+                    ~ProductOption.sinalite_option_id.in_(option_ids)
+                ).delete(synchronize_session=False)
+            else:
+                ProductOption.query.filter_by(product_id=product_id).delete(synchronize_session=False)
             
             db.session.commit()
-            logger.info(f"Cached {len(options)} options for product {product_id}")
+            logger.info(f"Cached {len(deduped_options)} options for product {product_id}")
             
         except Exception as e:
             logger.error(f"Error caching options: {str(e)}")
