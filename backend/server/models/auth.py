@@ -6,7 +6,7 @@ password reset tokens, email verification tokens, and OAuth providers.
 """
 
 from server.config import database as db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import secrets
 import hashlib
@@ -102,7 +102,7 @@ class User(db.Model):
 
     def is_locked(self):
         """Check if user account is locked due to failed login attempts."""
-        if self.locked_until and self.locked_until > datetime.utcnow():
+        if self.locked_until and self.locked_until > datetime.now(timezone.utc):
             return True
         return False
 
@@ -182,7 +182,7 @@ class UserSession(db.Model):
 
     def is_expired(self):
         """Check if session is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @staticmethod
     def generate_tokens():
@@ -211,7 +211,7 @@ class PasswordResetToken(db.Model):
 
     def is_expired(self):
         """Check if token is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def is_valid(self):
         """Check if token is valid (not expired and not used)."""
@@ -242,7 +242,7 @@ class EmailVerificationToken(db.Model):
 
     def is_expired(self):
         """Check if token is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def is_valid(self):
         """Check if token is valid (not expired and not used)."""
@@ -297,7 +297,7 @@ class OAuthAccount(db.Model):
         """Check if OAuth token is expired."""
         if not self.token_expires_at:
             return False
-        return datetime.utcnow() > self.token_expires_at
+        return datetime.now(timezone.utc) > self.token_expires_at
 
 
 class Address(db.Model):

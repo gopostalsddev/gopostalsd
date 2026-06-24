@@ -71,6 +71,7 @@ StrEnum==0.4.15
 supabase==2.15.0
 supafunc==0.9.4
 mailersend==2.0.3
+sentry-sdk>=2.0.0
 squareup==35.0.0.20240222
 typing-inspection==0.4.0
 typing_extensions==4.12.2

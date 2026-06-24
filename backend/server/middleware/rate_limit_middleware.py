@@ -134,12 +134,18 @@ def rate_limit_by_ip(
             store = str(current_app.config.get('AUTH_RATE_LIMIT_STORE', 'memory')).lower()
 
             is_rate_limited = False
+            redis_succeeded = False
             if store in {'redis', 'auto'}:
-                is_rate_limited = _redis_is_rate_limited(bucket_key, limit, window_seconds)
+                client = _get_redis_client()
+                if client is not None:
+                    is_rate_limited = _redis_is_rate_limited(bucket_key, limit, window_seconds)
+                    redis_succeeded = True
 
-            if not is_rate_limited:
-                should_use_memory = store == 'memory' or store == 'auto'
-                if should_use_memory:
+            # In 'auto' mode fall back to memory only when Redis is unavailable.
+            # In 'memory' mode always use in-memory.
+            # Skip memory check in 'auto' when Redis already counted the request.
+            if not redis_succeeded and (store == 'memory' or store == 'auto'):
+                if not is_rate_limited:
                     is_rate_limited = _memory_is_rate_limited(bucket_key, limit, window_seconds, now)
 
             if is_rate_limited:

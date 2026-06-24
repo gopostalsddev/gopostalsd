@@ -9,7 +9,7 @@ import logging
 import traceback
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Union
 from enum import Enum
 from flask import request, g, current_app
@@ -56,7 +56,7 @@ class ApplicationError(Exception):
     ):
         super().__init__(message)
         self.error_id = str(uuid.uuid4())
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         self.message = message
         self.error_code = error_code or f"ERR_{category.value.upper()}"
         self.category = category
@@ -189,12 +189,12 @@ class ErrorHandler:
     def before_request(self):
         """Set up request context for error tracking."""
         g.request_id = str(uuid.uuid4())
-        g.start_time = datetime.utcnow()
+        g.start_time = datetime.now(timezone.utc)
     
     def after_request(self, response):
         """Log request completion and performance metrics."""
         if hasattr(g, 'start_time'):
-            duration = (datetime.utcnow() - g.start_time).total_seconds()
+            duration = (datetime.now(timezone.utc) - g.start_time).total_seconds()
             
             # Log performance metrics
             self.logger.info(
@@ -347,7 +347,7 @@ class ErrorHandler:
         """Get current error statistics."""
         return {
             'stats': self.error_stats,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

@@ -75,8 +75,8 @@ def create_server(config="development"):
     server.before_request(enforce_csrf_protection)
     
     # Add startup timestamp for health checks
-    from datetime import datetime
-    server.config['START_TIME'] = datetime.utcnow().isoformat()
+    from datetime import datetime, timezone
+    server.config['START_TIME'] = datetime.now(timezone.utc).isoformat()
 
     # Load configuration based on environment
     if config == "testing":

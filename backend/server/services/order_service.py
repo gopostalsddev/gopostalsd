@@ -8,7 +8,7 @@ for completed cart checkouts.
 import logging
 import uuid
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.exc import SQLAlchemyError
@@ -182,7 +182,7 @@ class OrderService:
                 amount=int(self._to_money_decimal(order.total_amount) * 100),  # Convert to cents
                 currency=order.currency,
                 source_id=payment_data['source_id'],
-                idempotency_key=f"order_{order.order_number}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                idempotency_key=f"order_{order.order_number}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
                 buyer_email=order.customer_email,
                 buyer_phone=order.customer_phone,
                 shipping_address=order.shipping_address,
@@ -413,9 +413,9 @@ class OrderService:
                 order.carrier_name = carrier_name
             
             if status == OrderStatus.SHIPPED:
-                order.shipped_at = datetime.utcnow()
+                order.shipped_at = datetime.now(timezone.utc)
             elif status == OrderStatus.DELIVERED:
-                order.delivered_at = datetime.utcnow()
+                order.delivered_at = datetime.now(timezone.utc)
             
             db.session.commit()
             
@@ -437,7 +437,7 @@ class OrderService:
     
     def _generate_order_number(self) -> str:
         """Generate unique order number."""
-        timestamp = datetime.utcnow().strftime('%Y%m%d')
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d')
         unique_id = str(uuid.uuid4())[:8].upper()
         return f"GP{timestamp}{unique_id}"
     
@@ -619,4 +619,4 @@ Go Postal SD Team
 
         CartItem.query.filter_by(cart_id=cart.id).delete()
         ShippingOption.query.filter_by(cart_id=cart.id).delete()
-        cart.updated_at = datetime.utcnow()
+        cart.updated_at = datetime.now(timezone.utc)

@@ -171,35 +171,6 @@ def require_auth(f):
     return decorated_function
 
 
-def require_permission(permission: str):
-    """
-    Decorator to require specific permission for a route.
-    
-    Args:
-        permission: Required permission name
-        
-    Usage:
-        @require_permission('users.read')
-        def get_users():
-            pass
-    """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # First check if user is authenticated
-            if not hasattr(g, 'current_user') or not g.current_user:
-                return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
-            
-            # Check if user has required permission
-            if not g.current_user.role.has_permission(permission):
-                return {'error': 'Insufficient permissions', 'code': 'INSUFFICIENT_PERMISSIONS'}, 403
-            
-            return f(*args, **kwargs)
-        
-        return decorated_function
-    return decorator
-
-
 def require_role(role_name: str):
     """
     Decorator to require specific role for a route.
@@ -219,7 +190,6 @@ def require_role(role_name: str):
             # Some endpoints only use @require_role without @require_auth.
             user = getattr(g, 'current_user', None)
             if not user:
-                session_token = None
                 session_token = _extract_session_token()
 
                 if not session_token:
@@ -234,16 +204,17 @@ def require_role(role_name: str):
                 if not user:
                     return {'error': 'Invalid or expired session', 'code': 'INVALID_SESSION'}, 401
 
-                if not user.is_active():
-                    return {'error': 'Account is not active', 'code': 'ACCOUNT_INACTIVE'}, 401
-
                 g.current_user = user
                 g.session_token = session_token
-            
+
+            # Always enforce is_active() — @require_cart_auth sets g.current_user without this check.
+            if not user.is_active():
+                return {'error': 'Account is not active', 'code': 'ACCOUNT_INACTIVE'}, 401
+
             # Check if user has required role
             if user.role.name != role_name:
                 return {'error': 'Insufficient role', 'code': 'INSUFFICIENT_ROLE'}, 403
-            
+
             return f(*args, **kwargs)
         
         return decorated_function

@@ -11,7 +11,7 @@ import hashlib
 import base64
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -150,11 +150,11 @@ class SquareAdapter:
                 logger.warning("Square not fully configured, returning mock payment (SQUARE_MOCK_PAYMENTS=true)")
                 return {
                     'success': True,
-                    'payment_id': f'mock_payment_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}',
+                    'payment_id': f'mock_payment_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}',
                     'status': 'COMPLETED',
                     'amount': amount,
                     'currency': currency,
-                    'created_at': datetime.utcnow().isoformat(),
+                    'created_at': datetime.now(timezone.utc).isoformat(),
                     'mock': True
                 }
             
@@ -167,7 +167,7 @@ class SquareAdapter:
             
             # Generate idempotency key if not provided
             if not idempotency_key:
-                idempotency_key = f"gopostalsd_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{amount}"
+                idempotency_key = f"gopostalsd_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{amount}"
             
             # Build payment request as a dictionary to support both old and new SDK variants.
             payment_request = {
