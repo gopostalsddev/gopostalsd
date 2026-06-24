@@ -5,11 +5,10 @@ This module defines all cart-related API endpoints using Flask-RESTX.
 It provides comprehensive cart management functionality.
 """
 
-from flask import request
+from flask import request, current_app
 from flask_restx import Namespace, Resource, fields
 from server.services.cart_service import CartService
 from server.services.pricing_service import PricingService
-from server.thirdparty.sinalite import SinaliteAdapter
 from server.factories.main_factory import MainFactory
 from server.middleware.auth_middleware import require_auth, require_cart_auth, get_user_id
 from server.validation.input_validator import (
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Create namespace for cart operations
 api = Namespace('cart', description='Cart operations')
 
-# Define models for API documentation
+# Models
 cart_item_model = api.model('CartItem', {
     'id': fields.Integer(description='Cart item ID'),
     'product_id': fields.Integer(description='Product ID'),
@@ -81,9 +80,6 @@ shipping_option_model = api.model('ShippingOption', {
     'shipping_days': fields.Integer(description='Estimated shipping days')
 })
 
-# Create main factory instance
-main_factory = MainFactory()
-
 
 def _get_required_session_id():
     """Require and validate a session_id query parameter."""
@@ -112,11 +108,8 @@ def _verify_cart_ownership(cart_data: dict) -> bool:
     return True
 
 def get_cart_service():
-    """Get cart service instance."""
-    # Use the factory to get properly configured services
-    sinalite_adapter = SinaliteAdapter()
-    pricing_service = main_factory.get_pricing_service(sinalite_adapter)
-    return main_factory.get_cart_service(pricing_service, sinalite_adapter)
+    """Return the cart service registered in the Flask app context."""
+    return current_app.extensions['cart_service']
 
 # Define resources
 @api.route('/')

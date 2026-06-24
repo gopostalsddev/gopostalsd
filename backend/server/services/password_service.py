@@ -29,13 +29,13 @@ class PasswordService:
         self.require_digits = True
         self.require_special_chars = True
         self.special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
-        self.hash_iterations = self._get_hash_iterations()
 
-    @staticmethod
-    def _get_hash_iterations() -> int:
+    @property
+    def hash_iterations(self) -> int:
+        """Read PBKDF2 iteration count from Flask config at call time, not at __init__.
+        This avoids a RuntimeError when PasswordService is constructed outside an app context."""
         try:
-            configured = current_app.config.get('PASSWORD_HASH_ITERATIONS', 100000)
-            return int(configured)
+            return int(current_app.config.get('PASSWORD_HASH_ITERATIONS', 100000))
         except Exception:
             return 100000
 

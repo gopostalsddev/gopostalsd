@@ -6,6 +6,7 @@ import { Box, Typography, Button } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import theme from './theme';
 
@@ -54,13 +55,14 @@ const RouteLoadingState = () => (
 
 const App = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <CartProvider>
-          <Router>
-            <Suspense fallback={<Layout><RouteLoadingState /></Layout>}>
-              <Routes>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <CartProvider>
+            <Router>
+              <Suspense fallback={<Layout><RouteLoadingState /></Layout>}>
+                <Routes>
                 {/* Public routes with layout */}
                 <Route path="/" element={<Layout><HomePage /></Layout>} />
                 <Route path="/shop" element={<Layout><ShopPage /></Layout>} />
@@ -134,14 +136,15 @@ const App = () => {
                   }
                 />
                 
-                {/* Catch-all route for 404 */}
-                <Route path="*" element={<Layout><Box sx={{ textAlign: 'center', py: 8 }}><Typography variant="h4">404 - Page Not Found</Typography><Typography variant="body1" sx={{ mb: 3 }}>The page you're looking for doesn't exist.</Typography><Button variant="contained" onClick={() => { window.location.hash = '#/'; }}>Go Home</Button></Box></Layout>} />
-              </Routes>
-            </Suspense>
-          </Router>
-        </CartProvider>
-      </AuthProvider>
-    </ThemeProvider>
+                  {/* Catch-all route for 404 */}
+                  <Route path="*" element={<Layout><Box sx={{ textAlign: 'center', py: 8 }}><Typography variant="h4">404 - Page Not Found</Typography><Typography variant="body1" sx={{ mb: 3 }}>The page you're looking for doesn't exist.</Typography><Button variant="contained" onClick={() => { window.location.hash = '#/'; }}>Go Home</Button></Box></Layout>} />
+                </Routes>
+              </Suspense>
+            </Router>
+          </CartProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

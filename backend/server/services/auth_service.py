@@ -6,6 +6,7 @@ password management, and session handling.
 """
 
 import hashlib
+import re
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
@@ -95,7 +96,6 @@ class AuthService:
                 }
             
             # Validate email format
-            import re
             email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
             if not re.match(email_pattern, email.strip()):
                 return {
