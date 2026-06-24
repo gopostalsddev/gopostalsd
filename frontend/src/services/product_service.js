@@ -36,7 +36,11 @@ export const updatePrintProductCategoryStatus = async (categoryId, enabled) => {
 
 export const syncPrintProductCategories = async () => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/print/categories/sync`)
+        const response = await axios.post(
+            `${API_BASE_URL}/print/categories/sync`,
+            {},
+            { headers: authService.getAuthHeaders(true, true) }
+        );
         return response.data;
     }catch (error) {
         console.error("Error syncing categories:", error)
@@ -250,7 +254,11 @@ export const unassignProductFromType = async (productId) => {
 
 export const syncProductsForCategory = async (categoryId) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/print/categories/${categoryId}/sync-products`);
+    const response = await axios.post(
+      `${API_BASE_URL}/print/categories/${categoryId}/sync-products`,
+      {},
+      { headers: authService.getAuthHeaders(true, true) }
+    );
     return response.data;
   } catch (error) {
     console.error("Error syncing products for category: ", error);

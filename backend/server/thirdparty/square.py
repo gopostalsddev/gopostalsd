@@ -6,6 +6,9 @@ It follows the Adapter pattern to provide a consistent interface for payment pro
 """
 
 import os
+import hmac
+import hashlib
+import base64
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -135,8 +138,16 @@ class SquareAdapter:
         """
         try:
             if not self.client or not self._is_configured:
-                # Mock payment for development when Square is not fully configured
-                logger.warning("Square not fully configured, returning mock payment success for development")
+                env = os.getenv('ENVIRONMENT', 'development')
+                mock_enabled = os.getenv('SQUARE_MOCK_PAYMENTS', 'false').lower() == 'true'
+                if env == 'production' or not mock_enabled:
+                    logger.error("Square not configured and mock payments are disabled")
+                    return {
+                        'success': False,
+                        'error': 'Payment system is not available. Please contact support.',
+                        'payment_id': None
+                    }
+                logger.warning("Square not fully configured, returning mock payment (SQUARE_MOCK_PAYMENTS=true)")
                 return {
                     'success': True,
                     'payment_id': f'mock_payment_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}',
@@ -393,15 +404,18 @@ class SquareAdapter:
             True if signature is valid, False otherwise
         """
         try:
-            if not self.client:
+            signature_key = os.getenv('SQUARE_WEBHOOK_SIGNATURE_KEY', '')
+            if not signature_key:
+                logger.error("SQUARE_WEBHOOK_SIGNATURE_KEY not set — rejecting webhook")
                 return False
-            
-            # Square webhook signature validation
-            # This would need to be implemented based on Square's webhook validation requirements
-            # For now, return True (implement proper validation in production)
-            logger.info("Webhook signature validation not fully implemented")
-            return True
-            
+
+            # Square HMAC-SHA256: base64(HMAC(key, notification_url + body))
+            message = (webhook_url + payload).encode('utf-8')
+            expected = base64.b64encode(
+                hmac.new(signature_key.encode('utf-8'), message, hashlib.sha256).digest()
+            ).decode('utf-8')
+            return hmac.compare_digest(expected, signature)
+
         except Exception as e:
             logger.error(f"Error validating webhook signature: {str(e)}")
             return False

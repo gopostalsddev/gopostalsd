@@ -7,9 +7,39 @@ password reset tokens, email verification tokens, and OAuth providers.
 
 from server.config import database as db
 from datetime import datetime, timedelta
+import os
 import secrets
 import hashlib
+import logging
 from enum import Enum
+
+logger = logging.getLogger(__name__)
+
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+    _FERNET_KEY = os.getenv('OAUTH_TOKEN_ENCRYPTION_KEY', '').encode()
+    _fernet = Fernet(_FERNET_KEY) if _FERNET_KEY else None
+except Exception:
+    _fernet = None
+
+def _encrypt_token(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if _fernet is None:
+        logger.warning("OAUTH_TOKEN_ENCRYPTION_KEY not set — storing OAuth token in plaintext")
+        return value
+    return _fernet.encrypt(value.encode()).decode()
+
+def _decrypt_token(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if _fernet is None:
+        return value
+    try:
+        return _fernet.decrypt(value.encode()).decode()
+    except Exception:
+        # Return raw value for tokens written before encryption was enabled.
+        return value
 
 
 class UserStatus(Enum):
@@ -235,8 +265,8 @@ class OAuthAccount(db.Model):
     provider = db.Column(db.Enum(AuthProvider), nullable=False)
     provider_user_id = db.Column(db.String(255), nullable=False)
     provider_email = db.Column(db.String(120), nullable=True)
-    access_token = db.Column(db.Text, nullable=True)
-    refresh_token = db.Column(db.Text, nullable=True)
+    _access_token = db.Column('access_token', db.Text, nullable=True)
+    _refresh_token = db.Column('refresh_token', db.Text, nullable=True)
     token_expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -246,6 +276,22 @@ class OAuthAccount(db.Model):
 
     def __repr__(self):
         return f"<OAuthAccount {self.provider.value}:{self.provider_user_id}>"
+
+    @property
+    def access_token(self) -> str | None:
+        return _decrypt_token(self._access_token)
+
+    @access_token.setter
+    def access_token(self, value: str | None) -> None:
+        self._access_token = _encrypt_token(value)
+
+    @property
+    def refresh_token(self) -> str | None:
+        return _decrypt_token(self._refresh_token)
+
+    @refresh_token.setter
+    def refresh_token(self, value: str | None) -> None:
+        self._refresh_token = _encrypt_token(value)
 
     def is_token_expired(self):
         """Check if OAuth token is expired."""

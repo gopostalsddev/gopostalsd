@@ -24,10 +24,7 @@ _REDIS_CLIENT_LOCK = Lock()
 
 
 def _get_client_ip() -> str:
-    """Return best-effort client IP, preferring the first forwarded address."""
-    forwarded_for = request.headers.get('X-Forwarded-For', '')
-    if forwarded_for:
-        return forwarded_for.split(',')[0].strip() or 'unknown'
+    """Return client IP. ProxyFix (configured in server/__init__.py) unwraps X-Forwarded-For safely."""
     return request.remote_addr or 'unknown'
 
 
