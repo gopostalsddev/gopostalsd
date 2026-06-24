@@ -107,6 +107,33 @@ class SinalitePricingStrategy(PricingStrategy):
     def _build_vendor_option_key(options: List[int]) -> str:
         return "-".join(map(str, sorted(options)))
 
+    @staticmethod
+    def _normalize_variant_key(key: str) -> str:
+        try:
+            return "-".join(map(str, sorted(int(part) for part in str(key).split('-') if part != '')))
+        except Exception:
+            return str(key)
+
+    def _lookup_price_from_variants(self, product_id: int, vendor_option_key: str) -> Optional[Dict]:
+        variants = self.repository.get_cached_variants(product_id, 0)
+        if not variants:
+            variants = self.sinalite.get_product_variants(product_id, 0)
+            if variants:
+                self.repository.cache_variants(product_id, variants)
+
+        if not variants:
+            return None
+
+        normalized_target_key = self._normalize_variant_key(vendor_option_key)
+        for variant in variants:
+            variant_key = variant.get('key') or variant.get('variant_key')
+            if not variant_key:
+                continue
+            if self._normalize_variant_key(variant_key) == normalized_target_key:
+                return {'price': variant.get('price', 0)}
+
+        return None
+
     def _apply_retail_pricing(self, vendor_price: Any, options: List[int], package_info: Optional[Dict] = None, customization: Optional[Dict] = None) -> Dict:
         policy = self._get_pricing_policy()
         customization = self._normalize_customization(customization)
@@ -208,8 +235,15 @@ class SinalitePricingStrategy(PricingStrategy):
             # Use key-based pricing from Sinalite API
             pricing_data = self.sinalite.get_price_by_key(product_id, vendor_option_key)
             if not pricing_data:
-                logger.error(f"Failed to get pricing for product {product_id} with key {vendor_option_key}")
-                return None
+                logger.warning(
+                    "Price-by-key failed for product %s with key %s. Falling back to variant lookup.",
+                    product_id,
+                    vendor_option_key,
+                )
+                pricing_data = self._lookup_price_from_variants(product_id, vendor_option_key)
+                if not pricing_data:
+                    logger.error(f"Failed to get pricing for product {product_id} with key {vendor_option_key}")
+                    return None
             
             # Handle the response format - Sinalite returns a list with price dict
             price_value = 0

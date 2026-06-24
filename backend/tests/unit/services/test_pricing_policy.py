@@ -8,10 +8,19 @@ class DummyRepository:
     def cache_pricing(self, *args, **kwargs):
         return None
 
+    def get_cached_variants(self, *args, **kwargs):
+        return None
+
+    def cache_variants(self, *args, **kwargs):
+        return None
+
 
 class DummySinalite:
     def get_price_by_key(self, product_id, option_key):
         return [{'price': 100}]
+
+    def get_product_variants(self, product_id, offset=0):
+        return []
 
 
 class TestPricingPolicy:
@@ -48,3 +57,19 @@ class TestPricingPolicy:
 
         assert result is not None
         assert result['productOptions'] == [176, 5, 18]
+
+    def test_calculate_price_falls_back_to_variant_lookup_when_pricebykey_fails(self, app):
+        repository = DummyRepository()
+        sinalite = DummySinalite()
+        sinalite.get_price_by_key = lambda product_id, option_key: None
+        sinalite.get_product_variants = lambda product_id, offset=0: [
+            {'key': '141-217-451', 'price': 42.25}
+        ]
+
+        strategy = SinalitePricingStrategy(sinalite, repository)
+
+        with app.app_context():
+            result = strategy.calculate_price(122, [451, 141, 217], 6, {'serviceLevel': 'none'})
+
+        assert result is not None
+        assert result['pricingBreakdown']['vendorBasePrice'] == 42.25
