@@ -215,11 +215,16 @@ const ProductDetailPage = ({ product, onBack }) => {
 
   const selectedCustomizationOption = customizationOptions.find((option) => option.value === customizationService) || customizationOptions[0];
 
-  const buildCustomizationPayload = () => ({
+  const customizationPayload = React.useMemo(() => ({
     serviceLevel: customizationService,
     designNotes,
     uploadedFiles: uploadedFiles.map((file) => file.name),
-  });
+  }), [customizationService, designNotes, uploadedFiles]);
+
+  const shouldShowDesignPreview =
+    customizationService !== 'none' ||
+    designNotes.trim().length > 0 ||
+    uploadedFiles.length > 0;
 
   // Custom hooks for product options and pricing
   const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
@@ -227,7 +232,7 @@ const ProductDetailPage = ({ product, onBack }) => {
     product.vendor_product_id, 
     selectedOptions, 
     options,
-    buildCustomizationPayload()
+    customizationPayload
   );
 
   const hasSelectedValue = (value) =>
@@ -540,7 +545,7 @@ const ProductDetailPage = ({ product, onBack }) => {
         product.vendor_product_id,
         optionIds,
         finalQuantity,
-        buildCustomizationPayload()
+        customizationPayload
       );
 
       if (result.success) {
@@ -1079,66 +1084,70 @@ const ProductDetailPage = ({ product, onBack }) => {
           }}
         >
           <Paper sx={{ p: { xs: 2, sm: 3 }, width: '100%' }}>
-            <Typography variant="h5" gutterBottom>
-              Live Design Preview
-            </Typography>
-            <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
-              <Box sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
-                <img
-                  src={product.image || productTypeImage || logoImage}
-                  alt={product.name}
-                  style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
-                />
-              </Box>
-              <CardContent>
-                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                  {product.name}
+            {shouldShowDesignPreview && (
+              <>
+                <Typography variant="h5" gutterBottom>
+                  Live Design Preview
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Service level: {selectedCustomizationOption.label}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                  This preview shows what the client has selected, uploaded, and requested so they can review the order before checkout.
-                </Typography>
-                <List dense sx={{ py: 0 }}>
-                  {options.map((optionGroup) => {
-                    const selectedId = selectedOptions[optionGroup.group];
-                    const selectedOption = optionGroup.options.find((option) => String(option.id) === String(selectedId));
-                    return (
-                      <ListItem key={optionGroup.group} disableGutters sx={{ py: 0.25 }}>
-                        <ListItemText
-                          primary={optionGroup.group}
-                          secondary={selectedOption ? selectedOption.name : 'Not selected'}
-                        />
-                      </ListItem>
-                    );
-                  })}
-                </List>
-                <Divider sx={{ my: 1.5 }} />
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  Design Notes
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                  {designNotes || 'No design notes added yet.'}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  Uploaded Artwork
-                </Typography>
-                {uploadedFiles.length > 0 ? (
-                  <List dense sx={{ py: 0 }}>
-                    {uploadedFiles.map((file) => (
-                      <ListItem key={file.name} disableGutters sx={{ py: 0.25 }}>
-                        <ListItemText primary={file.name} secondary={formatFileSize(file.size)} />
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No artwork uploaded yet.
-                  </Typography>
-                )}
-              </CardContent>
-            </Card>
+                <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+                  <Box sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <img
+                      src={product.image || productTypeImage || logoImage}
+                      alt={product.name}
+                      style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
+                    />
+                  </Box>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      {product.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Service level: {selectedCustomizationOption.label}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                      This preview shows what the client has selected, uploaded, and requested so they can review the order before checkout.
+                    </Typography>
+                    <List dense sx={{ py: 0 }}>
+                      {options.map((optionGroup) => {
+                        const selectedId = selectedOptions[optionGroup.group];
+                        const selectedOption = optionGroup.options.find((option) => String(option.id) === String(selectedId));
+                        return (
+                          <ListItem key={optionGroup.group} disableGutters sx={{ py: 0.25 }}>
+                            <ListItemText
+                              primary={optionGroup.group}
+                              secondary={selectedOption ? selectedOption.name : 'Not selected'}
+                            />
+                          </ListItem>
+                        );
+                      })}
+                    </List>
+                    <Divider sx={{ my: 1.5 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Design Notes
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                      {designNotes || 'No design notes added yet.'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Uploaded Artwork
+                    </Typography>
+                    {uploadedFiles.length > 0 ? (
+                      <List dense sx={{ py: 0 }}>
+                        {uploadedFiles.map((file) => (
+                          <ListItem key={file.name} disableGutters sx={{ py: 0.25 }}>
+                            <ListItemText primary={file.name} secondary={formatFileSize(file.size)} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No artwork uploaded yet.
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
 
             <Typography variant="h5" gutterBottom>
               Additional Steps:

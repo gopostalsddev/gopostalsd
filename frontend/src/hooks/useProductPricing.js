@@ -9,6 +9,7 @@ export const useProductPricing = (productId, selectedOptions, options, customiza
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const customizationKey = customization ? JSON.stringify(customization) : '';
 
   const hasSelectedValue = (value) =>
     value !== undefined && value !== null && `${value}` !== '';
@@ -56,7 +57,7 @@ export const useProductPricing = (productId, selectedOptions, options, customiza
     };
 
     calculatePrice();
-  }, [productId, selectedOptions, options, customization]);
+  }, [productId, selectedOptions, options, customizationKey]);
 
   return { pricing, loading, error };
 };
