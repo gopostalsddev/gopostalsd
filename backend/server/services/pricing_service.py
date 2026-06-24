@@ -134,6 +134,34 @@ class SinalitePricingStrategy(PricingStrategy):
 
         return None
 
+    @staticmethod
+    def _extract_price_payload(pricing_data: Any) -> Optional[Dict[str, Any]]:
+        """Normalize heterogeneous pricing responses into a consistent shape."""
+        if not pricing_data:
+            return None
+
+        if isinstance(pricing_data, list) and len(pricing_data) > 0:
+            first = pricing_data[0] or {}
+            return {
+                'price': first.get('price', 0),
+                'packageInfo': first.get('packageInfo') or first.get('package_info') or {},
+            }
+
+        if isinstance(pricing_data, dict):
+            if 'body' in pricing_data and isinstance(pricing_data['body'], list) and len(pricing_data['body']) > 0:
+                first = pricing_data['body'][0] or {}
+                return {
+                    'price': first.get('price', 0),
+                    'packageInfo': first.get('packageInfo') or first.get('package_info') or {},
+                }
+
+            return {
+                'price': pricing_data.get('price', 0),
+                'packageInfo': pricing_data.get('packageInfo') or pricing_data.get('package_info') or {},
+            }
+
+        return None
+
     def _apply_retail_pricing(self, vendor_price: Any, options: List[int], package_info: Optional[Dict] = None, customization: Optional[Dict] = None) -> Dict:
         policy = self._get_pricing_policy()
         customization = self._normalize_customization(customization)
@@ -242,27 +270,35 @@ class SinalitePricingStrategy(PricingStrategy):
                 )
                 pricing_data = self._lookup_price_from_variants(product_id, vendor_option_key)
                 if not pricing_data:
-                    logger.error(f"Failed to get pricing for product {product_id} with key {vendor_option_key}")
-                    return None
-            
-            # Handle the response format - Sinalite returns a list with price dict
-            price_value = 0
-            if isinstance(pricing_data, list) and len(pricing_data) > 0:
-                price_value = pricing_data[0].get('price', 0)
-            elif isinstance(pricing_data, dict):
-                price_value = pricing_data.get('price', 0)
+                    logger.warning(
+                        "Variant lookup failed for product %s with key %s. Falling back to direct price endpoint.",
+                        product_id,
+                        vendor_option_key,
+                    )
+                    pricing_data = self.sinalite.get_product_price(product_id, store_code, options)
+                    if not pricing_data:
+                        logger.error(f"Failed to get pricing for product {product_id} with key {vendor_option_key}")
+                        return None
+
+            extracted_payload = self._extract_price_payload(pricing_data)
+            if not extracted_payload:
+                logger.error(f"Could not parse pricing payload for product {product_id} with key {vendor_option_key}")
+                return None
+
+            price_value = extracted_payload.get('price', 0)
+            package_info = extracted_payload.get('packageInfo') or {}
             
             # Format the response to match expected structure
             raw_pricing = {
                 'price': price_value,
-                'packageInfo': {},
+                'packageInfo': package_info,
                 'productOptions': options
             }
             
             # Cache the result
             self.repository.cache_pricing(product_id, store_code, option_key, raw_pricing, options)
             
-            return self._apply_retail_pricing(price_value, options, customization=customization)
+            return self._apply_retail_pricing(price_value, options, package_info=package_info, customization=customization)
             
         except Exception as e:
             logger.error(f"Error calculating price for product {product_id}: {str(e)}")

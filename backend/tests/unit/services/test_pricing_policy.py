@@ -22,6 +22,9 @@ class DummySinalite:
     def get_product_variants(self, product_id, offset=0):
         return []
 
+    def get_product_price(self, product_id, store_code, product_options):
+        return [{'price': 95.5, 'packageInfo': {'fallback': 'direct-price'}}]
+
 
 class TestPricingPolicy:
     def test_apply_retail_pricing_adds_fx_buffer_and_markup(self, app):
@@ -73,3 +76,21 @@ class TestPricingPolicy:
 
         assert result is not None
         assert result['pricingBreakdown']['vendorBasePrice'] == 42.25
+
+    def test_calculate_price_falls_back_to_direct_price_endpoint_when_variant_lookup_fails(self, app):
+        repository = DummyRepository()
+        sinalite = DummySinalite()
+        sinalite.get_price_by_key = lambda product_id, option_key: None
+        sinalite.get_product_variants = lambda product_id, offset=0: []
+        sinalite.get_product_price = lambda product_id, store_code, product_options: [
+            {'price': 88.4, 'packageInfo': {'source': 'direct-price-endpoint'}}
+        ]
+
+        strategy = SinalitePricingStrategy(sinalite, repository)
+
+        with app.app_context():
+            result = strategy.calculate_price(57, [177], 6, {'serviceLevel': 'none'})
+
+        assert result is not None
+        assert result['pricingBreakdown']['vendorBasePrice'] == 88.4
+        assert result['packageInfo']['source'] == 'direct-price-endpoint'
