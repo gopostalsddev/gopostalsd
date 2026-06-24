@@ -423,19 +423,19 @@ class PricingService:
         """
         try:
             # Check cache first
-            cached_variants = self._get_cached_variants(product_id, offset)
+            cached_variants = self.repository.get_cached_variants(product_id, offset)
             if cached_variants:
                 return cached_variants
-            
+
             # Fetch from API
             variants = self.sinalite.get_product_variants(product_id, offset)
             if not variants:
                 logger.error(f"No variants found for product {product_id}")
                 return []
-            
+
             # Cache the variants
-            self._cache_variants(product_id, offset, variants)
-            
+            self.repository.cache_variants(product_id, variants)
+
             return variants
             
         except Exception as e:

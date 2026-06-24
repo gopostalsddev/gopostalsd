@@ -41,6 +41,8 @@ class CartService:
     @staticmethod
     def _to_money_decimal(value: Any) -> Decimal:
         """Convert value to 2-decimal money representation."""
+        if value is None:
+            return Decimal('0.00')
         return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     @staticmethod
@@ -203,14 +205,14 @@ class CartService:
                 logger.info(f"Added new item to cart {cart.id}")
             
             db.session.commit()
-            
-            # Return updated cart
+
+            cart_result = self.get_cart(session_id)
             return {
                 'success': True,
-                'cart': cart.to_dict(),
+                'cart': cart_result['cart'] if cart_result['success'] else cart.to_dict(),
                 'message': 'Item added to cart successfully'
             }
-            
+
         except (SQLAlchemyError, ValueError, TypeError, InvalidOperation) as e:
             logger.error("Error adding item to cart", exc_info=True)
             db.session.rollback()
@@ -260,15 +262,16 @@ class CartService:
             else:
                 # Update quantity
                 cart_item.quantity = quantity
-                cart_item.total_price = cart_item.quantity * cart_item.unit_price
+                cart_item.total_price = self._to_money_decimal(quantity * cart_item.unit_price)
                 cart_item.updated_at = datetime.utcnow()
                 logger.info(f"Updated quantity for cart item {cart_item_id}")
-            
+
             db.session.commit()
-            
+
+            cart_result = self.get_cart(session_id)
             return {
                 'success': True,
-                'cart': cart.to_dict(),
+                'cart': cart_result['cart'] if cart_result['success'] else cart.to_dict(),
                 'message': 'Cart item updated successfully'
             }
             
@@ -312,15 +315,16 @@ class CartService:
             
             db.session.delete(cart_item)
             db.session.commit()
-            
+
             logger.info(f"Removed cart item {cart_item_id}")
-            
+
+            cart_result = self.get_cart(session_id)
             return {
                 'success': True,
-                'cart': cart.to_dict(),
+                'cart': cart_result['cart'] if cart_result['success'] else cart.to_dict(),
                 'message': 'Item removed from cart successfully'
             }
-            
+
         except SQLAlchemyError:
             logger.error("Error removing cart item", exc_info=True)
             db.session.rollback()
