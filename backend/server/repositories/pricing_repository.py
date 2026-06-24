@@ -98,18 +98,40 @@ class PricingRepository:
     def cache_options(self, product_id: int, options: List[Dict]) -> None:
         """Cache product options for future use."""
         try:
-            # Clear existing options for this product
-            ProductOption.query.filter_by(product_id=product_id).delete()
-            
-            # Add new options
+            option_ids = {int(option['id']) for option in options}
+
+            # Remove stale options cached for this product only.
+            ProductOption.query.filter(
+                ProductOption.product_id == product_id,
+                ~ProductOption.sinalite_option_id.in_(option_ids)
+            ).delete(synchronize_session=False)
+
+            # Upsert options to avoid duplicate-key violations on legacy unique indexes.
             for option in options:
-                new_option = ProductOption(
-                    sinalite_option_id=option['id'],
+                sinalite_option_id = int(option['id'])
+
+                existing = ProductOption.query.filter_by(
                     product_id=product_id,
-                    group=option['group'],
-                    name=option['name']
-                )
-                db.session.add(new_option)
+                    sinalite_option_id=sinalite_option_id,
+                ).first()
+
+                if not existing:
+                    existing = ProductOption.query.filter_by(
+                        sinalite_option_id=sinalite_option_id,
+                    ).first()
+
+                if existing:
+                    existing.product_id = product_id
+                    existing.group = option['group']
+                    existing.name = option['name']
+                    existing.updated_at = datetime.utcnow()
+                else:
+                    db.session.add(ProductOption(
+                        sinalite_option_id=sinalite_option_id,
+                        product_id=product_id,
+                        group=option['group'],
+                        name=option['name']
+                    ))
             
             db.session.commit()
             logger.info(f"Cached {len(options)} options for product {product_id}")
