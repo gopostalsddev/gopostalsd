@@ -9,6 +9,7 @@ export function useCartOperations() {
     cart,
     loading,
     error,
+    selectedShipping,
     addToCart,
     updateQuantity,
     removeItem,
@@ -178,7 +179,8 @@ export function useCartOperations() {
     cart,
     loading,
     error,
-    
+    selectedShipping,
+
     // Actions
     addItemToCart,
     updateItemQuantity,
@@ -187,7 +189,7 @@ export function useCartOperations() {
     calculateShippingOptions,
     setSelectedShipping,
     getCartSummary,
-    
+
     // Utilities
     getCartStats,
     isItemInCart,

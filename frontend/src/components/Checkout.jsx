@@ -305,18 +305,10 @@ export function Checkout() {
     );
   }
 
-  // Check authentication - show loading while redirecting
+  // Check authentication — redirect immediately if not logged in
   if (!isAuthenticated) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ ml: 2 }}>
-            Redirecting to login...
-          </Typography>
-        </Box>
-      </Container>
-    );
+    navigate('/login');
+    return null;
   }
 
   if (error) {

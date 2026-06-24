@@ -177,6 +177,8 @@ export function CartProvider({ children }) {
         dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
         return { success: true };
       }
+      dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
+      return { success: false, error: 'No response data from server' };
     } catch (error) {
       console.error('Error adding to cart:', error);
       dispatch({ type: CART_ACTIONS.SET_ERROR, payload: getErrorMessage(error?.response?.data?.error, 'Failed to add item to cart') });
