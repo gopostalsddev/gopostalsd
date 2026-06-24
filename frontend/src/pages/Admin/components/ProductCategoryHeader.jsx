@@ -12,6 +12,7 @@ import {
 const ProductCategoryHeader = ({
     loading,
     handleSync,
+    handleAddProduct,
     totalCategories,
     enabledCategories,
     filterMode,
@@ -68,6 +69,15 @@ const ProductCategoryHeader = ({
           <MenuItem value="Enabled">Enabled</MenuItem>
           <MenuItem value="Disabled">Disabled</MenuItem>
         </Select>
+        {/* Add Product Button */}
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={handleAddProduct}
+          disabled={loading}
+        >
+          Add Product
+        </Button>
         {/* Sync Button */}
         <Button
           variant="contained"
