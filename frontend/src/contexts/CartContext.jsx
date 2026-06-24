@@ -101,7 +101,7 @@ export function CartProvider({ children }) {
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: true });
       const sessionId = getSessionId();
       
-      const response = await api.get(`/cart/?session_id=${sessionId}`);
+      const response = await api.get(`/cart/?session_id=${sessionId}`, { skipAuth: true });
       
       // Backend returns { success: true, cart: {...} }
       if (response.data && response.data.cart) {
@@ -145,7 +145,8 @@ export function CartProvider({ children }) {
         selected_options: selectedOptions,
         quantity: quantity
       }, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       // Backend returns the cart object directly (cart_service returns result['cart'])
@@ -175,7 +176,8 @@ export function CartProvider({ children }) {
       const response = await api.put(`/cart/items/${cartItemId}/quantity`, {
         quantity: quantity
       }, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       // Backend returns the cart object directly
@@ -205,7 +207,8 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       const response = await api.delete(`/cart/items/${cartItemId}`, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       if (response.data) {
@@ -232,7 +235,8 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       await api.delete('/cart/clear', {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       dispatch({ type: CART_ACTIONS.CLEAR_CART });
@@ -257,7 +261,8 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       const response = await api.post('/cart/shipping', destinationAddress, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       if (response.data.success) {
@@ -286,7 +291,8 @@ export function CartProvider({ children }) {
   const getCartSummary = async () => {
     try {
       const sessionId = getSessionId();
-      const response = await api.get(`/cart/summary?session_id=${sessionId}`);
+      const response = await api.get(`/cart/summary?session_id=${sessionId}`, { skipAuth: true });
+      
       
       if (response.data) {
         return response.data;

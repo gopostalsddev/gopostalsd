@@ -47,6 +47,12 @@ const getAuthStorage = () => {
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    const skipAuth = config.skipAuth === true;
+
+    if (skipAuth) {
+      return config;
+    }
+
     const token = getAuthStorage().getItem('gopostalsd_session_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -67,7 +73,8 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
+    const skipAuth = error.config?.skipAuth === true;
+    if (error.response?.status === 401 && !skipAuth) {
       // Token expired or invalid
       const storage = getAuthStorage();
       storage.removeItem('gopostalsd_session_token');
