@@ -303,6 +303,7 @@ export const createManualVendorProduct = async (productData) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/print/products`, productData, {
       headers: {
+        ...authService.getAuthHeaders(true, true),
         "Content-Type": "application/json",
       },
     });

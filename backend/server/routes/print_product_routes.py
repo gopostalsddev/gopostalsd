@@ -1,3 +1,4 @@
+from flask import request
 from flask_restx import Namespace, Resource, reqparse, fields
 from werkzeug.datastructures import FileStorage
 from server.controllers.print_product_controller import PrintProductController
@@ -133,8 +134,6 @@ class PrintProductCategoryStatusResource(Resource):
     @require_role("Admin")
     def put(self, category_id):
         """Updates category status"""
-        from flask import request
-    
         # Get enabled from query params instead of JSON body
         enabled = request.args.get("enabled", type=lambda arg: arg.lower() == "true")
         result = PrintProductController.update_print_product_category_status(category_id, enabled)

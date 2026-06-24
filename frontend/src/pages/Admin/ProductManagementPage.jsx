@@ -6,6 +6,7 @@ import ProductCategoryHeader from "./components/ProductCategoryHeader";
 import ProductCategoryTable from "./components/ProductCategoryTable";
 import EditCategoryModal from "./components/EditCategoryModal";
 import ProductClassificationView from "./components/ProductClassificationView";
+import AddProductModal from "./components/AddProductModal";
 
 import {
   fetchPrintProductCategories,
@@ -21,6 +22,7 @@ const ProductManagementPage = () => {
   const [startingLetter, setStartingLetter] = useState("");
   const [editingCategory, setEditingCategory] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [addProductOpen, setAddProductOpen] = useState(false);
 
   useEffect(() => {
     loadProductCategories();
@@ -131,6 +133,7 @@ const ProductManagementPage = () => {
             <ProductCategoryHeader
               loading={loading}
               handleSync={handleSync}
+              handleAddProduct={() => setAddProductOpen(true)}
               totalCategories={totalCategories}
               enabledCategories={enabledCategories}
               filterMode={filterMode}
@@ -155,6 +158,12 @@ const ProductManagementPage = () => {
                 setEditingCategory(null);
                 setLoading(false);
               }}
+            />
+            <AddProductModal
+              open={addProductOpen}
+              onClose={() => setAddProductOpen(false)}
+              categories={productCategories}
+              onSuccess={loadProductCategories}
             />
           </Stack>
         )}
