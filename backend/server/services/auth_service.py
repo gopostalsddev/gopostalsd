@@ -166,8 +166,11 @@ class AuthService:
             # Create user
             user = User(
                 email=email,
+<<<<<<< HEAD
+=======
                 legacy_email_address=email,
                 legacy_creation_date=datetime.now(timezone.utc),
+>>>>>>> origin/main
                 password_hash=password_hash,
                 first_name=first_name,
                 last_name=last_name,

@@ -7,8 +7,17 @@ from server.config import database, migrate, sinalite, swagger, filestorage
 from server.models import * # So that they can be detected by migrations
 import logging
 import os
+import sys
 
 logger = logging.getLogger(__name__)
+
+
+def _is_running_db_migrate() -> bool:
+    if os.getenv("RUN_DB_MIGRATE"):
+        return True
+    return "db" in sys.argv
+
+
 def create_server(config="development"):
     """
     Factory function to create and configure the Flask application.
@@ -94,7 +103,7 @@ def create_server(config="development"):
     # Initialize database support
     database.init_app(server)
 
-    if config == "production":
+    if config == "production" and not _is_running_db_migrate():
         with server.app_context():
             from server.startup_admin import ensure_production_admin
             ensure_production_admin(server)
