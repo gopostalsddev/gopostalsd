@@ -64,11 +64,14 @@ class SinalitePricingStrategy(PricingStrategy):
 
     @staticmethod
     def _round_money(value: Decimal) -> Decimal:
-        if not isinstance(value, Decimal):
-            value = Decimal(str(value or 0))
-        if not value.is_finite():
+        try:
+            if not isinstance(value, Decimal):
+                value = Decimal(str(value or 0))
+            if not value.is_finite():
+                return Decimal('0.00')
+            return value.quantize(Decimal('0.01'))
+        except (InvalidOperation, ValueError, TypeError):
             return Decimal('0.00')
-        return value.quantize(Decimal('0.01'))
 
     def _get_pricing_policy(self) -> Dict[str, Any]:
         policy_record = PricingPolicy.get_current()
@@ -184,43 +187,78 @@ class SinalitePricingStrategy(PricingStrategy):
     def _apply_retail_pricing(self, vendor_price: Any, options: List[int], package_info: Optional[Dict] = None, customization: Optional[Dict] = None) -> Dict:
         policy = self._get_pricing_policy()
         customization = self._normalize_customization(customization)
-        vendor_price_decimal = self._to_decimal(vendor_price)
-        exchange_rate = policy['cad_to_usd_rate']
-        buffer_multiplier = Decimal('1') + (policy['exchange_buffer_percent'] / Decimal('100'))
-        converted_cost = vendor_price_decimal * exchange_rate
-        buffered_cost = converted_cost * buffer_multiplier
-        customization_fee = policy['customization_fees'].get(customization['serviceLevel'], Decimal('0'))
-        landed_cost = buffered_cost + policy['fixed_fee_usd'] + customization_fee
 
-        if policy['markup_ratio'] >= Decimal('1'):
+        vendor_currency = policy.get('vendor_currency', 'CAD')
+        display_currency = policy.get('display_currency', 'USD')
+        exchange_rate = self._to_decimal(policy.get('cad_to_usd_rate', 0))
+        exchange_buffer_percent = self._to_decimal(policy.get('exchange_buffer_percent', 0))
+        markup_percent = self._to_decimal(policy.get('markup_percent', 0))
+        markup_ratio = self._to_decimal(policy.get('markup_ratio', markup_percent / Decimal('100')))
+        if markup_ratio < Decimal('0'):
+            markup_ratio = Decimal('0')
+        if markup_ratio > Decimal('0.95'):
+            markup_ratio = Decimal('0.95')
+        fixed_fee_usd = self._to_decimal(policy.get('fixed_fee_usd', 0))
+        minimum_profit_usd = self._to_decimal(policy.get('minimum_profit_usd', 0))
+        rounding_increment = self._to_decimal(policy.get('rounding_increment', '0.05'))
+        if rounding_increment <= 0:
+            rounding_increment = Decimal('0.01')
+
+        customization_fee_map = policy.get('customization_fees', {})
+        customization_fee = self._to_decimal(customization_fee_map.get(customization['serviceLevel'], 0))
+
+        try:
+            vendor_price_decimal = self._to_decimal(vendor_price)
+            buffer_multiplier = Decimal('1') + (exchange_buffer_percent / Decimal('100'))
+            converted_cost = vendor_price_decimal * exchange_rate
+            buffered_cost = converted_cost * buffer_multiplier
+            landed_cost = buffered_cost + fixed_fee_usd + customization_fee
+
+            if markup_ratio >= Decimal('1'):
+                price_from_margin = landed_cost
+            else:
+                price_from_margin = landed_cost / (Decimal('1') - markup_ratio)
+
+            price_from_min_profit = landed_cost + minimum_profit_usd
+            pre_rounded_price = max(price_from_margin, price_from_min_profit)
+
+            rounded_price = (pre_rounded_price / rounding_increment).quantize(Decimal('1'), rounding=ROUND_UP) * rounding_increment
+        except (InvalidOperation, ValueError, ZeroDivisionError, TypeError) as exc:
+            logger.error(
+                "Retail pricing math failed for options %s due to invalid numeric values: %s",
+                options,
+                exc,
+            )
+            vendor_price_decimal = self._to_decimal(vendor_price)
+            exchange_rate = self._to_decimal(policy.get('cad_to_usd_rate', 0))
+            converted_cost = vendor_price_decimal * exchange_rate
+            buffered_cost = converted_cost
+            customization_fee = Decimal('0')
+            landed_cost = buffered_cost
             price_from_margin = landed_cost
-        else:
-            price_from_margin = landed_cost / (Decimal('1') - policy['markup_ratio'])
-
-        price_from_min_profit = landed_cost + policy['minimum_profit_usd']
-        pre_rounded_price = max(price_from_margin, price_from_min_profit)
-
-        rounding_increment = policy['rounding_increment'] if policy['rounding_increment'] > 0 else Decimal('0.01')
-        rounded_price = (pre_rounded_price / rounding_increment).quantize(Decimal('1'), rounding=ROUND_UP) * rounding_increment
+            price_from_min_profit = landed_cost
+            pre_rounded_price = landed_cost
+            rounding_increment = Decimal('0.01')
+            rounded_price = landed_cost if landed_cost > 0 else Decimal('0')
 
         explanation = [
-            f"Sinalite cost starts in {policy['vendor_currency']}.",
-            f"That base cost is converted to {policy['display_currency']} using the configured exchange rate.",
-            f"An FX buffer of {policy['exchange_buffer_percent']}% is added to protect margin when CAD/USD moves.",
-            f"A markup target of {policy['markup_percent']}% is then applied to create the retail sell price.",
+            f"Sinalite cost starts in {vendor_currency}.",
+            f"That base cost is converted to {display_currency} using the configured exchange rate.",
+            f"An FX buffer of {exchange_buffer_percent}% is added to protect margin when CAD/USD moves.",
+            f"A markup target of {markup_percent}% is then applied to create the retail sell price.",
         ]
-        if policy['fixed_fee_usd'] > 0:
-            explanation.append(f"A fixed fee of {self._round_money(policy['fixed_fee_usd'])} {policy['display_currency']} is added before markup.")
+        if fixed_fee_usd > 0:
+            explanation.append(f"A fixed fee of {self._round_money(fixed_fee_usd)} {display_currency} is added before markup.")
         if customization_fee > 0:
             explanation.append(
-                f"Customization service '{customization['serviceLevel']}' adds {self._round_money(customization_fee)} {policy['display_currency']} before markup."
+                f"Customization service '{customization['serviceLevel']}' adds {self._round_money(customization_fee)} {display_currency} before markup."
             )
-        if policy['minimum_profit_usd'] > 0:
-            explanation.append(f"A minimum profit floor of {self._round_money(policy['minimum_profit_usd'])} {policy['display_currency']} is enforced.")
+        if minimum_profit_usd > 0:
+            explanation.append(f"A minimum profit floor of {self._round_money(minimum_profit_usd)} {display_currency} is enforced.")
 
         return {
             'price': float(self._round_money(rounded_price)),
-            'currency': policy['display_currency'],
+            'currency': display_currency,
             'packageInfo': {
                 **(package_info or {}),
                 'Customization Service': customization['serviceLevel'].replace('_', ' ').title(),
@@ -230,18 +268,18 @@ class SinalitePricingStrategy(PricingStrategy):
             'productOptions': options,
             'customization': customization,
             'pricingBreakdown': {
-                'vendorCurrency': policy['vendor_currency'],
-                'displayCurrency': policy['display_currency'],
+                'vendorCurrency': vendor_currency,
+                'displayCurrency': display_currency,
                 'vendorBasePrice': float(self._round_money(vendor_price_decimal)),
                 'exchangeRate': float(exchange_rate),
                 'convertedCost': float(self._round_money(converted_cost)),
-                'exchangeBufferPercent': float(policy['exchange_buffer_percent']),
+                'exchangeBufferPercent': float(exchange_buffer_percent),
                 'bufferedCost': float(self._round_money(buffered_cost)),
-                'fixedFee': float(self._round_money(policy['fixed_fee_usd'])),
+                'fixedFee': float(self._round_money(fixed_fee_usd)),
                 'customizationFee': float(self._round_money(customization_fee)),
                 'landedCost': float(self._round_money(landed_cost)),
-                'markupPercent': float(policy['markup_percent']),
-                'minimumProfit': float(self._round_money(policy['minimum_profit_usd'])),
+                'markupPercent': float(markup_percent),
+                'minimumProfit': float(self._round_money(minimum_profit_usd)),
                 'preRoundedRetailPrice': float(self._round_money(pre_rounded_price)),
                 'roundingIncrement': float(rounding_increment),
                 'retailPrice': float(self._round_money(rounded_price)),

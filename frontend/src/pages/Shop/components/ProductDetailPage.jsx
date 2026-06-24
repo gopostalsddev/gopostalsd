@@ -196,19 +196,19 @@ const ProductDetailPage = ({ product, onBack }) => {
     {
       value: 'none',
       label: 'Print-ready artwork',
-      description: 'You upload finished artwork and the owner prints exactly what you provide.',
+      description: 'You upload finished artwork and we print exactly what you provide.',
       surcharge: 0,
     },
     {
       value: 'file_review',
       label: 'File review',
-      description: 'The owner checks bleed, trim, and print readiness before production.',
+      description: 'We check bleed, trim, and print readiness before production.',
       surcharge: 10,
     },
     {
       value: 'design_assist',
       label: 'Design assistance',
-      description: 'The owner helps refine or adapt your design. That service time affects the price.',
+      description: 'We help refine or adapt your design. That service time affects the price.',
       surcharge: 35,
     },
   ];
@@ -913,7 +913,7 @@ const ProductDetailPage = ({ product, onBack }) => {
               value={designNotes}
               onChange={(e) => setDesignNotes(e.target.value)}
               sx={{ mb: 3 }}
-              helperText="Describe what should be customized so the owner can quote and produce the job correctly."
+              helperText="Describe what should be customized so we can quote and produce the job correctly."
             />
 
             {/* Quantity - Only show if not included in API options */}

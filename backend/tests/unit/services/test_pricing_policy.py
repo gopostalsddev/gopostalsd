@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from server.services.pricing_service import SinalitePricingStrategy
 
 
@@ -115,3 +117,29 @@ class TestPricingPolicy:
         assert result is not None
         assert result['pricingBreakdown']['markupPercent'] == 0.0
         assert result['price'] >= 0.0
+
+    def test_apply_retail_pricing_recovers_from_invalid_policy_values(self, app):
+        strategy = SinalitePricingStrategy(DummySinalite(), DummyRepository())
+        original_get_policy = strategy._get_pricing_policy
+
+        strategy._get_pricing_policy = lambda: {
+            'vendor_currency': 'CAD',
+            'display_currency': 'USD',
+            'cad_to_usd_rate': 'bad-rate',
+            'exchange_buffer_percent': 'bad-buffer',
+            'markup_percent': 'bad-markup',
+            'markup_ratio': Decimal('NaN'),
+            'fixed_fee_usd': 'bad-fee',
+            'minimum_profit_usd': 'bad-min-profit',
+            'rounding_increment': 'bad-rounding',
+            'customization_fees': {'none': Decimal('0')},
+        }
+
+        with app.app_context():
+            result = strategy._apply_retail_pricing(100, [177], customization={'serviceLevel': 'none'})
+
+        strategy._get_pricing_policy = original_get_policy
+
+        assert result is not None
+        assert result['price'] >= 0.0
+        assert result['pricingBreakdown']['vendorBasePrice'] == 100.0
