@@ -9,6 +9,14 @@ import { getApiBaseUrl } from './apiBaseUrl';
 
 const API_BASE_URL = getApiBaseUrl();
 
+const redirectToLogin = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.location.hash = '#/login';
+};
+
 // Create axios instance with default configuration
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -65,8 +73,7 @@ api.interceptors.response.use(
       storage.removeItem('gopostalsd_session_token');
       storage.removeItem('gopostalsd_refresh_token');
       storage.removeItem('gopostalsd_user');
-      // Optionally redirect to login
-      window.location.href = '/login';
+      redirectToLogin();
     }
     return Promise.reject(error);
   }

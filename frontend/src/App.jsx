@@ -124,7 +124,7 @@ const App = () => {
                 />
                 
                 {/* Catch-all route for 404 */}
-                <Route path="*" element={<Layout><Box sx={{ textAlign: 'center', py: 8 }}><Typography variant="h4">404 - Page Not Found</Typography><Typography variant="body1" sx={{ mb: 3 }}>The page you're looking for doesn't exist.</Typography><Button variant="contained" onClick={() => window.location.href = '/'}>Go Home</Button></Box></Layout>} />
+                <Route path="*" element={<Layout><Box sx={{ textAlign: 'center', py: 8 }}><Typography variant="h4">404 - Page Not Found</Typography><Typography variant="body1" sx={{ mb: 3 }}>The page you're looking for doesn't exist.</Typography><Button variant="contained" onClick={() => { window.location.hash = '#/'; }}>Go Home</Button></Box></Layout>} />
               </Routes>
             </Suspense>
           </Router>

@@ -9,6 +9,14 @@ import { getApiBaseUrl } from './apiBaseUrl'
 
 const API_BASE_URL = getApiBaseUrl()
 
+const redirectToLogin = () => {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    window.location.hash = '#/login'
+}
+
 /**
  * @typedef {{
  *   message: string,
@@ -368,7 +376,7 @@ class AuthService {
                     } catch (refreshError) {
                         // Refresh failed, redirect to login
                         this.clearAuth()
-                        window.location.href = '/login'
+                        redirectToLogin()
                         return Promise.reject(refreshError)
                     }
                 }
