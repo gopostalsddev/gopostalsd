@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import logging
-from decimal import Decimal, ROUND_UP
+from decimal import Decimal, ROUND_UP, InvalidOperation
 from flask import current_app
 from server import database as db
 from server.models.pricing import (
@@ -54,10 +54,20 @@ class SinalitePricingStrategy(PricingStrategy):
 
     @staticmethod
     def _to_decimal(value: Any) -> Decimal:
-        return Decimal(str(value or 0))
+        try:
+            parsed = Decimal(str(value or 0))
+            if not parsed.is_finite():
+                return Decimal('0')
+            return parsed
+        except (InvalidOperation, ValueError, TypeError):
+            return Decimal('0')
 
     @staticmethod
     def _round_money(value: Decimal) -> Decimal:
+        if not isinstance(value, Decimal):
+            value = Decimal(str(value or 0))
+        if not value.is_finite():
+            return Decimal('0.00')
         return value.quantize(Decimal('0.01'))
 
     def _get_pricing_policy(self) -> Dict[str, Any]:

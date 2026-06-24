@@ -94,3 +94,13 @@ class TestPricingPolicy:
         assert result is not None
         assert result['pricingBreakdown']['vendorBasePrice'] == 88.4
         assert result['packageInfo']['source'] == 'direct-price-endpoint'
+
+    def test_apply_retail_pricing_handles_nan_vendor_price(self, app):
+        strategy = SinalitePricingStrategy(DummySinalite(), DummyRepository())
+
+        with app.app_context():
+            result = strategy._apply_retail_pricing('NaN', [177], customization={'serviceLevel': 'none'})
+
+        assert result is not None
+        assert result['pricingBreakdown']['vendorBasePrice'] == 0.0
+        assert result['price'] >= 0.0
