@@ -46,10 +46,15 @@ export const useProductPricing = (productId, selectedOptions, options, customiza
       
       try {
         const priceData = await calculateProductPrice(parseInt(productId), optionIds, 6, customization);
+        if (!priceData || typeof priceData.price !== 'number') {
+          setError('Price is currently unavailable for this configuration. Please try a different option set.');
+          setPricing(null);
+          return;
+        }
         setPricing(priceData);
       } catch (error) {
         console.error('Error calculating price:', error);
-        setError('Failed to calculate price');
+        setError(error?.message || 'Failed to calculate price');
         setPricing(null);
       } finally {
         setLoading(false);
