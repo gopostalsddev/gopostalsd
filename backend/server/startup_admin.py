@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Flask
 from sqlalchemy import or_
@@ -64,11 +64,11 @@ def ensure_production_admin(app: Flask) -> None:
 
         password_service = PasswordService()
         admin_user = User(
-            first_name="John",
-            last_name="Doe",
+            first_name=os.getenv("ADMIN_FIRST_NAME", "Admin"),
+            last_name=os.getenv("ADMIN_LAST_NAME", "User"),
             email=admin_email,
             legacy_email_address=admin_email,
-            legacy_creation_date=datetime.utcnow(),
+            legacy_creation_date=datetime.now(timezone.utc),
             password_hash=password_service.hash_password(admin_password),
             status=UserStatus.ACTIVE,
             email_verified=True,

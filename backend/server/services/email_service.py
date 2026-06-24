@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Dict, Any, Optional
 from flask import Flask
+from markupsafe import escape as html_escape
 from server.thirdparty.mailersend import MailerSendAdapter
 from server.thirdparty.smtp import SMTPAdapter
 
@@ -283,7 +284,14 @@ class EmailService:
     def send_contact_email(self, name: str, email: str, phone: str, subject: str, message: str, reply_to: str = None) -> bool:
         """Send contact form email to Go Postal."""
         email_subject = f"Contact Form: {subject}"
-        
+
+        # Escape user-supplied values before inserting into HTML to prevent XSS.
+        safe_name = html_escape(name)
+        safe_email = html_escape(email)
+        safe_phone = html_escape(phone or 'Not provided')
+        safe_subject = html_escape(subject)
+        safe_message = html_escape(message)
+
         text_content = f"""
             New contact form submission from Go Postal SD website:
 
@@ -298,7 +306,7 @@ class EmailService:
             ---
             This message was sent from the Go Postal SD contact form.
                     """.strip()
-                    
+
         html_content = f"""
             <!DOCTYPE html>
             <html>
@@ -323,20 +331,20 @@ class EmailService:
                     </div>
                     <div class="content">
                         <div class="field">
-                            <span class="label">Name:</span> {name}
+                            <span class="label">Name:</span> {safe_name}
                         </div>
                         <div class="field">
-                            <span class="label">Email:</span> {email}
+                            <span class="label">Email:</span> {safe_email}
                         </div>
                         <div class="field">
-                            <span class="label">Phone:</span> {phone or 'Not provided'}
+                            <span class="label">Phone:</span> {safe_phone}
                         </div>
                         <div class="field">
-                            <span class="label">Subject:</span> {subject}
+                            <span class="label">Subject:</span> {safe_subject}
                         </div>
                         <div class="field">
                             <span class="label">Message:</span>
-                            <div class="message">{message}</div>
+                            <div class="message">{safe_message}</div>
                         </div>
                     </div>
                     <div class="footer">

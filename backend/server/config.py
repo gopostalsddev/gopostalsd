@@ -63,6 +63,20 @@ def validate_production_security_settings() -> None:
     if not jwt_secret_key or jwt_secret_key == 'your_jwt_secret_key_here':
         os.environ['JWT_SECRET_KEY'] = secret_key
 
+    if os.getenv('SQUARE_MOCK_PAYMENTS', 'false').lower() == 'true':
+        raise ValueError('SQUARE_MOCK_PAYMENTS must not be true in production')
+
+    import logging as _log
+    _prod_logger = _log.getLogger(__name__)
+    if not os.getenv('SQUARE_WEBHOOK_SIGNATURE_KEY', '').strip():
+        _prod_logger.warning(
+            'SQUARE_WEBHOOK_SIGNATURE_KEY is not set — all Square webhook requests will be rejected'
+        )
+    if not os.getenv('OAUTH_TOKEN_ENCRYPTION_KEY', '').strip():
+        _prod_logger.warning(
+            'OAUTH_TOKEN_ENCRYPTION_KEY is not set — OAuth tokens will be stored in plaintext'
+        )
+
 
 class Config:
     # Disable SQLAlchemy event system to improve performance

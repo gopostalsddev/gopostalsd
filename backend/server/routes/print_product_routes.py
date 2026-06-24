@@ -537,8 +537,11 @@ class PrintProductSyncResource(Resource):
 
     @api.doc(description="Sync products from Sinalite API for a specific category")
     @api.response(200, "Products synced successfully")
+    @api.response(401, "Unauthorized")
+    @api.response(403, "Forbidden")
     @api.response(404, "Category not found")
     @api.response(500, "Server error")
+    @require_role('Admin')
     def post(self, category_id):
         """Sync products from Sinalite API for a category"""
         result = PrintProductController.sync_print_products(category_id)

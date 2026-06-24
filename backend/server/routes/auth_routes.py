@@ -251,6 +251,7 @@ class ResendVerificationResource(Resource):
     @api.expect(api.model('ResendVerification', {
         'email': fields.String(required=True, description='User email address')
     }))
+    @rate_limit_by_ip('AUTH_PASSWORD_RESET_RATE_LIMIT_COUNT', 'AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS', 'auth-resend-verification')
     def post(self):
         """Resend email verification link."""
         data = request.get_json(silent=True)
@@ -291,8 +292,8 @@ class LoginResource(Resource):
         if not email_result.is_valid:
             return error_response('Invalid email or password format', 400)
         
-        # Get client information
-        ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+        # request.remote_addr is already unwrapped by ProxyFix middleware
+        ip_address = request.remote_addr
         user_agent = request.environ.get('HTTP_USER_AGENT')
         
         result = AuthController.login(

@@ -1,6 +1,7 @@
 # Import required Flask extensions and modules
 from flask import Flask
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from server.config import DevelopmentConfig, TestingConfig, ProductionConfig, validate_production_security_settings
 from server.config import database, migrate, sinalite, swagger, filestorage
 from server.models import * # So that they can be detected by migrations
@@ -20,7 +21,11 @@ def create_server(config="development"):
     """
     # Create Flask application instance
     server = Flask(__name__)
-    
+
+    # Trust exactly one upstream proxy (Render/Gunicorn) for X-Forwarded-For.
+    # This makes request.remote_addr the real client IP rather than the proxy's address.
+    server.wsgi_app = ProxyFix(server.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     # Configure CORS with allowed origins
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
     render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
@@ -70,8 +75,8 @@ def create_server(config="development"):
     server.before_request(enforce_csrf_protection)
     
     # Add startup timestamp for health checks
-    from datetime import datetime
-    server.config['START_TIME'] = datetime.utcnow().isoformat()
+    from datetime import datetime, timezone
+    server.config['START_TIME'] = datetime.now(timezone.utc).isoformat()
 
     # Load configuration based on environment
     if config == "testing":
@@ -132,6 +137,17 @@ def create_server(config="development"):
     server.extensions['role_service'] = role_service
     server.extensions['auth_service'] = auth_service
     
+    # Warn when running production without a shared rate-limit store.
+    # In-memory counters are per-worker and won't enforce limits across Gunicorn workers.
+    if config == 'production':
+        rate_store = os.getenv('AUTH_RATE_LIMIT_STORE', 'memory').lower()
+        if rate_store == 'memory':
+            logger.warning(
+                "AUTH_RATE_LIMIT_STORE is 'memory' in production. "
+                "Rate limits are not shared across Gunicorn workers. "
+                "Set AUTH_RATE_LIMIT_STORE=redis and RATE_LIMIT_REDIS_URL."
+            )
+
     # Register API routes
     from server.routes import register_routes
     register_routes(server)

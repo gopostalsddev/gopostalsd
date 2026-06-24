@@ -9,14 +9,22 @@ import logging
 import traceback
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Union
 from enum import Enum
 from flask import request, g, current_app
 from werkzeug.exceptions import HTTPException
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+    SENTRY_AVAILABLE = True
+except ImportError:
+    sentry_sdk = None
+    FlaskIntegration = None
+    SqlalchemyIntegration = None
+    SENTRY_AVAILABLE = False
 
 
 class ErrorSeverity(Enum):
@@ -56,7 +64,7 @@ class ApplicationError(Exception):
     ):
         super().__init__(message)
         self.error_id = str(uuid.uuid4())
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         self.message = message
         self.error_code = error_code or f"ERR_{category.value.upper()}"
         self.category = category
@@ -166,7 +174,7 @@ class ErrorHandler:
         self.app = app
         
         # Configure Sentry for production error tracking
-        if app.config.get('SENTRY_DSN'):
+        if SENTRY_AVAILABLE and app.config.get('SENTRY_DSN'):
             sentry_sdk.init(
                 dsn=app.config['SENTRY_DSN'],
                 integrations=[
@@ -176,6 +184,8 @@ class ErrorHandler:
                 traces_sample_rate=app.config.get('SENTRY_TRACES_SAMPLE_RATE', 0.1),
                 environment=app.config.get('ENVIRONMENT', 'development'),
             )
+        elif not SENTRY_AVAILABLE and app.config.get('SENTRY_DSN'):
+            logger.warning("sentry-sdk not installed — error tracking disabled. Run: pip install sentry-sdk")
         
         # Register error handlers
         app.register_error_handler(ApplicationError, self.handle_application_error)
@@ -189,12 +199,12 @@ class ErrorHandler:
     def before_request(self):
         """Set up request context for error tracking."""
         g.request_id = str(uuid.uuid4())
-        g.start_time = datetime.utcnow()
+        g.start_time = datetime.now(timezone.utc)
     
     def after_request(self, response):
         """Log request completion and performance metrics."""
         if hasattr(g, 'start_time'):
-            duration = (datetime.utcnow() - g.start_time).total_seconds()
+            duration = (datetime.now(timezone.utc) - g.start_time).total_seconds()
             
             # Log performance metrics
             self.logger.info(
@@ -330,14 +340,14 @@ class ErrorHandler:
     
     def _send_to_monitoring(self, error: ApplicationError):
         """Send error to external monitoring service."""
-        # Send to Sentry if configured
-        if current_app.config.get('SENTRY_DSN'):
+        # Send to Sentry if configured and available
+        if SENTRY_AVAILABLE and current_app.config.get('SENTRY_DSN'):
             with sentry_sdk.push_scope() as scope:
                 scope.set_tag("error_category", error.category.value)
                 scope.set_tag("error_severity", error.severity.value)
                 scope.set_tag("error_code", error.error_code)
                 scope.set_context("error_details", error.details)
-                
+
                 if error.severity in [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]:
                     sentry_sdk.capture_exception(error)
                 else:
@@ -347,7 +357,7 @@ class ErrorHandler:
         """Get current error statistics."""
         return {
             'stats': self.error_stats,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

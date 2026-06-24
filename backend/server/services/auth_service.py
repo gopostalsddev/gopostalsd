@@ -6,9 +6,10 @@ password management, and session handling.
 """
 
 import hashlib
+import re
 import secrets
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple
 from flask import current_app
 from server.config import database as db
@@ -66,10 +67,17 @@ class AuthService:
                     'code': 'VALIDATION_ERROR'
                 }
             
-            if not password or not isinstance(password, str) or len(password) < 8:
+            if not password or not isinstance(password, str):
                 return {
                     'success': False,
-                    'error': 'Password must be at least 8 characters long',
+                    'error': 'Password is required',
+                    'code': 'VALIDATION_ERROR'
+                }
+            strength = self.password_service.validate_password_strength(password)
+            if not strength['is_valid']:
+                return {
+                    'success': False,
+                    'error': strength['errors'][0] if strength['errors'] else 'Password does not meet requirements',
                     'code': 'VALIDATION_ERROR'
                 }
             
@@ -88,7 +96,6 @@ class AuthService:
                 }
             
             # Validate email format
-            import re
             email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
             if not re.match(email_pattern, email.strip()):
                 return {
@@ -160,7 +167,7 @@ class AuthService:
             user = User(
                 email=email,
                 legacy_email_address=email,
-                legacy_creation_date=datetime.utcnow(),
+                legacy_creation_date=datetime.now(timezone.utc),
                 password_hash=password_hash,
                 first_name=first_name,
                 last_name=last_name,
@@ -210,7 +217,7 @@ class AuthService:
             Dict containing verification result
         """
         try:
-            logger.info(f"Verifying email with token: {token[:20]}...")
+            logger.info("Verifying email token")
             verification_token = EmailVerificationToken.query.filter_by(
                 token=token, used=False
             ).first()
@@ -233,12 +240,12 @@ class AuthService:
             # Update user status
             user = verification_token.user
             user.email_verified = True
-            user.email_verified_at = datetime.utcnow()
+            user.email_verified_at = datetime.now(timezone.utc)
             user.status = UserStatus.ACTIVE
 
             # Mark token as used
             verification_token.used = True
-            verification_token.used_at = datetime.utcnow()
+            verification_token.used_at = datetime.now(timezone.utc)
 
             db.session.commit()
 
@@ -390,7 +397,7 @@ class AuthService:
                 max_failed_attempts = self._config_int('MAX_FAILED_LOGIN_ATTEMPTS', 5)
                 lockout_minutes = self._config_int('ACCOUNT_LOCKOUT_MINUTES', 30)
                 if user.failed_login_attempts >= max_failed_attempts:
-                    user.locked_until = datetime.utcnow() + timedelta(minutes=lockout_minutes)
+                    user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
                 
                 db.session.commit()
                 
@@ -403,7 +410,7 @@ class AuthService:
             # Reset failed login attempts and update last login
             user.failed_login_attempts = 0
             user.locked_until = None
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(timezone.utc)
 
             # Create session
             session_token, refresh_token = UserSession.generate_tokens()
@@ -413,7 +420,7 @@ class AuthService:
                 refresh_token=refresh_token,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                expires_at=datetime.utcnow() + timedelta(days=self._config_int('SESSION_EXPIRY_DAYS', 7))
+                expires_at=datetime.now(timezone.utc) + timedelta(days=self._config_int('SESSION_EXPIRY_DAYS', 7))
             )
             db.session.add(session)
             db.session.commit()
@@ -504,8 +511,8 @@ class AuthService:
             # Update session
             session.session_token = new_session_token
             session.refresh_token = new_refresh_token
-            session.expires_at = datetime.utcnow() + timedelta(days=self._config_int('SESSION_EXPIRY_DAYS', 7))
-            session.last_accessed = datetime.utcnow()
+            session.expires_at = datetime.now(timezone.utc) + timedelta(days=self._config_int('SESSION_EXPIRY_DAYS', 7))
+            session.last_accessed = datetime.now(timezone.utc)
 
             db.session.commit()
 
@@ -601,7 +608,7 @@ class AuthService:
 
             # Mark token as used
             reset_token.used = True
-            reset_token.used_at = datetime.utcnow()
+            reset_token.used_at = datetime.now(timezone.utc)
 
             # Invalidate all user sessions
             UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
@@ -657,7 +664,7 @@ class AuthService:
                 return None
 
             # Update last accessed
-            session.last_accessed = datetime.utcnow()
+            session.last_accessed = datetime.now(timezone.utc)
             db.session.commit()
 
             return user
@@ -672,7 +679,7 @@ class AuthService:
         verification_token = EmailVerificationToken(
             user_id=user_id,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(hours=self._config_int('EMAIL_VERIFICATION_EXPIRY_HOURS', 24))
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=self._config_int('EMAIL_VERIFICATION_EXPIRY_HOURS', 24))
         )
         db.session.add(verification_token)
         return verification_token
@@ -683,7 +690,7 @@ class AuthService:
         reset_token = PasswordResetToken(
             user_id=user_id,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(hours=self._config_int('PASSWORD_RESET_EXPIRY_HOURS', 1))
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=self._config_int('PASSWORD_RESET_EXPIRY_HOURS', 1))
         )
         db.session.add(reset_token)
         return reset_token

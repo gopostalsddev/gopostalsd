@@ -8,7 +8,7 @@ adding items, updating quantities, calculating totals, and managing shipping.
 import logging
 import os
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from server.config import database as db
@@ -185,7 +185,7 @@ class CartService:
                 # Update quantity
                 existing_item.quantity += quantity
                 existing_item.total_price = self._to_money_decimal(existing_item.quantity * existing_item.unit_price)
-                existing_item.updated_at = datetime.utcnow()
+                existing_item.updated_at = datetime.now(timezone.utc)
                 logger.info(f"Updated quantity for existing cart item {existing_item.id}")
             else:
                 # Create new cart item
@@ -263,7 +263,7 @@ class CartService:
                 # Update quantity
                 cart_item.quantity = quantity
                 cart_item.total_price = self._to_money_decimal(quantity * cart_item.unit_price)
-                cart_item.updated_at = datetime.utcnow()
+                cart_item.updated_at = datetime.now(timezone.utc)
                 logger.info(f"Updated quantity for cart item {cart_item_id}")
 
             db.session.commit()

@@ -5,11 +5,10 @@ This module defines all cart-related API endpoints using Flask-RESTX.
 It provides comprehensive cart management functionality.
 """
 
-from flask import request
+from flask import request, current_app
 from flask_restx import Namespace, Resource, fields
 from server.services.cart_service import CartService
 from server.services.pricing_service import PricingService
-from server.thirdparty.sinalite import SinaliteAdapter
 from server.factories.main_factory import MainFactory
 from server.middleware.auth_middleware import require_auth, require_cart_auth, get_user_id
 from server.validation.input_validator import (
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Create namespace for cart operations
 api = Namespace('cart', description='Cart operations')
 
-# Define models for API documentation
+# Models
 cart_item_model = api.model('CartItem', {
     'id': fields.Integer(description='Cart item ID'),
     'product_id': fields.Integer(description='Product ID'),
@@ -81,9 +80,6 @@ shipping_option_model = api.model('ShippingOption', {
     'shipping_days': fields.Integer(description='Estimated shipping days')
 })
 
-# Create main factory instance
-main_factory = MainFactory()
-
 
 def _get_required_session_id():
     """Require and validate a session_id query parameter."""
@@ -97,12 +93,23 @@ def _get_required_session_id():
 
     return str(session_id), None
 
+
+def _verify_cart_ownership(cart_data: dict) -> bool:
+    """Return True if the current request may mutate this cart.
+
+    Authenticated users may only mutate carts that belong to them.
+    Guest users (no user_id on request) may mutate carts with no owner.
+    """
+    request_user_id = getattr(request, 'user_id', None)
+    cart_user_id = cart_data.get('user_id')
+
+    if request_user_id is not None and cart_user_id is not None:
+        return int(request_user_id) == int(cart_user_id)
+    return True
+
 def get_cart_service():
-    """Get cart service instance."""
-    # Use the factory to get properly configured services
-    sinalite_adapter = SinaliteAdapter()
-    pricing_service = main_factory.get_pricing_service(sinalite_adapter)
-    return main_factory.get_cart_service(pricing_service, sinalite_adapter)
+    """Return the cart service registered in the Flask app context."""
+    return current_app.extensions['cart_service']
 
 # Define resources
 @api.route('/')
@@ -136,8 +143,7 @@ class AddToCartResource(Resource):
         super().__init__(*args, **kwargs)
     
     @api.doc('add_to_cart')
-    # @api.expect(add_to_cart_model)  # Disabled - causing silent 400 errors
-    # @api.marshal_with(cart_model)   # Disabled - causing silent 400 errors
+    @api.expect(add_to_cart_model, validate=False)
     @require_cart_auth
     def post(self):
         """Add item to cart."""
@@ -214,19 +220,23 @@ class UpdateQuantityResource(Resource):
     def put(self, cart_item_id):
         """Update cart item quantity."""
         data = request.get_json(silent=True)
-        
+
         if not data or 'quantity' not in data:
             return error_response('Quantity is required', 400)
 
         quantity_result = validate_number_input(data['quantity'], min_value=0, max_value=100, integer_only=True)
         if not quantity_result.is_valid:
             return error_response('Invalid quantity', 400)
-        
+
         session_id, session_error = _get_required_session_id()
         if session_error:
             return session_error
-        
+
         cart_service = get_cart_service()
+        cart_check = cart_service.get_cart(session_id)
+        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+            return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+
         result = cart_service.update_cart_item_quantity(
             session_id=session_id,
             cart_item_id=cart_item_id,
@@ -251,8 +261,12 @@ class RemoveItemResource(Resource):
         session_id, session_error = _get_required_session_id()
         if session_error:
             return session_error
-        
+
         cart_service = get_cart_service()
+        cart_check = cart_service.get_cart(session_id)
+        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+            return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+
         result = cart_service.remove_cart_item(
             session_id=session_id,
             cart_item_id=cart_item_id
@@ -275,8 +289,12 @@ class ClearCartResource(Resource):
         session_id, session_error = _get_required_session_id()
         if session_error:
             return session_error
-        
+
         cart_service = get_cart_service()
+        cart_check = cart_service.get_cart(session_id)
+        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+            return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+
         result = cart_service.clear_cart(session_id)
         
         if result['success']:
