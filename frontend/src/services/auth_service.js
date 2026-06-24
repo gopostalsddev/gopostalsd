@@ -293,9 +293,16 @@ class AuthService {
             return response.data
         } catch (error) {
             console.error('Get current user error:', error)
-            // If getting current user fails, clear auth
-            this.clearAuth()
-            return null
+            const status = error?.response?.status
+
+            // Only invalidate auth on explicit auth failures.
+            if (status === 401 || status === 403) {
+                this.clearAuth()
+                return null
+            }
+
+            // Preserve current session/user for transient API/network failures.
+            return this.getUser()
         }
     }
 
