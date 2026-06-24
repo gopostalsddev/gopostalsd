@@ -6,6 +6,7 @@ import os
 from sqlalchemy import text, inspect
 from server import database as db
 from server.controllers.print_product_controller import PrintProductController
+from server.models.pricing import PricingPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,16 @@ def ensure_database_structures():
                 logger.info("✅ %s", enable_result.data.get("message", "Category enable check completed"))
             else:
                 logger.warning("⚠️ Failed to ensure enabled categories: %s", enable_result.error)
+
+        inspector = inspect(db.engine)
+        if not inspector.has_table('pricing_policies'):
+            logger.info("📋 Creating pricing_policies table...")
+            PricingPolicy.__table__.create(bind=db.engine)
+
+        if PricingPolicy.get_current() is None:
+            logger.info("📋 Seeding default pricing policy...")
+            db.session.add(PricingPolicy())
+            db.session.commit()
             
         # Add more database structure checks here as needed
         # For example:

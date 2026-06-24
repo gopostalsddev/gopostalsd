@@ -312,6 +312,31 @@ export const createManualVendorProduct = async (productData) => {
   }
 };
 
+export const fetchPricingPolicy = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/pricing/policy`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching pricing policy:', error);
+    throw error;
+  }
+};
+
+export const updatePricingPolicy = async (policyData) => {
+  try {
+    const response = await axios.put(`${API_BASE_URL}/pricing/policy`, policyData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating pricing policy:', error);
+    const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+    throw new Error(`Failed to update pricing policy: ${errorMessage}`);
+  }
+};
+
 export const fetchProductVariants = async (productId, offset = 0) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/pricing/products/${productId}/variants?offset=${offset}`);

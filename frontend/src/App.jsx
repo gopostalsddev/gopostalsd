@@ -11,6 +11,7 @@ import theme from './theme';
 
 // Import pages
 const AdminPage = lazy(() => import('./pages/Admin/AdminPage'));
+const PricingPolicyPage = lazy(() => import('./pages/Admin/PricingPolicyPage'));
 const ProductManagementPage = lazy(() => import('./pages/Admin/ProductManagementPage'));
 const OrderManagementPage = lazy(() => import('./pages/Admin/OrderManagementPage'));
 const ShopPage = lazy(() => import('./pages/Shop/ShopPage'));
@@ -108,6 +109,16 @@ const App = () => {
                     <Layout>
                       <ProtectedRoute requireAuth={true} requireRole="Admin">
                         <ProductManagementPage />
+                      </ProtectedRoute>
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/admin/pricing"
+                  element={
+                    <Layout>
+                      <ProtectedRoute requireAuth={true} requireRole="Admin">
+                        <PricingPolicyPage />
                       </ProtectedRoute>
                     </Layout>
                   }

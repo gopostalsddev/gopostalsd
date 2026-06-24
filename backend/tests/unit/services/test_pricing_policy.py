@@ -37,3 +37,14 @@ class TestPricingPolicy:
         assert result['price'] == 116.8
         assert result['pricingBreakdown']['retailPrice'] == 116.8
         assert len(result['pricingBreakdown']['explanation']) >= 4
+
+    def test_calculate_price_uses_raw_option_key_for_sinalite_lookup(self, app):
+        repository = DummyRepository()
+        sinalite = DummySinalite()
+        strategy = SinalitePricingStrategy(sinalite, repository)
+
+        with app.app_context():
+            result = strategy.calculate_price(14983, [176, 5, 18], 6, {'serviceLevel': 'none'})
+
+        assert result is not None
+        assert result['productOptions'] == [176, 5, 18]

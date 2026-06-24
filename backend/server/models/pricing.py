@@ -228,3 +228,43 @@ class ProductVariant(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+class PricingPolicy(db.Model):
+    """Persisted pricing policy settings editable from the admin console."""
+    __tablename__ = 'pricing_policies'
+
+    id = db.Column(db.Integer, primary_key=True)
+    vendor_currency = db.Column(db.String(8), nullable=False, default='CAD')
+    display_currency = db.Column(db.String(8), nullable=False, default='USD')
+    cad_to_usd_rate = db.Column(db.Numeric(10, 4), nullable=False, default=0.74)
+    exchange_buffer_percent = db.Column(db.Numeric(10, 2), nullable=False, default=5)
+    markup_percent = db.Column(db.Numeric(10, 2), nullable=False, default=30)
+    fixed_fee_usd = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    minimum_profit_usd = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    rounding_increment = db.Column(db.Numeric(10, 2), nullable=False, default=0.05)
+    customization_file_review_fee_usd = db.Column(db.Numeric(10, 2), nullable=False, default=10)
+    customization_design_assist_fee_usd = db.Column(db.Numeric(10, 2), nullable=False, default=35)
+    created_at = db.Column(db.DateTime, nullable=False, default=func.now())
+    updated_at = db.Column(db.DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+    @classmethod
+    def get_current(cls):
+        return cls.query.order_by(cls.id.asc()).first()
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'vendor_currency': self.vendor_currency,
+            'display_currency': self.display_currency,
+            'cad_to_usd_rate': float(self.cad_to_usd_rate),
+            'exchange_buffer_percent': float(self.exchange_buffer_percent),
+            'markup_percent': float(self.markup_percent),
+            'fixed_fee_usd': float(self.fixed_fee_usd),
+            'minimum_profit_usd': float(self.minimum_profit_usd),
+            'rounding_increment': float(self.rounding_increment),
+            'customization_file_review_fee_usd': float(self.customization_file_review_fee_usd),
+            'customization_design_assist_fee_usd': float(self.customization_design_assist_fee_usd),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }

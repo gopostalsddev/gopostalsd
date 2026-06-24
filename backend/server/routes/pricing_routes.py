@@ -8,6 +8,9 @@ It follows the same pattern as print_product_routes.py.
 from flask_restx import Namespace, Resource, fields
 from flask import request
 from server.controllers.pricing_controller import PricingController
+from server.middleware.auth_middleware import require_role
+from server.models.pricing import PricingPolicy
+from server import database as db
 from server.routes.response_utils import error_response
 
 # Define a namespace for pricing
@@ -61,6 +64,19 @@ cart_totals_model = api.model("CartTotals", {
     "item_count": fields.Integer(description="Number of items in cart")
 })
 
+pricing_policy_model = api.model("PricingPolicy", {
+    "vendor_currency": fields.String(description="Vendor currency"),
+    "display_currency": fields.String(description="Display currency"),
+    "cad_to_usd_rate": fields.Float(description="CAD to USD exchange rate"),
+    "exchange_buffer_percent": fields.Float(description="FX protection buffer percentage"),
+    "markup_percent": fields.Float(description="Retail markup percentage"),
+    "fixed_fee_usd": fields.Float(description="Fixed fee in USD"),
+    "minimum_profit_usd": fields.Float(description="Minimum profit floor in USD"),
+    "rounding_increment": fields.Float(description="Rounding increment"),
+    "customization_file_review_fee_usd": fields.Float(description="File review fee in USD"),
+    "customization_design_assist_fee_usd": fields.Float(description="Design assistance fee in USD"),
+})
+
 
 # API Resources
 @api.route('/products/<int:product_id>/options')
@@ -106,6 +122,57 @@ class ProductPriceResource(Resource):
             return result.data
         else:
             return error_response(result.error, 400, code='PRICING_CALCULATION_ERROR', category='business_logic')
+
+
+@api.route('/policy')
+class PricingPolicyResource(Resource):
+    """Resource for viewing and updating admin-managed pricing policy."""
+
+    @api.doc('get_pricing_policy')
+    @api.response(200, 'Pricing policy fetched successfully', pricing_policy_model)
+    @require_role('Admin')
+    def get(self):
+        policy = PricingPolicy.get_current()
+        if not policy:
+            policy = PricingPolicy()
+            db.session.add(policy)
+            db.session.commit()
+        return policy.to_dict(), 200
+
+    @api.doc('update_pricing_policy')
+    @api.expect(pricing_policy_model)
+    @api.response(200, 'Pricing policy updated successfully', pricing_policy_model)
+    @require_role('Admin')
+    def put(self):
+        data = request.get_json(silent=True) or {}
+        policy = PricingPolicy.get_current()
+        if not policy:
+            policy = PricingPolicy()
+            db.session.add(policy)
+
+        field_names = [
+            'vendor_currency',
+            'display_currency',
+            'cad_to_usd_rate',
+            'exchange_buffer_percent',
+            'markup_percent',
+            'fixed_fee_usd',
+            'minimum_profit_usd',
+            'rounding_increment',
+            'customization_file_review_fee_usd',
+            'customization_design_assist_fee_usd',
+        ]
+
+        try:
+            for field_name in field_names:
+                if field_name in data:
+                    setattr(policy, field_name, data[field_name])
+
+            db.session.commit()
+            return policy.to_dict(), 200
+        except Exception as exc:
+            db.session.rollback()
+            return error_response(f'Failed to update pricing policy: {str(exc)}', 400, code='PRICING_POLICY_UPDATE_ERROR', category='business_logic')
 
 
 
