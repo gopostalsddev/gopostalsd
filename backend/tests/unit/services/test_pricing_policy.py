@@ -104,3 +104,14 @@ class TestPricingPolicy:
         assert result is not None
         assert result['pricingBreakdown']['vendorBasePrice'] == 0.0
         assert result['price'] >= 0.0
+
+    def test_apply_retail_pricing_handles_nan_markup_percent(self, app):
+        strategy = SinalitePricingStrategy(DummySinalite(), DummyRepository())
+        app.config['PRICING_MARKUP_PERCENT'] = float('nan')
+
+        with app.app_context():
+            result = strategy._apply_retail_pricing(100, [177], customization={'serviceLevel': 'none'})
+
+        assert result is not None
+        assert result['pricingBreakdown']['markupPercent'] == 0.0
+        assert result['price'] >= 0.0
