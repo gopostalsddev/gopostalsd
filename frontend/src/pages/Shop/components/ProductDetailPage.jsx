@@ -35,6 +35,7 @@ import {
   Breadcrumbs,
   Snackbar,
   CardMedia,
+  Divider,
   Checkbox,
   FormControlLabel
 } from '@mui/material';

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { getApiBaseUrl } from './apiBaseUrl'
+import authService from './auth_service'
 
 const API_BASE_URL = getApiBaseUrl()
 
@@ -314,7 +315,9 @@ export const createManualVendorProduct = async (productData) => {
 
 export const fetchPricingPolicy = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/pricing/policy`);
+    const response = await axios.get(`${API_BASE_URL}/pricing/policy`, {
+      headers: authService.getAuthHeaders(),
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching pricing policy:', error);
@@ -325,9 +328,7 @@ export const fetchPricingPolicy = async () => {
 export const updatePricingPolicy = async (policyData) => {
   try {
     const response = await axios.put(`${API_BASE_URL}/pricing/policy`, policyData, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authService.getAuthHeaders(true, true),
     });
     return response.data;
   } catch (error) {
