@@ -1,16 +1,18 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, Typography, Button } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import theme from './theme';
 
 // Import pages
 const AdminPage = lazy(() => import('./pages/Admin/AdminPage'));
+const PricingPolicyPage = lazy(() => import('./pages/Admin/PricingPolicyPage'));
 const ProductManagementPage = lazy(() => import('./pages/Admin/ProductManagementPage'));
 const OrderManagementPage = lazy(() => import('./pages/Admin/OrderManagementPage'));
 const ShopPage = lazy(() => import('./pages/Shop/ShopPage'));
@@ -53,13 +55,14 @@ const RouteLoadingState = () => (
 
 const App = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <CartProvider>
-          <Router>
-            <Suspense fallback={<Layout><RouteLoadingState /></Layout>}>
-              <Routes>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <CartProvider>
+            <Router>
+              <Suspense fallback={<Layout><RouteLoadingState /></Layout>}>
+                <Routes>
                 {/* Public routes with layout */}
                 <Route path="/" element={<Layout><HomePage /></Layout>} />
                 <Route path="/shop" element={<Layout><ShopPage /></Layout>} />
@@ -113,6 +116,16 @@ const App = () => {
                   }
                 />
                 <Route
+                  path="/admin/pricing"
+                  element={
+                    <Layout>
+                      <ProtectedRoute requireAuth={true} requireRole="Admin">
+                        <PricingPolicyPage />
+                      </ProtectedRoute>
+                    </Layout>
+                  }
+                />
+                <Route
                   path="/admin/orders"
                   element={
                     <Layout>
@@ -123,14 +136,15 @@ const App = () => {
                   }
                 />
                 
-                {/* Catch-all route for 404 */}
-                <Route path="*" element={<Layout><Box sx={{ textAlign: 'center', py: 8 }}><Typography variant="h4">404 - Page Not Found</Typography><Typography variant="body1" sx={{ mb: 3 }}>The page you're looking for doesn't exist.</Typography><Button variant="contained" onClick={() => window.location.href = '/'}>Go Home</Button></Box></Layout>} />
-              </Routes>
-            </Suspense>
-          </Router>
-        </CartProvider>
-      </AuthProvider>
-    </ThemeProvider>
+                  {/* Catch-all route for 404 */}
+                  <Route path="*" element={<Layout><Box sx={{ textAlign: 'center', py: 8 }}><Typography variant="h4">404 - Page Not Found</Typography><Typography variant="body1" sx={{ mb: 3 }}>The page you're looking for doesn't exist.</Typography><Button variant="contained" onClick={() => { window.location.hash = '#/'; }}>Go Home</Button></Box></Layout>} />
+                </Routes>
+              </Suspense>
+            </Router>
+          </CartProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

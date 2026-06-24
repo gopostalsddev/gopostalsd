@@ -19,6 +19,71 @@ if IS_DEVELOPMENT:
     logger.debug("[AUTH_MIDDLEWARE] Module loaded")
 
 
+def _extract_session_token() -> str:
+    """Extract session token from Authorization header only."""
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        return auth_header[7:]
+    return ''
+
+
+def _get_allowed_origins() -> list:
+    """Return CORS-allowed origins from the Flask app config."""
+    try:
+        from flask import current_app
+        cors_cfg = current_app.config.get('_CORS_ORIGINS', [])
+        if cors_cfg:
+            return cors_cfg
+    except RuntimeError:
+        pass
+    allowed = [o for o in [
+        os.getenv('FRONTEND_URL', 'http://localhost:5173'),
+        os.getenv('RENDER_FRONTEND_URL'),
+        os.getenv('RENDER_EXTERNAL_URL'),
+        'http://localhost:5173',
+        'http://localhost:3000',
+    ] if o]
+    return list(dict.fromkeys(allowed))
+
+
+def _origin_is_allowed(origin: str, allowed: list) -> bool:
+    """Return True if origin matches any allowed origin prefix."""
+    if not origin:
+        return False
+    for allowed_origin in allowed:
+        if origin.rstrip('/') == allowed_origin.rstrip('/'):
+            return True
+        if origin.startswith(allowed_origin.rstrip('/') + '/'):
+            return True
+    return False
+
+
+def enforce_csrf_protection() -> None:
+    """Enforce CSRF protection for state-changing API requests."""
+    if request.method not in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+        return
+
+    if not request.path.startswith('/api/'):
+        return
+
+    session_token = _extract_session_token()
+    if session_token:
+        # Authenticated: require the double-submit CSRF token.
+        csrf_header = request.headers.get('X-CSRF-Token')
+        if not csrf_header or csrf_header != session_token:
+            from flask import abort
+            logger.warning("Blocked request with missing or invalid CSRF token for path %s", request.path)
+            abort(403, description='Missing or invalid CSRF token')
+    else:
+        # Unauthenticated state-changing request: validate Origin/Referer to block
+        # cross-site form submissions targeting @optional_auth endpoints (e.g. order creation).
+        origin = request.headers.get('Origin', '') or request.headers.get('Referer', '')
+        if origin and not _origin_is_allowed(origin, _get_allowed_origins()):
+            from flask import abort
+            logger.warning("Blocked cross-origin unauthenticated request from %s for path %s", origin, request.path)
+            abort(403, description='Request origin not allowed')
+
+
 def require_cart_auth(f):
     """
     Decorator to allow authenticated users or fall back to cart session.
@@ -30,19 +95,7 @@ def require_cart_auth(f):
         
         try:
             # Get session token from Authorization header or query parameter
-            session_token = None
-            
-            # Check Authorization header (Bearer token)
-            auth_header = request.headers.get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                session_token = auth_header[7:]  # Remove 'Bearer ' prefix
-            
-            # Check query parameter as fallback (try session_token first, then session_id)
-            if not session_token:
-                session_token = request.args.get('session_token')
-            
-            if not session_token:
-                session_token = request.args.get('session_id')
+            session_token = _extract_session_token()
             
             if IS_DEVELOPMENT:
                 logger.debug("[CART AUTH] Session token found: %s", session_token is not None)
@@ -88,20 +141,7 @@ def require_auth(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get session token from Authorization header or query parameter
-        session_token = None
-        
-        # Check Authorization header (Bearer token)
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            session_token = auth_header[7:]  # Remove 'Bearer ' prefix
-        
-        # Check query parameter as fallback (try session_token first, then session_id)
-        if not session_token:
-            session_token = request.args.get('session_token')
-        
-        if not session_token:
-            session_token = request.args.get('session_id')
+        session_token = _extract_session_token()
         
         if not session_token:
             return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
@@ -131,35 +171,6 @@ def require_auth(f):
     return decorated_function
 
 
-def require_permission(permission: str):
-    """
-    Decorator to require specific permission for a route.
-    
-    Args:
-        permission: Required permission name
-        
-    Usage:
-        @require_permission('users.read')
-        def get_users():
-            pass
-    """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # First check if user is authenticated
-            if not hasattr(g, 'current_user') or not g.current_user:
-                return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
-            
-            # Check if user has required permission
-            if not g.current_user.role.has_permission(permission):
-                return {'error': 'Insufficient permissions', 'code': 'INSUFFICIENT_PERMISSIONS'}, 403
-            
-            return f(*args, **kwargs)
-        
-        return decorated_function
-    return decorator
-
-
 def require_role(role_name: str):
     """
     Decorator to require specific role for a route.
@@ -179,17 +190,7 @@ def require_role(role_name: str):
             # Some endpoints only use @require_role without @require_auth.
             user = getattr(g, 'current_user', None)
             if not user:
-                session_token = None
-
-                auth_header = request.headers.get('Authorization')
-                if auth_header and auth_header.startswith('Bearer '):
-                    session_token = auth_header[7:]
-
-                if not session_token:
-                    session_token = request.args.get('session_token')
-
-                if not session_token:
-                    session_token = request.args.get('session_id')
+                session_token = _extract_session_token()
 
                 if not session_token:
                     return {'error': 'Authentication required', 'code': 'AUTH_REQUIRED'}, 401
@@ -203,16 +204,17 @@ def require_role(role_name: str):
                 if not user:
                     return {'error': 'Invalid or expired session', 'code': 'INVALID_SESSION'}, 401
 
-                if not user.is_active():
-                    return {'error': 'Account is not active', 'code': 'ACCOUNT_INACTIVE'}, 401
-
                 g.current_user = user
                 g.session_token = session_token
-            
+
+            # Always enforce is_active() — @require_cart_auth sets g.current_user without this check.
+            if not user.is_active():
+                return {'error': 'Account is not active', 'code': 'ACCOUNT_INACTIVE'}, 401
+
             # Check if user has required role
             if user.role.name != role_name:
                 return {'error': 'Insufficient role', 'code': 'INSUFFICIENT_ROLE'}, 403
-            
+
             return f(*args, **kwargs)
         
         return decorated_function
@@ -237,17 +239,7 @@ def optional_auth(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get session token from Authorization header or query parameter
-        session_token = None
-        
-        # Check Authorization header (Bearer token)
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            session_token = auth_header[7:]  # Remove 'Bearer ' prefix
-        
-        # Check query parameter as fallback
-        if not session_token:
-            session_token = request.args.get('session_token')
+        session_token = _extract_session_token()
         
         # Initialize g.current_user as None
         g.current_user = None

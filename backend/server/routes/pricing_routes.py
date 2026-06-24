@@ -8,6 +8,10 @@ It follows the same pattern as print_product_routes.py.
 from flask_restx import Namespace, Resource, fields
 from flask import request
 from server.controllers.pricing_controller import PricingController
+from server.middleware.auth_middleware import require_role
+from server.models.pricing import PricingPolicy
+from server import database as db
+from server.routes.response_utils import error_response
 
 # Define a namespace for pricing
 api = Namespace("Pricing", description="Operations related to product pricing and shipping")
@@ -23,13 +27,15 @@ product_options_model = api.model("ProductOptions", {
 
 pricing_request_model = api.model("PricingRequest", {
     "options": fields.List(fields.Integer, description="Selected option IDs"),
-    "store_code": fields.Integer(description="Store code (6 for Canada, 9 for US)", default=6)
+    "store_code": fields.Integer(description="Store code (6 for Canada, 9 for US)", default=6),
+    "customization": fields.Raw(description="Customization settings that affect price")
 })
 
 pricing_response_model = api.model("PricingResponse", {
     "price": fields.Float(description="Product price"),
     "currency": fields.String(description="Currency code"),
-    "estimated_ship_date": fields.String(description="Estimated ship date")
+    "estimated_ship_date": fields.String(description="Estimated ship date"),
+    "pricingBreakdown": fields.Raw(description="Retail pricing breakdown and explanation")
 })
 
 shipping_estimate_model = api.model("ShippingEstimateRequest", {
@@ -58,6 +64,19 @@ cart_totals_model = api.model("CartTotals", {
     "item_count": fields.Integer(description="Number of items in cart")
 })
 
+pricing_policy_model = api.model("PricingPolicy", {
+    "vendor_currency": fields.String(description="Vendor currency"),
+    "display_currency": fields.String(description="Display currency"),
+    "cad_to_usd_rate": fields.Float(description="CAD to USD exchange rate"),
+    "exchange_buffer_percent": fields.Float(description="FX protection buffer percentage"),
+    "markup_percent": fields.Float(description="Retail markup percentage"),
+    "fixed_fee_usd": fields.Float(description="Fixed fee in USD"),
+    "minimum_profit_usd": fields.Float(description="Minimum profit floor in USD"),
+    "rounding_increment": fields.Float(description="Rounding increment"),
+    "customization_file_review_fee_usd": fields.Float(description="File review fee in USD"),
+    "customization_design_assist_fee_usd": fields.Float(description="Design assistance fee in USD"),
+})
+
 
 # API Resources
 @api.route('/products/<int:product_id>/options')
@@ -66,7 +85,7 @@ class ProductOptionsResource(Resource):
     
     @api.doc('get_product_options')
     @api.param('store_code', 'Store code (6 for Canada, 9 for US)', type='int', default=6)
-    @api.marshal_with(product_options_model, as_list=True)
+    @api.response(200, 'Product options retrieved successfully', [product_options_model])
     def get(self, product_id):
         """Get available options for a product."""
         store_code = request.args.get('store_code', 6, type=int)
@@ -76,7 +95,7 @@ class ProductOptionsResource(Resource):
         if result.status:
             return result.data['options']
         else:
-            return {'error': result.error}, 400
+            return error_response(result.error, 400, code='PRICING_OPTIONS_ERROR', category='business_logic')
 
 
 @api.route('/products/<int:product_id>/price')
@@ -85,23 +104,75 @@ class ProductPriceResource(Resource):
     
     @api.doc('calculate_product_price')
     @api.expect(pricing_request_model)
-    @api.marshal_with(pricing_response_model)
+    @api.response(200, 'Pricing calculated successfully', pricing_response_model)
     def post(self, product_id):
         """Calculate price for a product with selected options."""
         data = request.get_json()
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         options = data.get('options', [])
         store_code = data.get('store_code', 6)
+        customization = data.get('customization')
         
-        result = PricingController.calculate_price(product_id, options, store_code)
+        result = PricingController.calculate_price(product_id, options, store_code, customization)
         
         if result.status:
             return result.data
         else:
-            return {'error': result.error}, 400
+            return error_response(result.error, 400, code='PRICING_CALCULATION_ERROR', category='business_logic')
+
+
+@api.route('/policy')
+class PricingPolicyResource(Resource):
+    """Resource for viewing and updating admin-managed pricing policy."""
+
+    @api.doc('get_pricing_policy')
+    @api.response(200, 'Pricing policy fetched successfully', pricing_policy_model)
+    @require_role('Admin')
+    def get(self):
+        policy = PricingPolicy.get_current()
+        if not policy:
+            policy = PricingPolicy()
+            db.session.add(policy)
+            db.session.commit()
+        return policy.to_dict(), 200
+
+    @api.doc('update_pricing_policy')
+    @api.expect(pricing_policy_model)
+    @api.response(200, 'Pricing policy updated successfully', pricing_policy_model)
+    @require_role('Admin')
+    def put(self):
+        data = request.get_json(silent=True) or {}
+        policy = PricingPolicy.get_current()
+        if not policy:
+            policy = PricingPolicy()
+            db.session.add(policy)
+
+        field_names = [
+            'vendor_currency',
+            'display_currency',
+            'cad_to_usd_rate',
+            'exchange_buffer_percent',
+            'markup_percent',
+            'fixed_fee_usd',
+            'minimum_profit_usd',
+            'rounding_increment',
+            'customization_file_review_fee_usd',
+            'customization_design_assist_fee_usd',
+        ]
+
+        try:
+            for field_name in field_names:
+                if field_name in data:
+                    setattr(policy, field_name, data[field_name])
+
+            db.session.commit()
+            return policy.to_dict(), 200
+        except Exception as exc:
+            db.session.rollback()
+            return error_response(f'Failed to update pricing policy: {str(exc)}', 400, code='PRICING_POLICY_UPDATE_ERROR', category='business_logic')
 
 
 
@@ -116,20 +187,20 @@ class ShippingEstimatesResource(Resource):
         data = request.get_json()
         
         if not data:
-            return {'error': 'Request body is required'}, 400
+            return error_response('Request body is required', 400)
         
         items = data.get('items', [])
         shipping_info = data.get('shippingInfo', data.get('shipping_info', {}))
         
         if not items or not shipping_info:
-            return {'error': 'items and shippingInfo are required'}, 400
+            return error_response('items and shippingInfo are required', 400)
         
         result = PricingController.get_shipping_estimates(items, shipping_info)
         
         if result.status:
             return result.data['shipping_options']
         else:
-            return {'error': result.error}, 400
+            return error_response(result.error, 400, code='SHIPPING_ESTIMATE_ERROR', category='business_logic')
 
 
 # Note: The api namespace is exported directly and registered in routes/__init__.py

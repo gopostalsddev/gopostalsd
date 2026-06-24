@@ -75,11 +75,37 @@ export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const { isAuthenticated, user } = useAuth();
 
+  const getErrorMessage = (errorLike, fallback) => {
+    if (!errorLike) {
+      return fallback;
+    }
+
+    if (typeof errorLike === 'string') {
+      return errorLike;
+    }
+
+    if (typeof errorLike === 'object') {
+      return (
+        errorLike.error ||
+        errorLike.message ||
+        errorLike.code ||
+        fallback
+      );
+    }
+
+    return fallback;
+  };
+
   // Get session ID (you might want to generate this more robustly)
   const getSessionId = () => {
-    let sessionId = localStorage.getItem('cart_session_id');
+    let sessionId = sessionStorage.getItem('cart_session_id') || localStorage.getItem('cart_session_id');
     if (!sessionId) {
       sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('cart_session_id', sessionId);
+      localStorage.setItem('cart_session_id', sessionId);
+    } else {
+      // Keep both stores in sync so existing sessions survive storage strategy changes.
+      sessionStorage.setItem('cart_session_id', sessionId);
       localStorage.setItem('cart_session_id', sessionId);
     }
     return sessionId;
@@ -96,7 +122,7 @@ export function CartProvider({ children }) {
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: true });
       const sessionId = getSessionId();
       
-      const response = await api.get(`/cart/?session_id=${sessionId}`);
+      const response = await api.get(`/cart/?session_id=${sessionId}`, { skipAuth: true });
       
       // Backend returns { success: true, cart: {...} }
       if (response.data && response.data.cart) {
@@ -108,7 +134,7 @@ export function CartProvider({ children }) {
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
     } catch (error) {
       console.error('Error loading cart:', error);
-      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: 'Failed to load cart' });
+      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: getErrorMessage(error?.response?.data?.error, 'Failed to load cart') });
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
     }
   };
@@ -126,7 +152,7 @@ export function CartProvider({ children }) {
   }, [isAuthenticated]);
 
   // Add item to cart
-  const addToCart = async (productId, selectedOptions, quantity = 1) => {
+  const addToCart = async (productId, selectedOptions, quantity = 1, customization = null) => {
     if (!isAuthenticated) {
       return { success: false, error: 'Please log in to add items to your cart' };
     }
@@ -138,9 +164,11 @@ export function CartProvider({ children }) {
       const response = await api.post('/cart/add', {
         product_id: productId,
         selected_options: selectedOptions,
-        quantity: quantity
+        quantity: quantity,
+        customization,
       }, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       // Backend returns the cart object directly (cart_service returns result['cart'])
@@ -149,11 +177,13 @@ export function CartProvider({ children }) {
         dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
         return { success: true };
       }
+      dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
+      return { success: false, error: 'No response data from server' };
     } catch (error) {
       console.error('Error adding to cart:', error);
-      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: 'Failed to add item to cart' });
+      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: getErrorMessage(error?.response?.data?.error, 'Failed to add item to cart') });
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
-      return { success: false, error: error.response?.data?.error || 'Failed to add item to cart' };
+      return { success: false, error: getErrorMessage(error?.response?.data?.error, 'Failed to add item to cart') };
     }
   };
 
@@ -170,7 +200,8 @@ export function CartProvider({ children }) {
       const response = await api.put(`/cart/items/${cartItemId}/quantity`, {
         quantity: quantity
       }, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       // Backend returns the cart object directly
@@ -183,9 +214,9 @@ export function CartProvider({ children }) {
       return { success: true };
     } catch (error) {
       console.error('Error updating quantity:', error);
-      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: 'Failed to update quantity' });
+      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: getErrorMessage(error?.response?.data?.error, 'Failed to update quantity') });
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
-      return { success: false, error: error.response?.data?.error || 'Failed to update quantity' };
+      return { success: false, error: getErrorMessage(error?.response?.data?.error, 'Failed to update quantity') };
     }
   };
 
@@ -200,7 +231,8 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       const response = await api.delete(`/cart/items/${cartItemId}`, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       if (response.data) {
@@ -210,9 +242,9 @@ export function CartProvider({ children }) {
       }
     } catch (error) {
       console.error('Error removing item:', error);
-      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: 'Failed to remove item' });
+      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: getErrorMessage(error?.response?.data?.error, 'Failed to remove item') });
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
-      return { success: false, error: error.response?.data?.error || 'Failed to remove item' };
+      return { success: false, error: getErrorMessage(error?.response?.data?.error, 'Failed to remove item') };
     }
   };
 
@@ -227,7 +259,8 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       await api.delete('/cart/clear', {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       dispatch({ type: CART_ACTIONS.CLEAR_CART });
@@ -235,9 +268,9 @@ export function CartProvider({ children }) {
       return { success: true };
     } catch (error) {
       console.error('Error clearing cart:', error);
-      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: 'Failed to clear cart' });
+      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: getErrorMessage(error?.response?.data?.error, 'Failed to clear cart') });
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
-      return { success: false, error: error.response?.data?.error || 'Failed to clear cart' };
+      return { success: false, error: getErrorMessage(error?.response?.data?.error, 'Failed to clear cart') };
     }
   };
 
@@ -252,7 +285,8 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       const response = await api.post('/cart/shipping', destinationAddress, {
-        params: { session_id: sessionId }
+        params: { session_id: sessionId },
+        skipAuth: true
       });
       
       if (response.data.success) {
@@ -260,15 +294,16 @@ export function CartProvider({ children }) {
         dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
         return { success: true, shippingOptions: response.data.shipping_options };
       } else {
-        dispatch({ type: CART_ACTIONS.SET_ERROR, payload: response.data.error });
+        const errorMessage = getErrorMessage(response.data.error, 'Failed to calculate shipping');
+        dispatch({ type: CART_ACTIONS.SET_ERROR, payload: errorMessage });
         dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
-        return { success: false, error: response.data.error };
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
       console.error('Error calculating shipping:', error);
-      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: 'Failed to calculate shipping' });
+      dispatch({ type: CART_ACTIONS.SET_ERROR, payload: getErrorMessage(error?.response?.data?.error, 'Failed to calculate shipping') });
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
-      return { success: false, error: error.response?.data?.error || 'Failed to calculate shipping' };
+      return { success: false, error: getErrorMessage(error?.response?.data?.error, 'Failed to calculate shipping') };
     }
   };
 
@@ -281,7 +316,8 @@ export function CartProvider({ children }) {
   const getCartSummary = async () => {
     try {
       const sessionId = getSessionId();
-      const response = await api.get(`/cart/summary?session_id=${sessionId}`);
+      const response = await api.get(`/cart/summary?session_id=${sessionId}`, { skipAuth: true });
+      
       
       if (response.data) {
         return response.data;

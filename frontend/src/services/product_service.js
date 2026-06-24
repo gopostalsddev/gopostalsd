@@ -1,6 +1,8 @@
 import axios from 'axios'
+import { getApiBaseUrl } from './apiBaseUrl'
+import authService from './auth_service'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
+const API_BASE_URL = getApiBaseUrl()
 
 export const fetchPrintProductCategories = async () => {
     try {
@@ -34,7 +36,11 @@ export const updatePrintProductCategoryStatus = async (categoryId, enabled) => {
 
 export const syncPrintProductCategories = async () => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/print/categories/sync`)
+        const response = await axios.post(
+            `${API_BASE_URL}/print/categories/sync`,
+            {},
+            { headers: authService.getAuthHeaders(true, true) }
+        );
         return response.data;
     }catch (error) {
         console.error("Error syncing categories:", error)
@@ -248,7 +254,11 @@ export const unassignProductFromType = async (productId) => {
 
 export const syncProductsForCategory = async (categoryId) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/print/categories/${categoryId}/sync-products`);
+    const response = await axios.post(
+      `${API_BASE_URL}/print/categories/${categoryId}/sync-products`,
+      {},
+      { headers: authService.getAuthHeaders(true, true) }
+    );
     return response.data;
   } catch (error) {
     console.error("Error syncing products for category: ", error);
@@ -281,17 +291,60 @@ export const fetchProductOptions = async (productId, storeCode = 6) => {
   }
 };
 
-export const calculateProductPrice = async (productId, options, storeCode = 6) => {
+export const calculateProductPrice = async (productId, options, storeCode = 6, customization = null) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/pricing/products/${productId}/price`, {
       product_id: productId,
       options: options,
-      store_code: storeCode
+      store_code: storeCode,
+      customization,
     });
     return response.data;
   } catch (error) {
     console.error("Error calculating product price: ", error);
-    return null;
+    const backendMessage = error?.response?.data?.error || error?.response?.data?.message;
+    throw new Error(backendMessage || 'Failed to calculate price for selected options');
+  }
+};
+
+export const createManualVendorProduct = async (productData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/print/products`, productData, {
+      headers: {
+        ...authService.getAuthHeaders(true, true),
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error creating manual vendor product:", error);
+    const errorMessage = error.response?.data?.error || error.message || "Unknown error occurred";
+    throw new Error(`Failed to create vendor product: ${errorMessage}`);
+  }
+};
+
+export const fetchPricingPolicy = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/pricing/policy`, {
+      headers: authService.getAuthHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching pricing policy:', error);
+    throw error;
+  }
+};
+
+export const updatePricingPolicy = async (policyData) => {
+  try {
+    const response = await axios.put(`${API_BASE_URL}/pricing/policy`, policyData, {
+      headers: authService.getAuthHeaders(true, true),
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating pricing policy:', error);
+    const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+    throw new Error(`Failed to update pricing policy: ${errorMessage}`);
   }
 };
 

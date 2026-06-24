@@ -35,6 +35,8 @@ services:
         value: app.py
       - key: LOG_LEVEL
         value: INFO
+      - key: AUTO_ENABLE_CATEGORIES_WHEN_NONE
+        value: "true"
       - key: SESSION_COOKIE_SECURE
         value: "true"
       - key: DATABASE_URL
@@ -42,6 +44,11 @@ services:
           name: gopostalsd-db
           property: connectionString
       - key: FRONTEND_URL
+        fromService:
+          name: gopostalsd-website
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: RENDER_FRONTEND_URL
         fromService:
           name: gopostalsd-website
           type: web

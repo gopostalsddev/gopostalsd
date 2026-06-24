@@ -9,6 +9,7 @@ export function useCartOperations() {
     cart,
     loading,
     error,
+    selectedShipping,
     addToCart,
     updateQuantity,
     removeItem,
@@ -19,9 +20,9 @@ export function useCartOperations() {
   } = useCart();
 
   // Add item to cart with error handling
-  const addItemToCart = async (productId, selectedOptions, quantity = 1) => {
+  const addItemToCart = async (productId, selectedOptions, quantity = 1, customization = null) => {
     try {
-      const result = await addToCart(productId, selectedOptions, quantity);
+      const result = await addToCart(productId, selectedOptions, quantity, customization);
       if (result.success) {
         return { success: true, message: 'Item added to cart successfully' };
       } else {
@@ -116,11 +117,20 @@ export function useCartOperations() {
 
   // Get cart statistics
   const getCartStats = () => {
+    const toSafeNumber = (value) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const derivedSubtotal = cart.items?.reduce(
+      (sum, item) => sum + toSafeNumber(item.total_price),
+      0
+    ) || 0;
     const itemCount = cart.items?.length || 0;
-    const totalItems = cart.items?.reduce((total, item) => total + item.quantity, 0) || 0;
-    const subtotal = cart.subtotal || 0;
-    const shipping = cart.shipping_cost || 0;
-    const tax = cart.tax_amount || 0;
+    const totalItems = cart.items?.reduce((total, item) => total + toSafeNumber(item.quantity), 0) || 0;
+    const subtotal = cart.subtotal == null ? derivedSubtotal : toSafeNumber(cart.subtotal);
+    const shipping = toSafeNumber(cart.shipping_cost);
+    const tax = toSafeNumber(cart.tax_amount);
     const total = subtotal + shipping + tax;
 
     return {
@@ -169,7 +179,8 @@ export function useCartOperations() {
     cart,
     loading,
     error,
-    
+    selectedShipping,
+
     // Actions
     addItemToCart,
     updateItemQuantity,
@@ -178,7 +189,7 @@ export function useCartOperations() {
     calculateShippingOptions,
     setSelectedShipping,
     getCartSummary,
-    
+
     // Utilities
     getCartStats,
     isItemInCart,
@@ -192,19 +203,28 @@ export function useCartOperations() {
 export function useCartFormatting() {
   const { cart } = useCart();
 
+  const toSafeNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
   // Format price
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(price || 0);
+    }).format(toSafeNumber(price));
   };
 
   // Format cart totals
   const formatCartTotals = () => {
-    const subtotal = cart.subtotal || 0;
-    const shipping = cart.shipping_cost || 0;
-    const tax = cart.tax_amount || 0;
+    const derivedSubtotal = cart.items?.reduce(
+      (sum, item) => sum + toSafeNumber(item.total_price),
+      0
+    ) || 0;
+    const subtotal = cart.subtotal == null ? derivedSubtotal : toSafeNumber(cart.subtotal);
+    const shipping = toSafeNumber(cart.shipping_cost);
+    const tax = toSafeNumber(cart.tax_amount);
     const total = subtotal + shipping + tax;
 
     return {
@@ -228,7 +248,7 @@ export function useCartFormatting() {
   // Get cart summary text
   const getCartSummaryText = () => {
     const itemCount = cart.items?.length || 0;
-    const totalItems = cart.items?.reduce((total, item) => total + item.quantity, 0) || 0;
+    const totalItems = cart.items?.reduce((total, item) => total + toSafeNumber(item.quantity), 0) || 0;
     
     if (itemCount === 0) {
       return 'Your cart is empty';

@@ -1,6 +1,9 @@
+from flask import request
 from flask_restx import Namespace, Resource, reqparse, fields
 from werkzeug.datastructures import FileStorage
 from server.controllers.print_product_controller import PrintProductController
+from server.middleware.auth_middleware import require_role
+from server.routes.response_utils import error_response
 
 
 # Define a namespace for print products
@@ -52,13 +55,24 @@ product_model = api.model("Product", {
     "updated_at": fields.DateTime(description="Updated timestamp"),
 })
 
+manual_product_model = api.model("ManualProductCreate", {
+    "name": fields.String(required=True, description="Product name"),
+    "sku": fields.String(required=True, description="Unique SKU"),
+    "description": fields.String(description="Product description"),
+    "image": fields.String(description="Product image URL"),
+    "category_id": fields.Integer(required=True, description="Category ID"),
+    "type_id": fields.Integer(description="Product type ID"),
+    "vendor_id": fields.Integer(required=True, description="Vendor ID"),
+    "vendor_product_id": fields.String(description="Vendor-side product identifier"),
+})
+
 
 @api.route("/products")
 class PrintProductResource(Resource):
     """Ressource for fetching print products"""
 
     @api.doc(description="Fetch list of available print products")
-    @api.marshal_list_with(product_model, code=200)
+    @api.response(200, "Products retrieved successfully", [product_model])
     @api.response(500, "Server error")
     def get(self):
         """Retrieve available print products"""
@@ -67,14 +81,26 @@ class PrintProductResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="PRINT_PRODUCTS_FETCH_ERROR", category="system", retryable=True)
+
+    @api.doc(description="Create a manual product entry for any vendor")
+    @api.expect(manual_product_model)
+    @api.response(201, "Product created successfully")
+    @require_role("Admin")
+    def post(self):
+        data = request.get_json(silent=True) or {}
+        result = PrintProductController.create_manual_product(data)
+
+        if result.status:
+            return result.data, 201
+        return error_response(result.error, 400, code="MANUAL_PRODUCT_CREATE_ERROR", category="business_logic")
         
 @api.route("/categories/all")
 class PrintProductCategoriesResource(Resource):
     """Resource to fetch all product categories with classification status"""
 
     @api.doc(description="Fetch all product categories with their classification status")
-    @api.marshal_list_with(category_model, code=200)
+    @api.response(200, "Categories retrieved successfully", [category_model])
     def get(self):
         """ Retrieve all product categories with classification status"""
         result = PrintProductController.get_all_product_categories_with_status()
@@ -82,14 +108,14 @@ class PrintProductCategoriesResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="CATEGORY_STATUS_FETCH_ERROR", category="system", retryable=True)
 
 @api.route("/categories")
 class PrintProductCategoriesEnabledResource(Resource):
     """Resource of fetching only enabled categories"""
     
     @api.doc(description="Fetches only enabled product categories")
-    @api.marshal_list_with(category_model, code=200)
+    @api.response(200, "Enabled categories retrieved successfully", [category_model])
     def get(self):
         """Retrieves enabled product categories"""
       
@@ -97,7 +123,7 @@ class PrintProductCategoriesEnabledResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="ENABLED_CATEGORIES_FETCH_ERROR", category="system", retryable=True)
 
 @api.route("/categories/<int:category_id>/status")
 class PrintProductCategoryStatusResource(Resource):
@@ -105,10 +131,9 @@ class PrintProductCategoryStatusResource(Resource):
 
     @api.doc(description="Enable or disable a product category")
     @api.param("enabled", "Enable (true) or disable (false) the category", type=bool, required=True)
+    @require_role("Admin")
     def put(self, category_id):
         """Updates category status"""
-        from flask import request
-    
         # Get enabled from query params instead of JSON body
         enabled = request.args.get("enabled", type=lambda arg: arg.lower() == "true")
         result = PrintProductController.update_print_product_category_status(category_id, enabled)
@@ -116,13 +141,14 @@ class PrintProductCategoryStatusResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="CATEGORY_STATUS_UPDATE_ERROR", category="business_logic")
 
 @api.route("/categories/sync")
 class PrintProductCategorySyncResource(Resource):
     """Resource for syncing categories from Sinalite API"""
 
     @api.doc(description="Manually sync new categories from Sinalite API")
+    @require_role("Admin")
     def post(self):
         """Sync new categories"""
         result = PrintProductController.sync_print_product_categories()
@@ -130,7 +156,7 @@ class PrintProductCategorySyncResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="CATEGORY_SYNC_ERROR", category="external_api", retryable=True)
 
 @api.route("/products/<int:category_id>")
 @api.param("category_id", "The category ID of the products to retrieve")
@@ -138,7 +164,7 @@ class PrintProductByCategoryEnabledResource(Resource):
     """Resource for fetching print products by category"""
 
     @api.doc(description="Fetch list of print products listed by category")
-    @api.marshal_list_with(product_model, code=200)
+    @api.response(200, "Products retrieved successfully")
     @api.response(500, "Server error")
     def get(self, category_id):
         """Retrieve print products by category"""
@@ -147,7 +173,7 @@ class PrintProductByCategoryEnabledResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 200
+            return error_response(result.error, 404, code="PRODUCTS_BY_CATEGORY_ERROR", category="business_logic")
 
 @api.route("/products/<int:category_id>/all")
 @api.param("category_id", "The category ID of the products to retrieve")
@@ -155,7 +181,7 @@ class PrintProductByCategoryAllResource(Resource):
     """Resource for fetching print products by category"""
 
     @api.doc(description="Fetch list of print products listed by category")
-    @api.marshal_list_with(product_model, code=200)
+    @api.response(200, "Products retrieved successfully")
     @api.response(500, "Server error")
     def get(self, category_id):
         """Retrieve print products by category"""
@@ -165,7 +191,7 @@ class PrintProductByCategoryAllResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 200
+            return error_response(result.error, 404, code="ALL_PRODUCTS_BY_CATEGORY_ERROR", category="business_logic")
 
 @api.route("/products/type/<int:type_id>")
 @api.param("type_id", "The product type ID of the products to retrieve")
@@ -173,7 +199,7 @@ class PrintProductByTypeResource(Resource):
     """Resource for fetching print products by product type"""
 
     @api.doc(description="Fetch list of print products by product type")
-    @api.marshal_list_with(product_model, code=200)
+    @api.response(200, "Products retrieved successfully")
     @api.response(500, "Server error")
     def get(self, type_id):
         """Retrieve print products by product type"""
@@ -182,7 +208,7 @@ class PrintProductByTypeResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 200
+            return error_response(result.error, 404, code="PRODUCTS_BY_TYPE_ERROR", category="business_logic")
 
 update_category_parser = reqparse.RequestParser()
 update_category_parser.add_argument("description", type=str, location="form", required=False, help="New description for the category")
@@ -194,6 +220,7 @@ class PrintProductCategoryUpdateResource(Resource):
 
     @api.doc(description="Update the description or image of a product category")
     @api.expect(update_category_parser)
+    @require_role("Admin")
     def put(self, category_id):
         """Update category image and/or description"""
         args = update_category_parser.parse_args()
@@ -201,14 +228,14 @@ class PrintProductCategoryUpdateResource(Resource):
         image = args.get("image")
 
         if not description and not image:
-            return {"error": "At least one field (description or image) must be provided"}, 400, {"Content-Type": "application/json"}
+            return error_response("At least one field (description or image) must be provided", 400)
         
         result = PrintProductController.update_print_product_category(category_id, description, image)
 
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 400, {"Content-Type": "application/json"}
+            return error_response(result.error, 400, code="CATEGORY_UPDATE_ERROR", category="business_logic")
 
 # Product Type endpoints
 create_product_type_parser = reqparse.RequestParser()
@@ -222,7 +249,7 @@ class PrintProductTypesResource(Resource):
     """Resource for fetching all product types"""
 
     @api.doc(description="Fetch all product types")
-    @api.marshal_list_with(product_type_model, code=200)
+    @api.response(200, "Product types retrieved successfully", [product_type_model])
     @api.response(500, "Server error")
     def get(self):
         """Retrieve all product types"""
@@ -231,13 +258,14 @@ class PrintProductTypesResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="PRODUCT_TYPES_FETCH_ERROR", category="system", retryable=True)
 
     @api.doc(description="Create a new product type")
     @api.expect(create_product_type_parser)
     @api.response(201, "Product type created successfully")
     @api.response(400, "Bad request")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def post(self):
         """Create a new product type"""
         args = create_product_type_parser.parse_args()
@@ -254,7 +282,42 @@ class PrintProductTypesResource(Resource):
         if result.status:
             return result.data, 201
         else:
-            return {"error": result.error}, 400, {"Content-Type": "application/json"}
+            return error_response(result.error, 400, code="PRODUCT_TYPE_CREATE_ERROR", category="business_logic")
+
+
+@api.route("/product-types/ensure-defaults")
+class PrintProductTypesEnsureDefaultsResource(Resource):
+    """Resource for creating default product types for empty categories"""
+
+    @api.doc(description="Ensure each category has at least one product type")
+    @api.response(200, "Default product types ensured")
+    @api.response(500, "Server error")
+    @require_role("Admin")
+    def post(self):
+        """Create default product types for categories that have none"""
+        result = PrintProductController.ensure_default_product_types_for_categories()
+
+        if result.status:
+            return result.data, 200
+        else:
+            return error_response(result.error, 500, code="ENSURE_DEFAULT_TYPES_ERROR", category="system", retryable=True)
+
+
+@api.route("/categories/enable-all-when-none")
+class PrintProductCategoriesEnableAllWhenNoneResource(Resource):
+    """Resource for enabling all categories when currently none are enabled"""
+
+    @api.doc(description="Enable all categories if and only if currently none are enabled")
+    @api.response(200, "Categories evaluated and updated as needed")
+    @api.response(500, "Server error")
+    @require_role("Admin")
+    def post(self):
+        """Enable all categories when no category is currently enabled"""
+        result = PrintProductController.enable_all_categories_if_none_enabled()
+
+        if result.status:
+            return result.data, 200
+        return error_response(result.error, 500, code="ENABLE_ALL_CATEGORIES_ERROR", category="system", retryable=True)
 
 @api.route("/product-types/category/<int:category_id>")
 @api.param("category_id", "The category ID to filter product types")
@@ -262,7 +325,7 @@ class PrintProductTypesByCategoryResource(Resource):
     """Resource for fetching product types by category"""
 
     @api.doc(description="Fetch product types for a specific category")
-    @api.marshal_list_with(product_type_model, code=200)
+    @api.response(200, "Product types for category retrieved successfully", [product_type_model])
     @api.response(500, "Server error")
     def get(self, category_id):
         """Retrieve product types for a specific category"""
@@ -271,13 +334,14 @@ class PrintProductTypesByCategoryResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="PRODUCT_TYPES_BY_CATEGORY_ERROR", category="system", retryable=True)
 
     @api.doc(description="Create a new product type")
     @api.expect(create_product_type_parser)
     @api.response(201, "Product type created successfully")
     @api.response(400, "Bad request")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def post(self):
         """Create a new product type"""
         args = create_product_type_parser.parse_args()
@@ -294,7 +358,7 @@ class PrintProductTypesByCategoryResource(Resource):
         if result.status:
             return result.data, 201
         else:
-            return {"error": result.error}, 400, {"Content-Type": "application/json"}
+            return error_response(result.error, 400, code="PRODUCT_TYPE_CREATE_ERROR", category="business_logic")
 
 update_product_type_parser = reqparse.RequestParser()
 update_product_type_parser.add_argument("description", type=str, location="form", required=False, help="New description for the product type")
@@ -310,6 +374,7 @@ class PrintProductTypeUpdateResource(Resource):
     @api.response(400, "Bad request")
     @api.response(404, "Product type not found")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def put(self, type_id):
         """Update product type description and/or image"""
         args = update_product_type_parser.parse_args()
@@ -317,14 +382,14 @@ class PrintProductTypeUpdateResource(Resource):
         image = args.get("image")
 
         if not description and not image:
-            return {"error": "At least one field (description or image) must be provided"}, 400, {"Content-Type": "application/json"}
+            return error_response("At least one field (description or image) must be provided", 400)
         
         result = PrintProductController.update_print_product_type(type_id, description, image)
 
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 400, {"Content-Type": "application/json"}
+            return error_response(result.error, 400, code="PRODUCT_TYPE_UPDATE_ERROR", category="business_logic")
 
 @api.route("/product-types/<int:type_id>/delete")
 class PrintProductTypeDeleteResource(Resource):
@@ -335,6 +400,7 @@ class PrintProductTypeDeleteResource(Resource):
     @api.response(404, "Product type not found")
     @api.response(400, "Cannot delete: Product type in use")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def delete(self, type_id):
         """Delete a product type"""
         result = PrintProductController.delete_print_product_type(type_id)
@@ -343,11 +409,11 @@ class PrintProductTypeDeleteResource(Resource):
             return result.data, 200
         else:
             if "not found" in result.error.lower():
-                return {"error": result.error}, 404, {"Content-Type": "application/json"}
+                return error_response(result.error, 404, code="PRODUCT_TYPE_NOT_FOUND", category="business_logic")
             elif "in use" in result.error.lower():
-                return {"error": result.error}, 400, {"Content-Type": "application/json"}
+                return error_response(result.error, 400, code="PRODUCT_TYPE_IN_USE", category="business_logic")
             else:
-                return {"error": result.error}, 500, {"Content-Type": "application/json"}
+                return error_response(result.error, 500, code="PRODUCT_TYPE_DELETE_ERROR", category="system", retryable=True)
 
 # Product classification endpoints
 assign_type_parser = reqparse.RequestParser()
@@ -363,13 +429,14 @@ class PrintProductAssignTypeResource(Resource):
     @api.response(400, "Bad request")
     @api.response(404, "Product or product type not found")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def put(self, product_id):
         """Assign product to product type"""
         args = assign_type_parser.parse_args()
         type_id = args.get("type_id")
         
         if not type_id:
-            return {"error": "type_id is required"}, 400, {"Content-Type": "application/json"}
+            return error_response("type_id is required", 400)
         
         result = PrintProductController.assign_product_to_type(product_id, type_id)
 
@@ -377,9 +444,9 @@ class PrintProductAssignTypeResource(Resource):
             return result.data, 200
         else:
             if "not found" in result.error.lower():
-                return {"error": result.error}, 404, {"Content-Type": "application/json"}
+                return error_response(result.error, 404, code="PRODUCT_OR_TYPE_NOT_FOUND", category="business_logic")
             else:
-                return {"error": result.error}, 400, {"Content-Type": "application/json"}
+                return error_response(result.error, 400, code="PRODUCT_ASSIGN_TYPE_ERROR", category="business_logic")
 
 @api.route("/products/<int:product_id>/unassign-type")
 class PrintProductUnassignTypeResource(Resource):
@@ -389,6 +456,7 @@ class PrintProductUnassignTypeResource(Resource):
     @api.response(200, "Product unassigned successfully")
     @api.response(404, "Product not found")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def put(self, product_id):
         """Unassign product from product type"""
         result = PrintProductController.unassign_product_from_type(product_id)
@@ -397,9 +465,9 @@ class PrintProductUnassignTypeResource(Resource):
             return result.data, 200
         else:
             if "not found" in result.error.lower():
-                return {"error": result.error}, 404, {"Content-Type": "application/json"}
+                return error_response(result.error, 404, code="PRODUCT_NOT_FOUND", category="business_logic")
             else:
-                return {"error": result.error}, 500, {"Content-Type": "application/json"}
+                return error_response(result.error, 500, code="PRODUCT_UNASSIGN_TYPE_ERROR", category="system", retryable=True)
 
 @api.route("/products/<int:product_id>/update")
 class PrintProductUpdateResource(Resource):
@@ -411,6 +479,7 @@ class PrintProductUpdateResource(Resource):
     @api.response(400, "Bad request")
     @api.response(404, "Product not found")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def put(self, product_id):
         """Update product description and/or image"""
         args = update_category_parser.parse_args()
@@ -418,7 +487,7 @@ class PrintProductUpdateResource(Resource):
         image = args.get("image")
 
         if not description and not image:
-            return {"error": "At least one field (description or image) must be provided"}, 400, {"Content-Type": "application/json"}
+            return error_response("At least one field (description or image) must be provided", 400)
         
         result = PrintProductController.update_print_product(product_id, description, image)
 
@@ -426,9 +495,9 @@ class PrintProductUpdateResource(Resource):
             return result.data, 200
         else:
             if "not found" in result.error.lower():
-                return {"error": result.error}, 404, {"Content-Type": "application/json"}
+                return error_response(result.error, 404, code="PRODUCT_NOT_FOUND", category="business_logic")
             else:
-                return {"error": result.error}, 400, {"Content-Type": "application/json"}
+                return error_response(result.error, 400, code="PRODUCT_UPDATE_ERROR", category="business_logic")
 
 @api.route("/categories/<int:category_id>/classification-status")
 class PrintProductCategoryClassificationStatusResource(Resource):
@@ -444,7 +513,7 @@ class PrintProductCategoryClassificationStatusResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500
+            return error_response(result.error, 500, code="CATEGORY_CLASSIFICATION_STATUS_ERROR", category="system", retryable=True)
 
 @api.route("/vendors")
 class PrintProductVendorsResource(Resource):
@@ -460,7 +529,7 @@ class PrintProductVendorsResource(Resource):
         if result.status:
             return result.data, 200
         else:
-            return {"error": result.error}, 500, {"Content-Type": "application/json"}
+            return error_response(result.error, 500, code="VENDORS_FETCH_ERROR", category="system", retryable=True)
 
 @api.route("/categories/<int:category_id>/sync-products")
 class PrintProductSyncResource(Resource):
@@ -468,8 +537,11 @@ class PrintProductSyncResource(Resource):
 
     @api.doc(description="Sync products from Sinalite API for a specific category")
     @api.response(200, "Products synced successfully")
+    @api.response(401, "Unauthorized")
+    @api.response(403, "Forbidden")
     @api.response(404, "Category not found")
     @api.response(500, "Server error")
+    @require_role('Admin')
     def post(self, category_id):
         """Sync products from Sinalite API for a category"""
         result = PrintProductController.sync_print_products(category_id)
@@ -478,6 +550,6 @@ class PrintProductSyncResource(Resource):
             return result.data, 200
         else:
             if "not found" in result.error.lower():
-                return {"error": result.error}, 404, {"Content-Type": "application/json"}
+                return error_response(result.error, 404, code="CATEGORY_NOT_FOUND", category="business_logic")
             else:
-                return {"error": result.error}, 500, {"Content-Type": "application/json"}
+                return error_response(result.error, 500, code="PRODUCT_SYNC_ERROR", category="external_api", retryable=True)

@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Dict, Any, Optional
 from flask import Flask
+from markupsafe import escape as html_escape
 from server.thirdparty.mailersend import MailerSendAdapter
 from server.thirdparty.smtp import SMTPAdapter
 
@@ -15,11 +16,19 @@ class EmailService:
         self.provider = None
         # Get frontend URL from environment, with better defaults
         self.base_url = self._get_frontend_url()
+        # Backend URL is used for actions that must always resolve even when
+        # frontend route rewrites are unavailable.
+        self.backend_url = self._get_backend_url()
     
     def _get_frontend_url(self) -> str:
         """Get the frontend URL with proper environment detection."""
+        # Prefer an explicit Render frontend URL when present because it is
+        # guaranteed to be routable even if a custom domain is misconfigured.
+        render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
+        if render_frontend_url:
+            return render_frontend_url.rstrip('/')
+
         frontend_url = os.getenv('FRONTEND_URL')
-        
         if frontend_url:
             # Remove trailing slash to avoid double slashes in URLs
             return frontend_url.rstrip('/')
@@ -30,12 +39,27 @@ class EmailService:
         if environment == 'production':
             # Production should always have FRONTEND_URL set
             logger.warning("FRONTEND_URL not set in production environment!")
-            return 'https://gopostalsd.com'  # Fallback for production
+            return 'https://gopostalsd-website.onrender.com'  # Safe fallback for production
         elif environment == 'staging':
             return 'https://staging.gopostalsd.com'
         else:
             # Development environment
             return 'http://localhost:3000'
+
+    def _get_backend_url(self) -> str:
+        """Get the backend public URL with sensible environment fallbacks."""
+        render_external_url = os.getenv('RENDER_EXTERNAL_URL')
+        if render_external_url:
+            return render_external_url.rstrip('/')
+
+        backend_url = os.getenv('BACKEND_URL')
+        if backend_url:
+            return backend_url.rstrip('/')
+
+        environment = os.getenv('ENVIRONMENT', 'development').lower()
+        if environment == 'production':
+            return 'https://gopostalsd.onrender.com'
+        return 'http://localhost:5000'
     
     def init_app(self, app: Flask, provider: Optional[str] = None):
         """
@@ -132,8 +156,10 @@ class EmailService:
     def send_verification_email(self, email: str, first_name: str, token: str, reply_to: str = None) -> Dict[str, Any]:
         """Send email verification email."""
         subject = "Verify Your Email - Go Postal SD"
-        
-        verification_url = f"{self.base_url}/verify?token={token}"
+
+        # Use backend verification endpoint so email verification still works
+        # even if frontend route rewrites/custom domains are misconfigured.
+        verification_url = f"{self.backend_url}/api/auth/verify-email?token={token}"
         
         text_content = f"""
                 Hello {first_name},
@@ -258,7 +284,14 @@ class EmailService:
     def send_contact_email(self, name: str, email: str, phone: str, subject: str, message: str, reply_to: str = None) -> bool:
         """Send contact form email to Go Postal."""
         email_subject = f"Contact Form: {subject}"
-        
+
+        # Escape user-supplied values before inserting into HTML to prevent XSS.
+        safe_name = html_escape(name)
+        safe_email = html_escape(email)
+        safe_phone = html_escape(phone or 'Not provided')
+        safe_subject = html_escape(subject)
+        safe_message = html_escape(message)
+
         text_content = f"""
             New contact form submission from Go Postal SD website:
 
@@ -273,7 +306,7 @@ class EmailService:
             ---
             This message was sent from the Go Postal SD contact form.
                     """.strip()
-                    
+
         html_content = f"""
             <!DOCTYPE html>
             <html>
@@ -298,20 +331,20 @@ class EmailService:
                     </div>
                     <div class="content">
                         <div class="field">
-                            <span class="label">Name:</span> {name}
+                            <span class="label">Name:</span> {safe_name}
                         </div>
                         <div class="field">
-                            <span class="label">Email:</span> {email}
+                            <span class="label">Email:</span> {safe_email}
                         </div>
                         <div class="field">
-                            <span class="label">Phone:</span> {phone or 'Not provided'}
+                            <span class="label">Phone:</span> {safe_phone}
                         </div>
                         <div class="field">
-                            <span class="label">Subject:</span> {subject}
+                            <span class="label">Subject:</span> {safe_subject}
                         </div>
                         <div class="field">
                             <span class="label">Message:</span>
-                            <div class="message">{message}</div>
+                            <div class="message">{safe_message}</div>
                         </div>
                     </div>
                     <div class="footer">

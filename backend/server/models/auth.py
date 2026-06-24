@@ -6,10 +6,40 @@ password reset tokens, email verification tokens, and OAuth providers.
 """
 
 from server.config import database as db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import os
 import secrets
 import hashlib
+import logging
 from enum import Enum
+
+logger = logging.getLogger(__name__)
+
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+    _FERNET_KEY = os.getenv('OAUTH_TOKEN_ENCRYPTION_KEY', '').encode()
+    _fernet = Fernet(_FERNET_KEY) if _FERNET_KEY else None
+except Exception:
+    _fernet = None
+
+def _encrypt_token(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if _fernet is None:
+        logger.warning("OAUTH_TOKEN_ENCRYPTION_KEY not set — storing OAuth token in plaintext")
+        return value
+    return _fernet.encrypt(value.encode()).decode()
+
+def _decrypt_token(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if _fernet is None:
+        return value
+    try:
+        return _fernet.decrypt(value.encode()).decode()
+    except Exception:
+        # Return raw value for tokens written before encryption was enabled.
+        return value
 
 
 class UserStatus(Enum):
@@ -69,7 +99,7 @@ class User(db.Model):
 
     def is_locked(self):
         """Check if user account is locked due to failed login attempts."""
-        if self.locked_until and self.locked_until > datetime.utcnow():
+        if self.locked_until and self.locked_until > datetime.now(timezone.utc):
             return True
         return False
 
@@ -149,7 +179,7 @@ class UserSession(db.Model):
 
     def is_expired(self):
         """Check if session is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @staticmethod
     def generate_tokens():
@@ -178,7 +208,7 @@ class PasswordResetToken(db.Model):
 
     def is_expired(self):
         """Check if token is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def is_valid(self):
         """Check if token is valid (not expired and not used)."""
@@ -209,7 +239,7 @@ class EmailVerificationToken(db.Model):
 
     def is_expired(self):
         """Check if token is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def is_valid(self):
         """Check if token is valid (not expired and not used)."""
@@ -232,8 +262,8 @@ class OAuthAccount(db.Model):
     provider = db.Column(db.Enum(AuthProvider), nullable=False)
     provider_user_id = db.Column(db.String(255), nullable=False)
     provider_email = db.Column(db.String(120), nullable=True)
-    access_token = db.Column(db.Text, nullable=True)
-    refresh_token = db.Column(db.Text, nullable=True)
+    _access_token = db.Column('access_token', db.Text, nullable=True)
+    _refresh_token = db.Column('refresh_token', db.Text, nullable=True)
     token_expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -244,11 +274,27 @@ class OAuthAccount(db.Model):
     def __repr__(self):
         return f"<OAuthAccount {self.provider.value}:{self.provider_user_id}>"
 
+    @property
+    def access_token(self) -> str | None:
+        return _decrypt_token(self._access_token)
+
+    @access_token.setter
+    def access_token(self, value: str | None) -> None:
+        self._access_token = _encrypt_token(value)
+
+    @property
+    def refresh_token(self) -> str | None:
+        return _decrypt_token(self._refresh_token)
+
+    @refresh_token.setter
+    def refresh_token(self, value: str | None) -> None:
+        self._refresh_token = _encrypt_token(value)
+
     def is_token_expired(self):
         """Check if OAuth token is expired."""
         if not self.token_expires_at:
             return False
-        return datetime.utcnow() > self.token_expires_at
+        return datetime.now(timezone.utc) > self.token_expires_at
 
 
 class Address(db.Model):

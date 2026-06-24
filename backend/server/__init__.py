@@ -1,7 +1,8 @@
 # Import required Flask extensions and modules
 from flask import Flask
 from flask_cors import CORS
-from server.config import DevelopmentConfig, TestingConfig, ProductionConfig
+from werkzeug.middleware.proxy_fix import ProxyFix
+from server.config import DevelopmentConfig, TestingConfig, ProductionConfig, validate_production_security_settings
 from server.config import database, migrate, sinalite, swagger, filestorage
 from server.models import * # So that they can be detected by migrations
 import logging
@@ -29,28 +30,35 @@ def create_server(config="development"):
     """
     # Create Flask application instance
     server = Flask(__name__)
-    
+
+    # Trust exactly one upstream proxy (Render/Gunicorn) for X-Forwarded-For.
+    # This makes request.remote_addr the real client IP rather than the proxy's address.
+    server.wsgi_app = ProxyFix(server.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     # Configure CORS with allowed origins
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
     render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
     render_external_url = os.getenv('RENDER_EXTERNAL_URL')
 
-    env_origins = [frontend_url, render_frontend_url, render_external_url]
-    cors_origins = [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'http://localhost:8080',
-        'https://localhost:5173',
-        'https://gopostalsd-website.onrender.com',
-        'https://gopostalsd.onrender.com',
-    ]
+    env_origins = [origin for origin in [frontend_url, render_frontend_url, render_external_url] if origin]
+    if config == "production":
+        cors_origins = list(dict.fromkeys(env_origins))
+    else:
+        cors_origins = [
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'http://localhost:8080',
+            'https://localhost:5173',
+        ]
+        for origin in env_origins:
+            if origin not in cors_origins:
+                cors_origins.append(origin)
 
-    for origin in env_origins:
-        if origin and origin not in cors_origins:
-            cors_origins.append(origin)
+    if not cors_origins:
+        raise ValueError("No CORS origins configured for this environment")
     
     # Extract base domain for Codespaces (e.g., curly-spoon-jj57pprxw5q93qjwq)
-    if frontend_url and 'github.dev' in frontend_url:
+    if config != "production" and frontend_url and 'github.dev' in frontend_url:
         # Extract the subdomain part
         import re
         match = re.search(r'https?://([^.]+)\.app\.github\.dev', frontend_url)
@@ -63,21 +71,27 @@ def create_server(config="development"):
     cors_config = {
         'origins': cors_origins,
         'methods': ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-        'allow_headers': ['Content-Type', 'Authorization'],
+        'allow_headers': ['Content-Type', 'Authorization', 'X-CSRF-Token'],
         'supports_credentials': True,
         'max_age': 3600,
         'expose_headers': ['Content-Type', 'Authorization']
     }
-    CORS(server, resources={r"/api/*": cors_config})
+    # Match all API endpoints (e.g., /api/auth/me), not just repeated slash paths.
+    CORS(server, resources={r"/api/.*": cors_config})
+
+    # Enforce CSRF validation for authenticated state-changing requests.
+    from server.middleware.auth_middleware import enforce_csrf_protection
+    server.before_request(enforce_csrf_protection)
     
     # Add startup timestamp for health checks
-    from datetime import datetime
-    server.config['START_TIME'] = datetime.utcnow().isoformat()
+    from datetime import datetime, timezone
+    server.config['START_TIME'] = datetime.now(timezone.utc).isoformat()
 
     # Load configuration based on environment
     if config == "testing":
         server.config.from_object(TestingConfig)
     elif config == "production":
+        validate_production_security_settings()
         server.config.from_object(ProductionConfig)
     else:  # Default to development configuration
         server.config.from_object(DevelopmentConfig)
@@ -132,8 +146,31 @@ def create_server(config="development"):
     server.extensions['role_service'] = role_service
     server.extensions['auth_service'] = auth_service
     
+    # Warn when running production without a shared rate-limit store.
+    # In-memory counters are per-worker and won't enforce limits across Gunicorn workers.
+    if config == 'production':
+        rate_store = os.getenv('AUTH_RATE_LIMIT_STORE', 'memory').lower()
+        if rate_store == 'memory':
+            logger.warning(
+                "AUTH_RATE_LIMIT_STORE is 'memory' in production. "
+                "Rate limits are not shared across Gunicorn workers. "
+                "Set AUTH_RATE_LIMIT_STORE=redis and RATE_LIMIT_REDIS_URL."
+            )
+
     # Register API routes
     from server.routes import register_routes
     register_routes(server)
+
+    # Initialize centralized error handling and severity categorization.
+    try:
+        from server.exceptions.error_handler import ErrorHandler
+        ErrorHandler(server)
+    except ImportError:
+        logger.warning("Advanced error handler dependencies are unavailable; continuing with default handlers")
+
+    if config == "production":
+        with server.app_context():
+            from server.startup import ensure_database_structures
+            ensure_database_structures()
 
     return server

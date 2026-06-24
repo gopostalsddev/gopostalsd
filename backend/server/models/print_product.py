@@ -55,6 +55,7 @@ class PrintProductCategory(db.Model):
             'description': self.description,
             'image': self.image,
             'enabled': self.enabled,
+            'is_enabled': self.enabled,
             'product_classification_status': self.product_classification_status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None

@@ -12,10 +12,12 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import logging
+from decimal import Decimal, ROUND_UP, InvalidOperation
+from flask import current_app
 from server import database as db
 from server.models.pricing import (
     ProductOption, ProductPricing, 
-    ShippingOption, ProductVariant, StoreCode
+    ShippingOption, ProductVariant, StoreCode, PricingPolicy
 )
 from server.thirdparty.sinalite import SinaliteAdapter
 from server.exceptions.pricing_exceptions import (
@@ -34,7 +36,7 @@ class PricingStrategy(ABC):
     """
     
     @abstractmethod
-    def calculate_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
+    def calculate_price(self, product_id: int, options: List[int], store_code: int, customization: Optional[Dict] = None) -> Optional[Dict]:
         """Calculate price for a product with given options."""
         pass
 
@@ -49,8 +51,244 @@ class SinalitePricingStrategy(PricingStrategy):
         self.sinalite = sinalite_adapter
         self.repository = repository
         self.cache_duration = timedelta(hours=1)  # Cache pricing for 1 hour
+
+    @staticmethod
+    def _to_decimal(value: Any) -> Decimal:
+        try:
+            parsed = Decimal(str(value or 0))
+            if not parsed.is_finite():
+                return Decimal('0')
+            return parsed
+        except (InvalidOperation, ValueError, TypeError):
+            return Decimal('0')
+
+    @staticmethod
+    def _round_money(value: Decimal) -> Decimal:
+        try:
+            if not isinstance(value, Decimal):
+                value = Decimal(str(value or 0))
+            if not value.is_finite():
+                return Decimal('0.00')
+            return value.quantize(Decimal('0.01'))
+        except (InvalidOperation, ValueError, TypeError):
+            return Decimal('0.00')
+
+    def _get_pricing_policy(self) -> Dict[str, Any]:
+        policy_record = PricingPolicy.get_current()
+        markup_percent_source = (
+            policy_record.markup_percent
+            if policy_record
+            else current_app.config.get('PRICING_MARKUP_PERCENT', 30)
+        )
+        markup_percent = self._to_decimal(markup_percent_source)
+        if markup_percent < Decimal('0'):
+            markup_percent = Decimal('0')
+        if markup_percent > Decimal('95'):
+            markup_percent = Decimal('95')
+        markup_ratio = markup_percent / Decimal('100')
+        return {
+            'version': current_app.config.get('PRICING_POLICY_VERSION', 'retail-v1'),
+            'vendor_currency': policy_record.vendor_currency if policy_record else current_app.config.get('PRICING_VENDOR_CURRENCY', 'CAD'),
+            'display_currency': policy_record.display_currency if policy_record else current_app.config.get('PRICING_DISPLAY_CURRENCY', 'USD'),
+            'cad_to_usd_rate': self._to_decimal(policy_record.cad_to_usd_rate if policy_record else current_app.config.get('PRICING_CAD_TO_USD_RATE', 0.74)),
+            'exchange_buffer_percent': self._to_decimal(policy_record.exchange_buffer_percent if policy_record else current_app.config.get('PRICING_EXCHANGE_BUFFER_PERCENT', 5)),
+            'markup_percent': markup_percent,
+            'markup_ratio': markup_ratio,
+            'fixed_fee_usd': self._to_decimal(policy_record.fixed_fee_usd if policy_record else current_app.config.get('PRICING_FIXED_FEE_USD', 0)),
+            'minimum_profit_usd': self._to_decimal(policy_record.minimum_profit_usd if policy_record else current_app.config.get('PRICING_MINIMUM_PROFIT_USD', 0)),
+            'rounding_increment': self._to_decimal(policy_record.rounding_increment if policy_record else current_app.config.get('PRICING_ROUNDING_INCREMENT', '0.05')),
+            'customization_fees': {
+                'none': Decimal('0'),
+                'file_review': self._to_decimal(policy_record.customization_file_review_fee_usd if policy_record else current_app.config.get('CUSTOMIZATION_FILE_REVIEW_FEE_USD', 10)),
+                'design_assist': self._to_decimal(policy_record.customization_design_assist_fee_usd if policy_record else current_app.config.get('CUSTOMIZATION_DESIGN_ASSIST_FEE_USD', 35)),
+            },
+        }
+
+    def _normalize_customization(self, customization: Optional[Dict]) -> Dict[str, Any]:
+        customization = customization or {}
+        service_level = customization.get('serviceLevel', 'none')
+        if service_level not in {'none', 'file_review', 'design_assist'}:
+            service_level = 'none'
+
+        uploaded_files = customization.get('uploadedFiles', [])
+        if not isinstance(uploaded_files, list):
+            uploaded_files = []
+
+        return {
+            'serviceLevel': service_level,
+            'designNotes': str(customization.get('designNotes', '') or '').strip()[:1000],
+            'uploadedFiles': uploaded_files[:10],
+        }
+
+    def _build_option_key(self, options: List[int], customization: Optional[Dict] = None) -> str:
+        policy_version = current_app.config.get('PRICING_POLICY_VERSION', 'retail-v1')
+        customization_key = self._normalize_customization(customization).get('serviceLevel', 'none')
+        return f"{policy_version}:{customization_key}:{'-'.join(map(str, sorted(options)))}"
+
+    @staticmethod
+    def _build_vendor_option_key(options: List[int]) -> str:
+        return "-".join(map(str, sorted(options)))
+
+    @staticmethod
+    def _normalize_variant_key(key: str) -> str:
+        try:
+            return "-".join(map(str, sorted(int(part) for part in str(key).split('-') if part != '')))
+        except Exception:
+            return str(key)
+
+    def _lookup_price_from_variants(self, product_id: int, vendor_option_key: str) -> Optional[Dict]:
+        variants = self.repository.get_cached_variants(product_id, 0)
+        if not variants:
+            variants = self.sinalite.get_product_variants(product_id, 0)
+            if variants:
+                self.repository.cache_variants(product_id, variants)
+
+        if not variants:
+            return None
+
+        normalized_target_key = self._normalize_variant_key(vendor_option_key)
+        for variant in variants:
+            variant_key = variant.get('key') or variant.get('variant_key')
+            if not variant_key:
+                continue
+            if self._normalize_variant_key(variant_key) == normalized_target_key:
+                return {'price': variant.get('price', 0)}
+
+        return None
+
+    @staticmethod
+    def _extract_price_payload(pricing_data: Any) -> Optional[Dict[str, Any]]:
+        """Normalize heterogeneous pricing responses into a consistent shape."""
+        if not pricing_data:
+            return None
+
+        if isinstance(pricing_data, list) and len(pricing_data) > 0:
+            first = pricing_data[0] or {}
+            return {
+                'price': first.get('price', 0),
+                'packageInfo': first.get('packageInfo') or first.get('package_info') or {},
+            }
+
+        if isinstance(pricing_data, dict):
+            if 'body' in pricing_data and isinstance(pricing_data['body'], list) and len(pricing_data['body']) > 0:
+                first = pricing_data['body'][0] or {}
+                return {
+                    'price': first.get('price', 0),
+                    'packageInfo': first.get('packageInfo') or first.get('package_info') or {},
+                }
+
+            return {
+                'price': pricing_data.get('price', 0),
+                'packageInfo': pricing_data.get('packageInfo') or pricing_data.get('package_info') or {},
+            }
+
+        return None
+
+    def _apply_retail_pricing(self, vendor_price: Any, options: List[int], package_info: Optional[Dict] = None, customization: Optional[Dict] = None) -> Dict:
+        policy = self._get_pricing_policy()
+        customization = self._normalize_customization(customization)
+
+        vendor_currency = policy.get('vendor_currency', 'CAD')
+        display_currency = policy.get('display_currency', 'USD')
+        exchange_rate = self._to_decimal(policy.get('cad_to_usd_rate', 0))
+        exchange_buffer_percent = self._to_decimal(policy.get('exchange_buffer_percent', 0))
+        markup_percent = self._to_decimal(policy.get('markup_percent', 0))
+        markup_ratio = self._to_decimal(policy.get('markup_ratio', markup_percent / Decimal('100')))
+        if markup_ratio < Decimal('0'):
+            markup_ratio = Decimal('0')
+        if markup_ratio > Decimal('0.95'):
+            markup_ratio = Decimal('0.95')
+        fixed_fee_usd = self._to_decimal(policy.get('fixed_fee_usd', 0))
+        minimum_profit_usd = self._to_decimal(policy.get('minimum_profit_usd', 0))
+        rounding_increment = self._to_decimal(policy.get('rounding_increment', '0.05'))
+        if rounding_increment <= 0:
+            rounding_increment = Decimal('0.01')
+
+        customization_fee_map = policy.get('customization_fees', {})
+        customization_fee = self._to_decimal(customization_fee_map.get(customization['serviceLevel'], 0))
+
+        try:
+            vendor_price_decimal = self._to_decimal(vendor_price)
+            buffer_multiplier = Decimal('1') + (exchange_buffer_percent / Decimal('100'))
+            converted_cost = vendor_price_decimal * exchange_rate
+            buffered_cost = converted_cost * buffer_multiplier
+            landed_cost = buffered_cost + fixed_fee_usd + customization_fee
+
+            if markup_ratio >= Decimal('1'):
+                price_from_margin = landed_cost
+            else:
+                price_from_margin = landed_cost / (Decimal('1') - markup_ratio)
+
+            price_from_min_profit = landed_cost + minimum_profit_usd
+            pre_rounded_price = max(price_from_margin, price_from_min_profit)
+
+            rounded_price = (pre_rounded_price / rounding_increment).quantize(Decimal('1'), rounding=ROUND_UP) * rounding_increment
+        except (InvalidOperation, ValueError, ZeroDivisionError, TypeError) as exc:
+            logger.error(
+                "Retail pricing math failed for options %s due to invalid numeric values: %s",
+                options,
+                exc,
+            )
+            vendor_price_decimal = self._to_decimal(vendor_price)
+            exchange_rate = self._to_decimal(policy.get('cad_to_usd_rate', 0))
+            converted_cost = vendor_price_decimal * exchange_rate
+            buffered_cost = converted_cost
+            customization_fee = Decimal('0')
+            landed_cost = buffered_cost
+            price_from_margin = landed_cost
+            price_from_min_profit = landed_cost
+            pre_rounded_price = landed_cost
+            rounding_increment = Decimal('0.01')
+            rounded_price = landed_cost if landed_cost > 0 else Decimal('0')
+
+        explanation = [
+            f"Sinalite cost starts in {vendor_currency}.",
+            f"That base cost is converted to {display_currency} using the configured exchange rate.",
+            f"An FX buffer of {exchange_buffer_percent}% is added to protect margin when CAD/USD moves.",
+            f"A markup target of {markup_percent}% is then applied to create the retail sell price.",
+        ]
+        if fixed_fee_usd > 0:
+            explanation.append(f"A fixed fee of {self._round_money(fixed_fee_usd)} {display_currency} is added before markup.")
+        if customization_fee > 0:
+            explanation.append(
+                f"Customization service '{customization['serviceLevel']}' adds {self._round_money(customization_fee)} {display_currency} before markup."
+            )
+        if minimum_profit_usd > 0:
+            explanation.append(f"A minimum profit floor of {self._round_money(minimum_profit_usd)} {display_currency} is enforced.")
+
+        return {
+            'price': float(self._round_money(rounded_price)),
+            'currency': display_currency,
+            'packageInfo': {
+                **(package_info or {}),
+                'Customization Service': customization['serviceLevel'].replace('_', ' ').title(),
+                'Customization Notes': customization['designNotes'],
+                'Artwork Files': customization['uploadedFiles'],
+            },
+            'productOptions': options,
+            'customization': customization,
+            'pricingBreakdown': {
+                'vendorCurrency': vendor_currency,
+                'displayCurrency': display_currency,
+                'vendorBasePrice': float(self._round_money(vendor_price_decimal)),
+                'exchangeRate': float(exchange_rate),
+                'convertedCost': float(self._round_money(converted_cost)),
+                'exchangeBufferPercent': float(exchange_buffer_percent),
+                'bufferedCost': float(self._round_money(buffered_cost)),
+                'fixedFee': float(self._round_money(fixed_fee_usd)),
+                'customizationFee': float(self._round_money(customization_fee)),
+                'landedCost': float(self._round_money(landed_cost)),
+                'markupPercent': float(markup_percent),
+                'minimumProfit': float(self._round_money(minimum_profit_usd)),
+                'preRoundedRetailPrice': float(self._round_money(pre_rounded_price)),
+                'roundingIncrement': float(rounding_increment),
+                'retailPrice': float(self._round_money(rounded_price)),
+                'customizationService': customization['serviceLevel'],
+                'explanation': explanation,
+            },
+        }
     
-    def calculate_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
+    def calculate_price(self, product_id: int, options: List[int], store_code: int, customization: Optional[Dict] = None) -> Optional[Dict]:
         """
         Calculate price using Sinalite API key-based pricing with caching.
         
@@ -64,38 +302,60 @@ class SinalitePricingStrategy(PricingStrategy):
         """
         try:
             # Create option key for caching (sorted for consistency)
-            option_key = "-".join(map(str, sorted(options)))
+            customization = self._normalize_customization(customization)
+            option_key = self._build_option_key(options, customization)
+            vendor_option_key = self._build_vendor_option_key(options)
             
             # Check cache first
             cached_pricing = self.repository.get_cached_pricing(product_id, store_code, option_key)
             if cached_pricing:
                 logger.info(f"Using cached pricing for product {product_id}")
-                return cached_pricing
+                return self._apply_retail_pricing(
+                    cached_pricing.get('price', 0),
+                    options,
+                    cached_pricing.get('packageInfo'),
+                    customization,
+                )
             
             # Use key-based pricing from Sinalite API
-            pricing_data = self.sinalite.get_price_by_key(product_id, option_key)
+            pricing_data = self.sinalite.get_price_by_key(product_id, vendor_option_key)
             if not pricing_data:
-                logger.error(f"Failed to get pricing for product {product_id} with key {option_key}")
+                logger.warning(
+                    "Price-by-key failed for product %s with key %s. Falling back to variant lookup.",
+                    product_id,
+                    vendor_option_key,
+                )
+                pricing_data = self._lookup_price_from_variants(product_id, vendor_option_key)
+                if not pricing_data:
+                    logger.warning(
+                        "Variant lookup failed for product %s with key %s. Falling back to direct price endpoint.",
+                        product_id,
+                        vendor_option_key,
+                    )
+                    pricing_data = self.sinalite.get_product_price(product_id, store_code, options)
+                    if not pricing_data:
+                        logger.error(f"Failed to get pricing for product {product_id} with key {vendor_option_key}")
+                        return None
+
+            extracted_payload = self._extract_price_payload(pricing_data)
+            if not extracted_payload:
+                logger.error(f"Could not parse pricing payload for product {product_id} with key {vendor_option_key}")
                 return None
-            
-            # Handle the response format - Sinalite returns a list with price dict
-            price_value = 0
-            if isinstance(pricing_data, list) and len(pricing_data) > 0:
-                price_value = pricing_data[0].get('price', 0)
-            elif isinstance(pricing_data, dict):
-                price_value = pricing_data.get('price', 0)
+
+            price_value = extracted_payload.get('price', 0)
+            package_info = extracted_payload.get('packageInfo') or {}
             
             # Format the response to match expected structure
-            formatted_pricing = {
+            raw_pricing = {
                 'price': price_value,
-                'packageInfo': {},  # Will be populated from product details if needed
+                'packageInfo': package_info,
                 'productOptions': options
             }
             
             # Cache the result
-            self.repository.cache_pricing(product_id, store_code, option_key, formatted_pricing, options)
+            self.repository.cache_pricing(product_id, store_code, option_key, raw_pricing, options)
             
-            return formatted_pricing
+            return self._apply_retail_pricing(price_value, options, package_info=package_info, customization=customization)
             
         except Exception as e:
             logger.error(f"Error calculating price for product {product_id}: {str(e)}")
@@ -163,26 +423,26 @@ class PricingService:
         """
         try:
             # Check cache first
-            cached_variants = self._get_cached_variants(product_id, offset)
+            cached_variants = self.repository.get_cached_variants(product_id, offset)
             if cached_variants:
                 return cached_variants
-            
+
             # Fetch from API
             variants = self.sinalite.get_product_variants(product_id, offset)
             if not variants:
                 logger.error(f"No variants found for product {product_id}")
                 return []
-            
+
             # Cache the variants
-            self._cache_variants(product_id, offset, variants)
-            
+            self.repository.cache_variants(product_id, variants)
+
             return variants
             
         except Exception as e:
             logger.error(f"Error getting product variants for product {product_id}: {str(e)}")
             return []
     
-    def calculate_product_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
+    def calculate_product_price(self, product_id: int, options: List[int], store_code: int, customization: Optional[Dict] = None) -> Optional[Dict]:
         """
         Calculate price for a product with selected options.
         
@@ -194,7 +454,7 @@ class PricingService:
         Returns:
             Dict containing price and package information
         """
-        return self.pricing_strategy.calculate_price(product_id, options, store_code)
+        return self.pricing_strategy.calculate_price(product_id, options, store_code, customization)
     
     def get_shipping_estimates(self, cart_items: List[Dict], shipping_info: Dict) -> List[Dict]:
         """

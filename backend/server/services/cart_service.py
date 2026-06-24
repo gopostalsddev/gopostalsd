@@ -8,7 +8,9 @@ adding items, updating quantities, calculating totals, and managing shipping.
 import logging
 import os
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from server.config import database as db
 from server.models.pricing import Cart, CartItem, ShippingOption, StoreCode, ProductOption
 from server.models.order import Order, OrderItem, Payment, OrderStatus, PaymentStatus
@@ -35,6 +37,19 @@ class CartService:
     def __init__(self, pricing_service: PricingService, sinalite_adapter: SinaliteAdapter):
         self.pricing_service = pricing_service
         self.sinalite_adapter = sinalite_adapter
+
+    @staticmethod
+    def _to_money_decimal(value: Any) -> Decimal:
+        """Convert value to 2-decimal money representation."""
+        if value is None:
+            return Decimal('0.00')
+        return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def _get_print_product(product_id: Any) -> Optional[PrintProduct]:
+        """Lookup print products using vendor_product_id as a string value."""
+        product_lookup_id = str(product_id).strip()
+        return PrintProduct.query.filter_by(vendor_product_id=product_lookup_id).first()
     
     def get_or_create_cart(self, session_id: str, user_id: Optional[int] = None) -> Cart:
         """
@@ -70,8 +85,15 @@ class CartService:
             
             return cart
             
-        except Exception as e:
-            logger.error(f"Error getting/creating cart: {str(e)}")
+        except IntegrityError:
+            # Another concurrent request created the cart first.
+            db.session.rollback()
+            existing = Cart.query.filter_by(session_id=session_id).first()
+            if existing:
+                return existing
+            raise
+        except SQLAlchemyError:
+            logger.error("Error getting/creating cart", exc_info=True)
             db.session.rollback()
             raise
     
@@ -80,7 +102,8 @@ class CartService:
                         product_id: int, 
                         selected_options: Dict[str, Any],
                         quantity: int = 1,
-                        user_id: Optional[int] = None) -> Dict[str, Any]:
+                        user_id: Optional[int] = None,
+                        customization: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Add item to cart with pricing calculation.
         
@@ -104,15 +127,10 @@ class CartService:
             if IS_DEVELOPMENT:
                 logger.debug("[CART_SERVICE] Looking up product %s in database", product_id)
             
-            product = PrintProduct.query.filter_by(vendor_product_id=str(product_id)).first()
+            product = self._get_print_product(product_id)
             
             if not product:
                 logger.error(f"Product {product_id} not found in database (vendor_product_id search)")
-                if IS_DEVELOPMENT:
-                    logger.debug("[CART_SERVICE] Product not found. Listing up to 5 products for debugging")
-                    all_products = PrintProduct.query.limit(5).all()
-                    for p in all_products:
-                        logger.debug("  - Product: %s, vendor_product_id: %s, name: %s", p.id, p.vendor_product_id, p.name)
                 return {
                     'success': False,
                     'error': 'Product not found'
@@ -132,19 +150,29 @@ class CartService:
             pricing_data = self.pricing_service.calculate_product_price(
                 product_id=product_id,
                 options=selected_options,  # Already a list of option IDs
-                store_code=cart.store_code
+                store_code=cart.store_code,
+                customization=customization,
             )
             
             if not pricing_data:
-                error_msg = "Pricing calculation failed: No price data returned"
-                logger.error(f"Pricing calculation failed: {error_msg}")
+                logger.error("Pricing calculation failed: No price data returned")
                 return {
                     'success': False,
-                    'error': error_msg
+                    'error': 'Unable to price this product at the moment'
                 }
+
+            quantity = int(quantity)
+            if quantity <= 0:
+                return {
+                    'success': False,
+                    'error': 'Quantity must be greater than zero'
+                }
+
+            unit_price = self._to_money_decimal(pricing_data.get('price', 0))
             
             # Generate option key from selected options
-            option_key = "-".join(map(str, sorted(selected_options)))
+            customization_key = ((customization or {}).get('serviceLevel') or 'none')
+            option_key = f"{customization_key}:{'-'.join(map(str, sorted(selected_options)))}"
             
             # Check if item already exists in cart
             existing_item = CartItem.query.filter_by(
@@ -156,8 +184,8 @@ class CartService:
             if existing_item:
                 # Update quantity
                 existing_item.quantity += quantity
-                existing_item.total_price = existing_item.quantity * existing_item.unit_price
-                existing_item.updated_at = datetime.utcnow()
+                existing_item.total_price = self._to_money_decimal(existing_item.quantity * existing_item.unit_price)
+                existing_item.updated_at = datetime.now(timezone.utc)
                 logger.info(f"Updated quantity for existing cart item {existing_item.id}")
             else:
                 # Create new cart item
@@ -169,28 +197,28 @@ class CartService:
                     quantity=quantity,
                     selected_options=selected_options,
                     option_key=option_key,
-                    unit_price=pricing_data.get('price', 0),
-                    total_price=pricing_data.get('price', 0) * quantity,
+                    unit_price=unit_price,
+                    total_price=self._to_money_decimal(unit_price * quantity),
                     package_info=pricing_data.get('packageInfo', {})
                 )
                 db.session.add(cart_item)
                 logger.info(f"Added new item to cart {cart.id}")
             
             db.session.commit()
-            
-            # Return updated cart
+
+            cart_result = self.get_cart(session_id)
             return {
                 'success': True,
-                'cart': cart.to_dict(),
+                'cart': cart_result['cart'] if cart_result['success'] else cart.to_dict(),
                 'message': 'Item added to cart successfully'
             }
-            
-        except Exception as e:
-            logger.error(f"Exception adding item to cart: {type(e).__name__}: {str(e)}", exc_info=True)
+
+        except (SQLAlchemyError, ValueError, TypeError, InvalidOperation) as e:
+            logger.error("Error adding item to cart", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to add item to cart: {str(e)}'
+                'error': 'Failed to add item to cart'
             }
     
     def update_cart_item_quantity(self, 
@@ -234,24 +262,25 @@ class CartService:
             else:
                 # Update quantity
                 cart_item.quantity = quantity
-                cart_item.total_price = cart_item.quantity * cart_item.unit_price
-                cart_item.updated_at = datetime.utcnow()
+                cart_item.total_price = self._to_money_decimal(quantity * cart_item.unit_price)
+                cart_item.updated_at = datetime.now(timezone.utc)
                 logger.info(f"Updated quantity for cart item {cart_item_id}")
-            
+
             db.session.commit()
-            
+
+            cart_result = self.get_cart(session_id)
             return {
                 'success': True,
-                'cart': cart.to_dict(),
+                'cart': cart_result['cart'] if cart_result['success'] else cart.to_dict(),
                 'message': 'Cart item updated successfully'
             }
             
-        except Exception as e:
-            logger.error(f"Error updating cart item quantity: {str(e)}")
+        except (SQLAlchemyError, ValueError, TypeError):
+            logger.error("Error updating cart item quantity", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to update cart item: {str(e)}'
+                'error': 'Failed to update cart item'
             }
     
     def remove_cart_item(self, session_id: str, cart_item_id: int) -> Dict[str, Any]:
@@ -286,21 +315,22 @@ class CartService:
             
             db.session.delete(cart_item)
             db.session.commit()
-            
+
             logger.info(f"Removed cart item {cart_item_id}")
-            
+
+            cart_result = self.get_cart(session_id)
             return {
                 'success': True,
-                'cart': cart.to_dict(),
+                'cart': cart_result['cart'] if cart_result['success'] else cart.to_dict(),
                 'message': 'Item removed from cart successfully'
             }
-            
-        except Exception as e:
-            logger.error(f"Error removing cart item: {str(e)}")
+
+        except SQLAlchemyError:
+            logger.error("Error removing cart item", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to remove cart item: {str(e)}'
+                'error': 'Failed to remove cart item'
             }
     
     def get_cart(self, session_id: str) -> Dict[str, Any]:
@@ -367,11 +397,11 @@ class CartService:
                 'cart': cart_data
             }
             
-        except Exception as e:
-            logger.error(f"Error getting cart: {str(e)}")
+        except SQLAlchemyError:
+            logger.error("Error getting cart", exc_info=True)
             return {
                 'success': False,
-                'error': f'Failed to get cart: {str(e)}'
+                'error': 'Failed to get cart'
             }
     
     def clear_cart(self, session_id: str) -> Dict[str, Any]:
@@ -403,12 +433,12 @@ class CartService:
                 'message': 'Cart cleared successfully'
             }
             
-        except Exception as e:
-            logger.error(f"Error clearing cart: {str(e)}")
+        except SQLAlchemyError:
+            logger.error("Error clearing cart", exc_info=True)
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to clear cart: {str(e)}'
+                'error': 'Failed to clear cart'
             }
     
     def calculate_shipping(self, 
@@ -458,5 +488,5 @@ class CartService:
                 # US tax rate (simplified)
                 return subtotal * 0.08  # 8% average
             return 0.0
-        except Exception:
+        except (TypeError, ValueError):
             return 0.0

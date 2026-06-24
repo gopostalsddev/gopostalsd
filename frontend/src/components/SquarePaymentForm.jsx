@@ -14,6 +14,30 @@ import {
   CreditCard as CreditCardIcon
 } from '@mui/icons-material';
 
+const PLACEHOLDER_APP_ID = 'sandbox-sq0idb-your-app-id';
+const PLACEHOLDER_LOCATION_ID = 'your-location-id';
+
+const getSquareConfig = () => {
+  const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID;
+  const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+  return { applicationId, locationId };
+};
+
+const isConfigured = ({ applicationId, locationId }) => {
+  return Boolean(
+    applicationId &&
+      locationId &&
+      applicationId !== PLACEHOLDER_APP_ID &&
+      locationId !== PLACEHOLDER_LOCATION_ID
+  );
+};
+
+const getSquareSdkUrl = (applicationId) => {
+  return applicationId?.startsWith('sandbox-')
+    ? 'https://sandbox.web.squarecdn.com/v1/square.js'
+    : 'https://web.squarecdn.com/v1/square.js';
+};
+
 // Square Web Payments SDK integration
 export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -48,10 +72,19 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
       setIsLoading(true);
       setError(null);
 
+      const config = getSquareConfig();
+      if (!isConfigured(config)) {
+        setError(
+          'Square payments are not configured for this environment. Set VITE_SQUARE_APPLICATION_ID and VITE_SQUARE_LOCATION_ID in frontend environment variables.'
+        );
+        setIsLoading(false);
+        return;
+      }
+
       // Load Square Web Payments SDK
       if (!window.Square) {
         const script = document.createElement('script');
-        script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+        script.src = getSquareSdkUrl(config.applicationId);
         script.onload = () => {
           initializeSquarePayments();
         };
@@ -79,15 +112,12 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
       
       // Initialize Square payments
       // Get credentials from environment variables (VITE_ prefix required for Vite)
-      const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID || 'sandbox-sq0idb-your-app-id';
-      const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID || 'your-location-id';
-      
-      // Check if using placeholder values
-      if (applicationId === 'sandbox-sq0idb-your-app-id' || locationId === 'your-location-id') {
-        console.warn('Square credentials not configured. Using placeholder values.');
+      const config = getSquareConfig();
+      if (!isConfigured(config)) {
+        throw new Error('Square credentials are not configured.');
       }
-      
-      paymentsRef.current = window.Square.payments(applicationId, locationId);
+
+      paymentsRef.current = window.Square.payments(config.applicationId, config.locationId);
 
       // Create card payment method
       cardRef.current = await paymentsRef.current.card();
@@ -134,9 +164,7 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
           paymentMethod: 'card'
         });
       } else if (result.status === 'INVALID_REQUEST_ERROR') {
-        // Handle invalid request - likely using placeholder credentials
-        console.warn('Square credentials not configured. Payment cannot be processed.');
-        throw new Error('Payment service not configured. Please contact support.');
+        throw new Error('Payment request rejected. Verify Square application and location credentials.');
       } else {
         throw new Error(result.errors?.[0]?.detail || 'Payment failed');
       }

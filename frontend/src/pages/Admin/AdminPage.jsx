@@ -38,6 +38,15 @@ const AdminPage = () => {
       onClick: () => navigate("/admin/orders"),
       highlights: ["Fulfillment insights", "Customer updates", "Exception tracking"],
     },
+    {
+      title: "Pricing Policy",
+      description:
+        "Set exchange-rate protection, markup rules, customization surcharges, and rounding so storefront pricing stays profitable and understandable.",
+      icon: <SettingsApplicationsOutlinedIcon sx={{ fontSize: 40 }} color="action" />,
+      actionLabel: "Manage Pricing",
+      onClick: () => navigate("/admin/pricing"),
+      highlights: ["FX buffer", "Margin control", "Customization fees"],
+    },
   ];
 
   return (

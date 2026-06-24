@@ -6,7 +6,7 @@ Follows the Repository pattern for clean data access.
 """
 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from server.config import database as db
 from server.models.pricing import Cart, CartItem, StoreCode
 import logging
@@ -71,7 +71,7 @@ class CartRepository:
     def update_cart_item(self, cart_item: CartItem) -> bool:
         """Update cart item in database."""
         try:
-            cart_item.updated_at = datetime.utcnow()
+            cart_item.updated_at = datetime.now(timezone.utc)
             db.session.commit()
             logger.info(f"Updated cart item {cart_item.id}")
             return True

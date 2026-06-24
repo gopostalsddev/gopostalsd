@@ -4,8 +4,9 @@ Implements the Repository pattern for clean data access separation.
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
+from sqlalchemy.dialects.postgresql import insert
 from server import database as db
 from server.models.pricing import (
     ProductOption, ProductPricing, Cart, CartItem, 
@@ -30,7 +31,7 @@ class PricingRepository:
                 option_key=option_key
             ).first()
             
-            if cached and cached.updated_at > datetime.utcnow() - timedelta(hours=1):
+            if cached and cached.updated_at > datetime.now(timezone.utc) - timedelta(hours=1):
                 return {
                     'price': str(cached.price),
                     'packageInfo': cached.package_info,
@@ -59,7 +60,7 @@ class PricingRepository:
                 existing.price = pricing_data.get('price', 0)
                 existing.package_info = pricing_data.get('packageInfo')
                 existing.product_options = pricing_data.get('productOptions')
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = datetime.now(timezone.utc)
             else:
                 # Create new record
                 new_pricing = ProductPricing(
@@ -98,21 +99,49 @@ class PricingRepository:
     def cache_options(self, product_id: int, options: List[Dict]) -> None:
         """Cache product options for future use."""
         try:
-            # Clear existing options for this product
-            ProductOption.query.filter_by(product_id=product_id).delete()
-            
-            # Add new options
+            now = datetime.now(timezone.utc)
+
+            # Deduplicate payload by option id in case upstream sends repeats.
+            deduped_options = {}
             for option in options:
-                new_option = ProductOption(
-                    sinalite_id=option['id'],
-                    product_id=product_id,
-                    group=option['group'],
-                    name=option['name']
+                deduped_options[int(option['id'])] = option
+
+            option_ids = set(deduped_options.keys())
+
+            if option_ids:
+                upsert_rows = [
+                    {
+                        'sinalite_option_id': option_id,
+                        'product_id': product_id,
+                        'group': option_data['group'],
+                        'name': option_data['name'],
+                        'updated_at': now,
+                    }
+                    for option_id, option_data in deduped_options.items()
+                ]
+
+                upsert_stmt = insert(ProductOption).values(upsert_rows)
+                upsert_stmt = upsert_stmt.on_conflict_do_update(
+                    constraint='product_options_sinalite_option_id_key',
+                    set_={
+                        'product_id': upsert_stmt.excluded.product_id,
+                        'group': upsert_stmt.excluded.group,
+                        'name': upsert_stmt.excluded.name,
+                        'updated_at': upsert_stmt.excluded.updated_at,
+                    },
                 )
-                db.session.add(new_option)
+                db.session.execute(upsert_stmt)
+
+                # Remove stale options cached for this product only.
+                ProductOption.query.filter(
+                    ProductOption.product_id == product_id,
+                    ~ProductOption.sinalite_option_id.in_(option_ids)
+                ).delete(synchronize_session=False)
+            else:
+                ProductOption.query.filter_by(product_id=product_id).delete(synchronize_session=False)
             
             db.session.commit()
-            logger.info(f"Cached {len(options)} options for product {product_id}")
+            logger.info(f"Cached {len(deduped_options)} options for product {product_id}")
             
         except Exception as e:
             logger.error(f"Error caching options: {str(e)}")

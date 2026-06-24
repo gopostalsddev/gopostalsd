@@ -36,16 +36,6 @@ const HomePage = () => {
       >
         <Container maxWidth="xl">
           <Box sx={{ maxWidth: 960, mx: 'auto', textAlign: 'center' }}>
-            <Chip
-              label="Little Italy, San Diego"
-              sx={{
-                mb: 2.5,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                color: 'white',
-                borderRadius: 1,
-                border: '1px solid rgba(255,255,255,0.26)'
-              }}
-            />
 
             <Typography
               variant="h2"
@@ -67,7 +57,7 @@ const HomePage = () => {
                 mb: 3.5
               }}
             >
-              Your Premier Shipping And Printing Destination in Little Italy, San Diego
+              Your Premier Online Shipping And Printing Destination
             </Typography>
 
             <Stack
@@ -97,7 +87,7 @@ const HomePage = () => {
                 variant="outlined"
                 size="large"
                 startIcon={<LocationOn />}
-                href="https://maps.google.com/?q=1501+India+St+Suite+103+San+Diego+CA+92101"
+                href="https://www.gopostalsd.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{
@@ -180,10 +170,10 @@ const HomePage = () => {
                   About Us
                 </Typography>
                 <Typography variant="h4" fontWeight={700} sx={{ mt: 1, mb: 2.2 }}>
-                  Premier copy, print, and document services for San Diego.
+                  Premier online shipping, printing, and document services.
                 </Typography>
                 <Typography sx={{ lineHeight: 1.85, mb: 1.8 }}>
-                  Go Postal is your premier destination for shipping and printing services in Little Italy, San Diego, CA. Conveniently located at <strong>1501 India St Suite 103, San Diego, CA</strong>, our family-owned business is dedicated to providing exceptional customer service and professional printing excellence.
+                  Go Postal is your premier destination for online shipping and printing services. Our family-owned business is dedicated to providing exceptional customer service and professional printing excellence, backed by fast shipping and competitive pricing.
                 </Typography>
                 <Typography sx={{ lineHeight: 1.85, mb: 1.8 }}>
                   We prioritize saving you time and money by offering the right printing services at competitive prices. Whether you need small black-and-white copies or large full-color prints, we handle everything with precision and care.

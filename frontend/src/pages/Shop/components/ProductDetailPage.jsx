@@ -35,6 +35,7 @@ import {
   Breadcrumbs,
   Snackbar,
   CardMedia,
+  Divider,
   Checkbox,
   FormControlLabel
 } from '@mui/material';
@@ -76,6 +77,8 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [fileError, setFileError] = useState(null);
   const [previewFiles, setPreviewFiles] = useState([]);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [designNotes, setDesignNotes] = useState('');
+  const [customizationService, setCustomizationService] = useState('none');
   const [validationErrors, setValidationErrors] = useState({});
   const [shippingInfo, setShippingInfo] = useState({
     country: 'US',
@@ -168,13 +171,72 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
+  const getErrorMessage = (errorLike, fallback) => {
+    if (!errorLike) {
+      return fallback;
+    }
+
+    if (typeof errorLike === 'string') {
+      return errorLike;
+    }
+
+    if (typeof errorLike === 'object') {
+      return (
+        errorLike.error ||
+        errorLike.message ||
+        errorLike.code ||
+        fallback
+      );
+    }
+
+    return fallback;
+  };
+
+  const customizationOptions = [
+    {
+      value: 'none',
+      label: 'Print-ready artwork',
+      description: 'You upload finished artwork and we print exactly what you provide.',
+      surcharge: 0,
+    },
+    {
+      value: 'file_review',
+      label: 'File review',
+      description: 'We check bleed, trim, and print readiness before production.',
+      surcharge: 10,
+    },
+    {
+      value: 'design_assist',
+      label: 'Design assistance',
+      description: 'We help refine or adapt your design. That service time affects the price.',
+      surcharge: 35,
+    },
+  ];
+
+  const selectedCustomizationOption = customizationOptions.find((option) => option.value === customizationService) || customizationOptions[0];
+
+  const customizationPayload = React.useMemo(() => ({
+    serviceLevel: customizationService,
+    designNotes,
+    uploadedFiles: uploadedFiles.map((file) => file.name),
+  }), [customizationService, designNotes, uploadedFiles]);
+
+  const shouldShowDesignPreview =
+    customizationService !== 'none' ||
+    designNotes.trim().length > 0 ||
+    uploadedFiles.length > 0;
+
   // Custom hooks for product options and pricing
   const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
   const { pricing, loading: pricingLoading, error: pricingError } = useProductPricing(
     product.vendor_product_id, 
     selectedOptions, 
-    options
+    options,
+    customizationPayload
   );
+
+  const hasSelectedValue = (value) =>
+    value !== undefined && value !== null && `${value}` !== '';
 
   // Manage initial loading state
   React.useEffect(() => {
@@ -409,9 +471,9 @@ const ProductDetailPage = ({ product, onBack }) => {
       const optionsObject = {};
       options.forEach(optionGroup => {
         const selectedId = selectedOptions[optionGroup.group];
-        if (selectedId && selectedId !== '') {
+        if (hasSelectedValue(selectedId)) {
           // Find the option name for the selected ID
-          const selectedOption = optionGroup.options.find(opt => opt.id === selectedId);
+          const selectedOption = optionGroup.options.find(opt => String(opt.id) === String(selectedId));
           if (selectedOption) {
             optionsObject[optionGroup.group] = selectedOption.id.toString();
           }
@@ -437,7 +499,7 @@ const ProductDetailPage = ({ product, onBack }) => {
       setShowShippingDialog(true);
     } catch (error) {
       console.error('Error getting shipping estimates:', error);
-      setError(error?.response?.data?.error || 'Failed to get shipping estimates');
+      setError(getErrorMessage(error?.response?.data?.error, 'Failed to get shipping estimates'));
     } finally {
       setShippingLoading(false);
     }
@@ -466,7 +528,7 @@ const ProductDetailPage = ({ product, onBack }) => {
       // Generate option IDs in the correct order
       const optionIds = options.map(optionGroup => 
         selectedOptions[optionGroup.group]
-      ).filter(id => id && id !== '');
+      ).filter(hasSelectedValue);
 
       // Check if quantity is part of API options
       const hasQuantityInOptions = options.some(optionGroup => 
@@ -480,9 +542,10 @@ const ProductDetailPage = ({ product, onBack }) => {
         quantity;
 
       const result = await addItemToCart(
-        parseInt(product.vendor_product_id),
+        product.vendor_product_id,
         optionIds,
-        finalQuantity
+        finalQuantity,
+        customizationPayload
       );
 
       if (result.success) {
@@ -490,11 +553,11 @@ const ProductDetailPage = ({ product, onBack }) => {
         setShowSuccessSnackbar(true);
         setRetryCount(0);
       } else {
-        setError(result.error || 'Failed to add item to cart. Please try again.');
+        setError(getErrorMessage(result.error, 'Failed to add item to cart. Please try again.'));
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      const errorMessage = error.response?.data?.error || 'Failed to add item to cart. Please try again.';
+      const errorMessage = getErrorMessage(error?.response?.data?.error, 'Failed to add item to cart. Please try again.');
       setError(errorMessage);
     }
   };
@@ -521,7 +584,7 @@ const ProductDetailPage = ({ product, onBack }) => {
     // Validate required options
     if (options && options.length > 0) {
       options.forEach(optionGroup => {
-        if (!selectedOptions[optionGroup.group] || selectedOptions[optionGroup.group] === '') {
+        if (!hasSelectedValue(selectedOptions[optionGroup.group])) {
           errors[optionGroup.group] = `${optionGroup.group} is required`;
         }
       });
@@ -798,7 +861,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                   >
                     <InputLabel>{optionGroup.group}</InputLabel>
                     <Select
-                      value={selectedOptions[optionGroup.group] || ''}
+                      value={selectedOptions[optionGroup.group] ?? ''}
                       onChange={(e) => handleOptionChange(optionGroup.group, e.target.value)}
                       label={optionGroup.group}
                     >
@@ -817,6 +880,41 @@ const ProductDetailPage = ({ product, onBack }) => {
                 ))
               )}
             </Box>
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Customization Service</InputLabel>
+              <Select
+                value={customizationService}
+                onChange={(e) => setCustomizationService(e.target.value)}
+                label="Customization Service"
+              >
+                {customizationOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label} {option.surcharge > 0 ? `(+${formatPrice(option.surcharge)})` : '(Included)'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {selectedCustomizationOption.label}
+              </Typography>
+              <Typography variant="body2">
+                {selectedCustomizationOption.description}
+              </Typography>
+            </Alert>
+
+            <TextField
+              label="Design Notes"
+              multiline
+              rows={4}
+              fullWidth
+              value={designNotes}
+              onChange={(e) => setDesignNotes(e.target.value)}
+              sx={{ mb: 3 }}
+              helperText="Describe what should be customized so we can quote and produce the job correctly."
+            />
 
             {/* Quantity - Only show if not included in API options */}
             {!options.some(optionGroup => 
@@ -949,6 +1047,71 @@ const ProductDetailPage = ({ product, onBack }) => {
           }}
         >
           <Paper sx={{ p: { xs: 2, sm: 3 }, width: '100%' }}>
+            {shouldShowDesignPreview && (
+              <>
+                <Typography variant="h5" gutterBottom>
+                  Live Design Preview
+                </Typography>
+                <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+                  <Box sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <img
+                      src={product.image || productTypeImage || logoImage}
+                      alt={product.name}
+                      style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
+                    />
+                  </Box>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      {product.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Service level: {selectedCustomizationOption.label}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                      This preview shows what the client has selected, uploaded, and requested so they can review the order before checkout.
+                    </Typography>
+                    <List dense sx={{ py: 0 }}>
+                      {options.map((optionGroup) => {
+                        const selectedId = selectedOptions[optionGroup.group];
+                        const selectedOption = optionGroup.options.find((option) => String(option.id) === String(selectedId));
+                        return (
+                          <ListItem key={optionGroup.group} disableGutters sx={{ py: 0.25 }}>
+                            <ListItemText
+                              primary={optionGroup.group}
+                              secondary={selectedOption ? selectedOption.name : 'Not selected'}
+                            />
+                          </ListItem>
+                        );
+                      })}
+                    </List>
+                    <Divider sx={{ my: 1.5 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Design Notes
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                      {designNotes || 'No design notes added yet.'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Uploaded Artwork
+                    </Typography>
+                    {uploadedFiles.length > 0 ? (
+                      <List dense sx={{ py: 0 }}>
+                        {uploadedFiles.map((file) => (
+                          <ListItem key={file.name} disableGutters sx={{ py: 0.25 }}>
+                            <ListItemText primary={file.name} secondary={formatFileSize(file.size)} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No artwork uploaded yet.
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
             <Typography variant="h5" gutterBottom>
               Additional Steps:
             </Typography>
@@ -1002,7 +1165,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                         Choose Files
                       </Button>
                       <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        Supported format: PDF only (Max 10MB each)
+                        Supported format: PDF only (Max 10MB each). Use Preview & Approve to check exactly what you are sending.
                       </Typography>
                     </Box>
                     

@@ -5,10 +5,14 @@ import { calculateProductPrice } from '../services/product_service';
  * Custom hook for managing product pricing
  * Follows Single Responsibility Principle
  */
-export const useProductPricing = (productId, selectedOptions, options) => {
+export const useProductPricing = (productId, selectedOptions, options, customization = null) => {
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const customizationKey = customization ? JSON.stringify(customization) : '';
+
+  const hasSelectedValue = (value) =>
+    value !== undefined && value !== null && `${value}` !== '';
 
   useEffect(() => {
     const calculatePrice = async () => {
@@ -18,8 +22,8 @@ export const useProductPricing = (productId, selectedOptions, options) => {
       }
 
       // Check if all required option groups have selections
-      const hasAllRequiredOptions = options.every(optionGroup => 
-        selectedOptions[optionGroup.group] && selectedOptions[optionGroup.group] !== ''
+      const hasAllRequiredOptions = options.every(optionGroup =>
+        hasSelectedValue(selectedOptions[optionGroup.group])
       );
 
       if (!hasAllRequiredOptions) {
@@ -30,7 +34,7 @@ export const useProductPricing = (productId, selectedOptions, options) => {
       // Generate the option key in the correct order
       const optionIds = options.map(optionGroup => 
         selectedOptions[optionGroup.group]
-      ).filter(id => id && id !== '');
+      ).filter(hasSelectedValue);
 
       if (optionIds.length === 0) {
         setPricing(null);
@@ -41,11 +45,16 @@ export const useProductPricing = (productId, selectedOptions, options) => {
       setError(null);
       
       try {
-        const priceData = await calculateProductPrice(parseInt(productId), optionIds, 6);
+        const priceData = await calculateProductPrice(parseInt(productId), optionIds, 6, customization);
+        if (!priceData || typeof priceData.price !== 'number') {
+          setError('Price is currently unavailable for this configuration. Please try a different option set.');
+          setPricing(null);
+          return;
+        }
         setPricing(priceData);
       } catch (error) {
         console.error('Error calculating price:', error);
-        setError('Failed to calculate price');
+        setError(error?.message || 'Failed to calculate price');
         setPricing(null);
       } finally {
         setLoading(false);
@@ -53,7 +62,7 @@ export const useProductPricing = (productId, selectedOptions, options) => {
     };
 
     calculatePrice();
-  }, [productId, selectedOptions, options]);
+  }, [productId, selectedOptions, options, customizationKey]);
 
   return { pricing, loading, error };
 };

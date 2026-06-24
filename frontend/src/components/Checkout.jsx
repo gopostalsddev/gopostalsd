@@ -45,6 +45,7 @@ export function Checkout() {
     error,
     selectedShipping,
     calculateShippingOptions,
+    clearEntireCart,
     getCartStats
   } = useCartOperations();
 
@@ -122,8 +123,26 @@ export function Checkout() {
   }, [user]);
   const [orderResult, setOrderResult] = useState(null);
   const [processingOrder, setProcessingOrder] = useState(false);
+  const [checkoutStepError, setCheckoutStepError] = useState(null);
 
   const cartStats = getCartStats();
+
+  const getCheckoutSessionId = () => {
+    const existingSessionId =
+      cart.session_id ||
+      sessionStorage.getItem('cart_session_id') ||
+      localStorage.getItem('cart_session_id');
+    if (existingSessionId) {
+      sessionStorage.setItem('cart_session_id', existingSessionId);
+      localStorage.setItem('cart_session_id', existingSessionId);
+      return existingSessionId;
+    }
+
+    const generatedSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('cart_session_id', generatedSessionId);
+    localStorage.setItem('cart_session_id', generatedSessionId);
+    return generatedSessionId;
+  };
   
   useEffect(() => {
     // Wait for authentication
@@ -143,9 +162,9 @@ export function Checkout() {
     
     // Only redirect if cart is truly empty AND has been loaded (has an ID)
     if (cart.id && cartStats.isEmpty) {
-      window.location = '/cart';
+      navigate('/cart');
     }
-  }, [cartStats.isEmpty, loading, isAuthenticated, cartStats.itemCount, cart.items, cart.id]);
+  }, [cartStats.isEmpty, loading, isAuthenticated, cartStats.itemCount, cart.items, cart.id, navigate]);
 
   const handleNext = () => {
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -175,9 +194,12 @@ export function Checkout() {
   };
 
   const handleCalculateShipping = async () => {
+    setCheckoutStepError(null);
     const result = await calculateShippingOptions(checkoutData.shippingAddress);
     if (result.success) {
       handleNext();
+    } else {
+      setCheckoutStepError(result.error || 'Unable to calculate shipping. Please review your address and try again.');
     }
   };
 
@@ -201,7 +223,7 @@ export function Checkout() {
       }
 
       // Get session ID for the cart
-      const sessionId = localStorage.getItem('cart_session_id') || 'default_session';
+      const sessionId = getCheckoutSessionId();
       
       // Create order
       const orderResponse = await api.post(`/orders/?session_id=${sessionId}`, {
@@ -223,6 +245,11 @@ export function Checkout() {
       const paymentResult = paymentResponse.data;
 
       if (paymentResult.success) {
+        const clearResult = await clearEntireCart();
+        if (!clearResult.success) {
+          // Do not fail checkout confirmation if cart clear fails.
+          console.warn('Order completed but cart clear failed:', clearResult.error);
+        }
         setOrderResult(paymentResult);
         setActiveStep(3); // Go to confirmation
       } else {
@@ -252,7 +279,7 @@ export function Checkout() {
       case 2:
         return (
           <PaymentStep
-            cart={cart}
+            amountCents={Math.max(0, Math.round((Number(cartStats.total) || 0) * 100))}
             checkoutData={checkoutData}
             onCreateOrder={handleCreateOrder}
             processing={processingOrder}
@@ -278,18 +305,10 @@ export function Checkout() {
     );
   }
 
-  // Check authentication - show loading while redirecting
+  // Check authentication — redirect immediately if not logged in
   if (!isAuthenticated) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ ml: 2 }}>
-            Redirecting to login...
-          </Typography>
-        </Box>
-      </Container>
-    );
+    navigate('/login');
+    return null;
   }
 
   if (error) {
@@ -317,6 +336,11 @@ export function Checkout() {
       </Stepper>
 
       <Paper elevation={2} sx={{ p: 4 }}>
+        {checkoutStepError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {checkoutStepError}
+          </Alert>
+        )}
         {renderStepContent(activeStep)}
       </Paper>
 
@@ -332,14 +356,14 @@ export function Checkout() {
         <Box sx={{ flex: '1 1 auto' }} />
         
         {activeStep === 0 && (
-          <Button onClick={handleCalculateShipping}>
-            Calculate Shipping
+          <Button onClick={handleNext}>
+            Continue to Shipping
           </Button>
         )}
         
         {activeStep === 1 && (
-          <Button onClick={handleNext}>
-            Continue to Payment
+          <Button onClick={handleCalculateShipping}>
+            Calculate Shipping & Continue to Payment
           </Button>
         )}
       </Box>
@@ -555,7 +579,9 @@ function ShippingBillingStep({ checkoutData, onInputChange, onSameAddressChange,
   );
 }
 
-function PaymentStep({ cart, checkoutData, onCreateOrder, processing }) {
+function PaymentStep({ amountCents, checkoutData, onCreateOrder, processing }) {
+  const amount = Number.isFinite(Number(amountCents)) ? Number(amountCents) : 0;
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
@@ -563,7 +589,7 @@ function PaymentStep({ cart, checkoutData, onCreateOrder, processing }) {
       </Typography>
       
       <SquarePaymentForm
-        amount={cart.total * 100} // Convert to cents
+        amount={amount} // Convert to cents
         onPaymentSuccess={onCreateOrder}
         processing={processing}
       />

@@ -2,6 +2,9 @@ import logging
 import logging.config
 
 def configure_logging(environment):
+    is_dev = environment in ['development', 'testing']
+    default_level = 'DEBUG' if is_dev else 'INFO'
+
     log_config = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -16,24 +19,24 @@ def configure_logging(environment):
         'handlers': {
             'console': {
                 'class': 'logging.StreamHandler',
-                'formatter': 'detailed' if environment in ['development', 'testing'] else 'simple',
-                'level': 'DEBUG' if environment in ['development', 'testing'] else 'INFO',
+                'formatter': 'detailed' if is_dev else 'simple',
+                'level': default_level,
             },
             'file': {
                 'class': 'logging.FileHandler',
                 'formatter': 'detailed',
-                'level': 'DEBUG',
+                'level': default_level,
                 'filename': 'app.log',
             },
         },
         'root': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG' if environment in ['development', 'testing'] else 'INFO',
+            'level': default_level,
         },
         'loggers': {
             'dev': {
                 'handlers': ['console'],
-                'level': 'DEBUG' if environment in ['development', 'testing'] else 'INFO',
+                'level': default_level,
                 'propagate': False,
             }
         }
