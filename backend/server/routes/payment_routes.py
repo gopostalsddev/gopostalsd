@@ -9,6 +9,7 @@ from flask import request
 from flask_restx import Namespace, Resource, fields
 from server.services.payment_service import PaymentService
 from server.middleware.auth_middleware import require_auth, require_role
+from server.middleware.rate_limit_middleware import rate_limit_by_ip
 from server.routes.response_utils import error_response
 import logging
 
@@ -83,6 +84,7 @@ class PaymentProcessResource(Resource):
     @api.expect(payment_request_model)
     @api.response(201, 'Payment processed', payment_response_model)
     @require_auth
+    @rate_limit_by_ip('PAYMENT_RATE_LIMIT_COUNT', 'PAYMENT_RATE_LIMIT_WINDOW_SECONDS', 'payment-process')
     def post(self):
         """Process a payment."""
         data = request.get_json(silent=True)
@@ -230,8 +232,9 @@ class WebhookResource(Resource):
 @api.route('/status')
 class PaymentStatusResource(Resource):
     """Resource for checking payment service status."""
-    
+
     @api.doc('get_payment_status')
+    @require_role('Admin')
     def get(self):
         """Get payment service status and configuration."""
         payment_service = PaymentService()

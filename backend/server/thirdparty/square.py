@@ -10,6 +10,7 @@ import hmac
 import hashlib
 import base64
 import logging
+import secrets
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
@@ -167,7 +168,7 @@ class SquareAdapter:
             
             # Generate idempotency key if not provided
             if not idempotency_key:
-                idempotency_key = f"gopostalsd_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{amount}"
+                idempotency_key = secrets.token_urlsafe(32)
             
             # Build payment request as a dictionary to support both old and new SDK variants.
             payment_request = {

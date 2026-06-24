@@ -326,7 +326,7 @@ class LogoutResource(Resource):
     def post(self):
         """Logout user by invalidating session."""
         data = request.get_json(silent=True) or {}
-        session_token = data.get('session_token') or _extract_bearer_token() or request.args.get('session_token')
+        session_token = data.get('session_token') or _extract_bearer_token()
         
         if not session_token:
             return error_response('Session token is required', 400)
@@ -352,7 +352,7 @@ class RefreshResource(Resource):
     def post(self):
         """Refresh user session with refresh token."""
         data = request.get_json(silent=True) or {}
-        refresh_token = data.get('refresh_token') or request.args.get('refresh_token')
+        refresh_token = data.get('refresh_token')
         
         if not refresh_token:
             return error_response('Refresh token is required', 400)
@@ -432,7 +432,7 @@ class CurrentUserResource(Resource):
     @api.response(200, 'Current user fetched successfully', user_model)
     def get(self):
         """Get current user by session token."""
-        session_token = _extract_bearer_token() or request.args.get('session_token')
+        session_token = _extract_bearer_token()
         
         if not session_token:
             return error_response('Session token is required', 400)

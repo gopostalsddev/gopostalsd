@@ -6,9 +6,11 @@ for completed cart checkouts.
 """
 
 import logging
+import secrets
 import uuid
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
+from markupsafe import escape as html_escape
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.exc import SQLAlchemyError
@@ -182,7 +184,7 @@ class OrderService:
                 amount=int(self._to_money_decimal(order.total_amount) * 100),  # Convert to cents
                 currency=order.currency,
                 source_id=payment_data['source_id'],
-                idempotency_key=f"order_{order.order_number}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
+                idempotency_key=secrets.token_urlsafe(32),
                 buyer_email=order.customer_email,
                 buyer_phone=order.customer_phone,
                 shipping_address=order.shipping_address,
@@ -518,14 +520,14 @@ Go Postal SD Team
 
             items_html = "".join([
                 f"<tr><td style=\"padding:6px 12px;border:1px solid #ddd;\">{item.quantity}</td>"
-                f"<td style=\"padding:6px 12px;border:1px solid #ddd;\">{item.product_name}</td>"
-                f"<td style=\"padding:6px 12px;border:1px solid #ddd;\">{item.product_sku or 'N/A'}</td>"
+                f"<td style=\"padding:6px 12px;border:1px solid #ddd;\">{html_escape(item.product_name)}</td>"
+                f"<td style=\"padding:6px 12px;border:1px solid #ddd;\">{html_escape(item.product_sku or 'N/A')}</td>"
                 f"<td style=\"padding:6px 12px;border:1px solid #ddd;\">${float(item.total_price):.2f}</td></tr>"
                 for item in order.items
             ])
 
-            shipping_html = format_address(shipping_address).replace("\n", "<br>")
-            billing_html = format_address(billing_address).replace("\n", "<br>")
+            shipping_html = html_escape(format_address(shipping_address)).replace("\n", "<br>")
+            billing_html = html_escape(format_address(billing_address)).replace("\n", "<br>")
 
             html_content = f"""
 <!DOCTYPE html>
@@ -551,7 +553,7 @@ Go Postal SD Team
   <body>
     <div class="container">
       <div class="header">
-        <h1>Thanks for your order, {order.customer_first_name}!</h1>
+        <h1>Thanks for your order, {html_escape(order.customer_first_name)}!</h1>
         <p>Your order has been received and is now being processed.</p>
       </div>
       <div class="summary">

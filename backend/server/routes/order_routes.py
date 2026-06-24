@@ -11,6 +11,7 @@ from server.services.order_service import OrderService
 from server.services.payment_service import PaymentService
 from server.services.email_service import EmailService
 from server.middleware.auth_middleware import require_auth, require_role, optional_auth, get_user_id
+from server.middleware.rate_limit_middleware import rate_limit_by_ip
 from server.factories.main_factory import MainFactory
 from server.validation.input_validator import (
     validate_address_input,
@@ -254,6 +255,7 @@ class PaymentResource(Resource):
     @api.expect(payment_model)
     @api.response(200, 'Payment processed for order')
     @require_auth
+    @rate_limit_by_ip('PAYMENT_RATE_LIMIT_COUNT', 'PAYMENT_RATE_LIMIT_WINDOW_SECONDS', 'payment-order')
     def post(self, order_id):
         """Process payment for order."""
         data = request.get_json()

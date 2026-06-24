@@ -249,15 +249,14 @@ class ErrorHandler:
     
     def handle_generic_error(self, error: Exception):
         """Handle unexpected errors."""
+        tb = traceback.format_exc()
         app_error = ApplicationError(
             message="An unexpected error occurred",
             error_code="INTERNAL_ERROR",
             severity=ErrorSeverity.CRITICAL,
-            details={
-                'exception_type': type(error).__name__,
-                'traceback': traceback.format_exc()
-            }
+            details={'exception_type': type(error).__name__}
         )
+        logger.critical("Unhandled exception [%s]: %s", app_error.error_id, tb)
         return self._create_error_response(app_error)
     
     def _create_error_response(self, error: ApplicationError):

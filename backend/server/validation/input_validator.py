@@ -163,7 +163,7 @@ class InputValidator:
         sanitized = value.strip()
         
         if not allow_html:
-            # Remove HTML tags
+            # Strip all HTML tags — stores raw text, not HTML-encoded
             sanitized = bleach.clean(sanitized, tags=[], attributes={})
         else:
             # Allow only safe HTML tags
@@ -172,10 +172,7 @@ class InputValidator:
                 tags=self.allowed_html_tags,
                 attributes=self.allowed_html_attributes
             )
-        
-        # HTML encode special characters
-        sanitized = html.escape(sanitized, quote=True)
-        
+
         result.sanitized_data = sanitized
         return result
     

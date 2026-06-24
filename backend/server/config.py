@@ -113,6 +113,8 @@ class Config:
     AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS', '3600'))
     CONTACT_RATE_LIMIT_COUNT = int(os.getenv('CONTACT_RATE_LIMIT_COUNT', '5'))
     CONTACT_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('CONTACT_RATE_LIMIT_WINDOW_SECONDS', '300'))
+    PAYMENT_RATE_LIMIT_COUNT = int(os.getenv('PAYMENT_RATE_LIMIT_COUNT', '10'))
+    PAYMENT_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('PAYMENT_RATE_LIMIT_WINDOW_SECONDS', '60'))
 
 class DevelopmentConfig(Config):
     # Database connection string for development environment

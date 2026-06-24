@@ -211,7 +211,10 @@ class PasswordResetToken(db.Model):
 
     def is_expired(self):
         """Check if token is expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires
 
     def is_valid(self):
         """Check if token is valid (not expired and not used)."""
@@ -242,7 +245,10 @@ class EmailVerificationToken(db.Model):
 
     def is_expired(self):
         """Check if token is expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires
 
     def is_valid(self):
         """Check if token is valid (not expired and not used)."""
