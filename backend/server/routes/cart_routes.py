@@ -109,7 +109,7 @@ def get_cart_service():
 class CartResource(Resource):
     """Resource for cart operations."""
     
-    @require_auth
+    @require_cart_auth
     @api.doc('get_cart')
     @api.response(200, 'Cart fetched successfully', cart_model)
     def get(self):
@@ -201,7 +201,7 @@ class AddToCartResource(Resource):
 class UpdateQuantityResource(Resource):
     """Resource for updating cart item quantity."""
     
-    @require_auth
+    @require_cart_auth
     @api.doc('update_quantity')
     @api.expect(update_quantity_model)
     @api.response(200, 'Cart item quantity updated', cart_model)
@@ -237,7 +237,7 @@ class UpdateQuantityResource(Resource):
 class RemoveItemResource(Resource):
     """Resource for removing items from cart."""
     
-    @require_auth
+    @require_cart_auth
     @api.doc('remove_from_cart')
     @api.response(200, 'Cart item removed', cart_model)
     def delete(self, cart_item_id):
@@ -262,7 +262,7 @@ class RemoveItemResource(Resource):
 class ClearCartResource(Resource):
     """Resource for clearing cart."""
     
-    @require_auth
+    @require_cart_auth
     @api.doc('clear_cart')
     def delete(self):
         """Clear all items from cart."""
@@ -283,7 +283,7 @@ class ClearCartResource(Resource):
 class ShippingResource(Resource):
     """Resource for calculating shipping."""
     
-    @require_auth
+    @require_cart_auth
     @api.doc('calculate_shipping')
     @api.expect(shipping_address_model)
     @api.response(200, 'Shipping options calculated successfully')
@@ -322,7 +322,7 @@ class ShippingResource(Resource):
 class CartSummaryResource(Resource):
     """Resource for cart summary."""
     
-    @require_auth
+    @require_cart_auth
     @api.doc('get_cart_summary')
     @api.marshal_with(api.model('CartSummary', {
         'item_count': fields.Integer(description='Number of items'),
