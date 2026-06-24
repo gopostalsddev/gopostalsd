@@ -913,6 +913,43 @@ const ProductDetailPage = ({ product, onBack }) => {
               )}
             </Box>
 
+            {pricing?.pricingBreakdown && (
+              <Accordion sx={{ mb: 3 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle1">How This Price Was Calculated</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <List dense>
+                    <ListItem>
+                      <ListItemText primary="Sinalite base cost" secondary={`${pricing.pricingBreakdown.vendorBasePrice.toFixed(2)} ${pricing.pricingBreakdown.vendorCurrency}`} />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText primary="Exchange rate" secondary={`1 CAD = ${pricing.pricingBreakdown.exchangeRate.toFixed(4)} ${pricing.pricingBreakdown.displayCurrency}`} />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText primary="FX protection buffer" secondary={`${pricing.pricingBreakdown.exchangeBufferPercent.toFixed(2)}%`} />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText primary="Landed cost after conversion and buffer" secondary={`${pricing.pricingBreakdown.landedCost.toFixed(2)} ${pricing.pricingBreakdown.displayCurrency}`} />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText primary="Target markup" secondary={`${pricing.pricingBreakdown.markupPercent.toFixed(2)}%`} />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText primary="Final retail price" secondary={`${pricing.pricingBreakdown.retailPrice.toFixed(2)} ${pricing.pricingBreakdown.displayCurrency}`} />
+                    </ListItem>
+                  </List>
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    {pricing.pricingBreakdown.explanation.map((line) => (
+                      <Typography key={line} variant="body2" sx={{ mb: 0.5 }}>
+                        {line}
+                      </Typography>
+                    ))}
+                  </Alert>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
             {/* Package Information */}
             {pricing?.packageInfo && (
               <Accordion sx={{ mb: 3 }}>

@@ -68,6 +68,16 @@ class Config:
     # Disable SQLAlchemy event system to improve performance
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    PRICING_POLICY_VERSION = os.getenv('PRICING_POLICY_VERSION', 'retail-v1')
+    PRICING_VENDOR_CURRENCY = os.getenv('PRICING_VENDOR_CURRENCY', 'CAD').upper()
+    PRICING_DISPLAY_CURRENCY = os.getenv('PRICING_DISPLAY_CURRENCY', 'USD').upper()
+    PRICING_CAD_TO_USD_RATE = float(os.getenv('PRICING_CAD_TO_USD_RATE', '0.74'))
+    PRICING_EXCHANGE_BUFFER_PERCENT = float(os.getenv('PRICING_EXCHANGE_BUFFER_PERCENT', '5'))
+    PRICING_MARKUP_PERCENT = float(os.getenv('PRICING_MARKUP_PERCENT', '30'))
+    PRICING_FIXED_FEE_USD = float(os.getenv('PRICING_FIXED_FEE_USD', '0'))
+    PRICING_MINIMUM_PROFIT_USD = float(os.getenv('PRICING_MINIMUM_PROFIT_USD', '0'))
+    PRICING_ROUNDING_INCREMENT = os.getenv('PRICING_ROUNDING_INCREMENT', '0.05')
+
     # Security/auth settings
     PASSWORD_HASH_ITERATIONS = int(os.getenv('PASSWORD_HASH_ITERATIONS', '100000'))
     SESSION_EXPIRY_DAYS = int(os.getenv('SESSION_EXPIRY_DAYS', '7'))

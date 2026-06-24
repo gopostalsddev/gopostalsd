@@ -12,6 +12,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import logging
+from decimal import Decimal, ROUND_UP
+from flask import current_app
 from server import database as db
 from server.models.pricing import (
     ProductOption, ProductPricing, 
@@ -49,6 +51,89 @@ class SinalitePricingStrategy(PricingStrategy):
         self.sinalite = sinalite_adapter
         self.repository = repository
         self.cache_duration = timedelta(hours=1)  # Cache pricing for 1 hour
+
+    @staticmethod
+    def _to_decimal(value: Any) -> Decimal:
+        return Decimal(str(value or 0))
+
+    @staticmethod
+    def _round_money(value: Decimal) -> Decimal:
+        return value.quantize(Decimal('0.01'))
+
+    def _get_pricing_policy(self) -> Dict[str, Any]:
+        margin_percent = float(current_app.config.get('PRICING_MARKUP_PERCENT', 30))
+        margin_ratio = max(0.0, min(margin_percent / 100, 0.95))
+        return {
+            'version': current_app.config.get('PRICING_POLICY_VERSION', 'retail-v1'),
+            'vendor_currency': current_app.config.get('PRICING_VENDOR_CURRENCY', 'CAD'),
+            'display_currency': current_app.config.get('PRICING_DISPLAY_CURRENCY', 'USD'),
+            'cad_to_usd_rate': self._to_decimal(current_app.config.get('PRICING_CAD_TO_USD_RATE', 0.74)),
+            'exchange_buffer_percent': self._to_decimal(current_app.config.get('PRICING_EXCHANGE_BUFFER_PERCENT', 5)),
+            'markup_percent': self._to_decimal(margin_percent),
+            'markup_ratio': Decimal(str(margin_ratio)),
+            'fixed_fee_usd': self._to_decimal(current_app.config.get('PRICING_FIXED_FEE_USD', 0)),
+            'minimum_profit_usd': self._to_decimal(current_app.config.get('PRICING_MINIMUM_PROFIT_USD', 0)),
+            'rounding_increment': self._to_decimal(current_app.config.get('PRICING_ROUNDING_INCREMENT', '0.05')),
+        }
+
+    def _build_option_key(self, options: List[int]) -> str:
+        policy_version = current_app.config.get('PRICING_POLICY_VERSION', 'retail-v1')
+        return f"{policy_version}:{'-'.join(map(str, sorted(options)))}"
+
+    def _apply_retail_pricing(self, vendor_price: Any, options: List[int], package_info: Optional[Dict] = None) -> Dict:
+        policy = self._get_pricing_policy()
+        vendor_price_decimal = self._to_decimal(vendor_price)
+        exchange_rate = policy['cad_to_usd_rate']
+        buffer_multiplier = Decimal('1') + (policy['exchange_buffer_percent'] / Decimal('100'))
+        converted_cost = vendor_price_decimal * exchange_rate
+        buffered_cost = converted_cost * buffer_multiplier
+        landed_cost = buffered_cost + policy['fixed_fee_usd']
+
+        if policy['markup_ratio'] >= Decimal('1'):
+            price_from_margin = landed_cost
+        else:
+            price_from_margin = landed_cost / (Decimal('1') - policy['markup_ratio'])
+
+        price_from_min_profit = landed_cost + policy['minimum_profit_usd']
+        pre_rounded_price = max(price_from_margin, price_from_min_profit)
+
+        rounding_increment = policy['rounding_increment'] if policy['rounding_increment'] > 0 else Decimal('0.01')
+        rounded_price = (pre_rounded_price / rounding_increment).quantize(Decimal('1'), rounding=ROUND_UP) * rounding_increment
+
+        explanation = [
+            f"Sinalite cost starts in {policy['vendor_currency']}.",
+            f"That base cost is converted to {policy['display_currency']} using the configured exchange rate.",
+            f"An FX buffer of {policy['exchange_buffer_percent']}% is added to protect margin when CAD/USD moves.",
+            f"A markup target of {policy['markup_percent']}% is then applied to create the retail sell price.",
+        ]
+        if policy['fixed_fee_usd'] > 0:
+            explanation.append(f"A fixed fee of {self._round_money(policy['fixed_fee_usd'])} {policy['display_currency']} is added before markup.")
+        if policy['minimum_profit_usd'] > 0:
+            explanation.append(f"A minimum profit floor of {self._round_money(policy['minimum_profit_usd'])} {policy['display_currency']} is enforced.")
+
+        return {
+            'price': float(self._round_money(rounded_price)),
+            'currency': policy['display_currency'],
+            'packageInfo': package_info or {},
+            'productOptions': options,
+            'pricingBreakdown': {
+                'vendorCurrency': policy['vendor_currency'],
+                'displayCurrency': policy['display_currency'],
+                'vendorBasePrice': float(self._round_money(vendor_price_decimal)),
+                'exchangeRate': float(exchange_rate),
+                'convertedCost': float(self._round_money(converted_cost)),
+                'exchangeBufferPercent': float(policy['exchange_buffer_percent']),
+                'bufferedCost': float(self._round_money(buffered_cost)),
+                'fixedFee': float(self._round_money(policy['fixed_fee_usd'])),
+                'landedCost': float(self._round_money(landed_cost)),
+                'markupPercent': float(policy['markup_percent']),
+                'minimumProfit': float(self._round_money(policy['minimum_profit_usd'])),
+                'preRoundedRetailPrice': float(self._round_money(pre_rounded_price)),
+                'roundingIncrement': float(rounding_increment),
+                'retailPrice': float(self._round_money(rounded_price)),
+                'explanation': explanation,
+            },
+        }
     
     def calculate_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
         """
@@ -64,13 +149,17 @@ class SinalitePricingStrategy(PricingStrategy):
         """
         try:
             # Create option key for caching (sorted for consistency)
-            option_key = "-".join(map(str, sorted(options)))
+            option_key = self._build_option_key(options)
             
             # Check cache first
             cached_pricing = self.repository.get_cached_pricing(product_id, store_code, option_key)
             if cached_pricing:
                 logger.info(f"Using cached pricing for product {product_id}")
-                return cached_pricing
+                return self._apply_retail_pricing(
+                    cached_pricing.get('price', 0),
+                    options,
+                    cached_pricing.get('packageInfo')
+                )
             
             # Use key-based pricing from Sinalite API
             pricing_data = self.sinalite.get_price_by_key(product_id, option_key)
@@ -86,16 +175,16 @@ class SinalitePricingStrategy(PricingStrategy):
                 price_value = pricing_data.get('price', 0)
             
             # Format the response to match expected structure
-            formatted_pricing = {
+            raw_pricing = {
                 'price': price_value,
-                'packageInfo': {},  # Will be populated from product details if needed
+                'packageInfo': {},
                 'productOptions': options
             }
             
             # Cache the result
-            self.repository.cache_pricing(product_id, store_code, option_key, formatted_pricing, options)
+            self.repository.cache_pricing(product_id, store_code, option_key, raw_pricing, options)
             
-            return formatted_pricing
+            return self._apply_retail_pricing(price_value, options)
             
         except Exception as e:
             logger.error(f"Error calculating price for product {product_id}: {str(e)}")

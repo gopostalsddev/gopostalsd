@@ -30,7 +30,8 @@ pricing_request_model = api.model("PricingRequest", {
 pricing_response_model = api.model("PricingResponse", {
     "price": fields.Float(description="Product price"),
     "currency": fields.String(description="Currency code"),
-    "estimated_ship_date": fields.String(description="Estimated ship date")
+    "estimated_ship_date": fields.String(description="Estimated ship date"),
+    "pricingBreakdown": fields.Raw(description="Retail pricing breakdown and explanation")
 })
 
 shipping_estimate_model = api.model("ShippingEstimateRequest", {
