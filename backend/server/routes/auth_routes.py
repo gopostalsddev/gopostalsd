@@ -7,6 +7,7 @@ It follows the same pattern as other route modules for consistency.
 
 from flask import request, current_app
 from flask_restx import Namespace, Resource, fields
+import re
 from server.controllers.auth_controller import AuthController
 from server.validation.input_validator import (
     validate_address_input,
@@ -27,6 +28,22 @@ def _extract_bearer_token() -> str:
     if auth_header.startswith('Bearer '):
         return auth_header.split(' ', 1)[1].strip()
     return ''
+
+
+def _validate_auth_token(raw_token: str, max_length: int = 255):
+    """Validate auth tokens without applying generic SQL/XSS string rules."""
+    if raw_token is None:
+        return ''
+
+    token = str(raw_token).strip()
+    if not token or len(token) > max_length:
+        return ''
+
+    # Support common token formats (URL-safe/base64/JWT-like).
+    if not re.fullmatch(r'[A-Za-z0-9._~+/=-]+', token):
+        return ''
+
+    return token
 
 
 def _get_auth_service():
@@ -312,12 +329,12 @@ class LogoutResource(Resource):
         
         if not session_token:
             return error_response('Session token is required', 400)
-        
-        token_result = validate_string_input(session_token, max_length=255)
-        if not token_result.is_valid:
+
+        validated_token = _validate_auth_token(session_token)
+        if not validated_token:
             return error_response('Invalid session token', 400)
 
-        result = AuthController.logout(token_result.sanitized_data, auth_service=_get_auth_service())
+        result = AuthController.logout(validated_token, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
@@ -338,12 +355,12 @@ class RefreshResource(Resource):
         
         if not refresh_token:
             return error_response('Refresh token is required', 400)
-        
-        token_result = validate_string_input(refresh_token, max_length=255)
-        if not token_result.is_valid:
+
+        validated_token = _validate_auth_token(refresh_token)
+        if not validated_token:
             return error_response('Invalid refresh token', 400)
 
-        result = AuthController.refresh_session(token_result.sanitized_data, auth_service=_get_auth_service())
+        result = AuthController.refresh_session(validated_token, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
@@ -418,12 +435,12 @@ class CurrentUserResource(Resource):
         
         if not session_token:
             return error_response('Session token is required', 400)
-        
-        token_result = validate_string_input(session_token, max_length=255)
-        if not token_result.is_valid:
+
+        validated_token = _validate_auth_token(session_token)
+        if not validated_token:
             return error_response('Invalid session token', 400)
 
-        result = AuthController.get_current_user(token_result.sanitized_data, auth_service=_get_auth_service())
+        result = AuthController.get_current_user(validated_token, auth_service=_get_auth_service())
         
         if result.status:
             return result.data, 200
