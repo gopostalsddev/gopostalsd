@@ -2,7 +2,7 @@ from server.controllers import Result
 from enum import Enum
 from server.config import sinalite
 from server.config import database as db
-from server.models.print_product import PrintProductCategory, PrintProductType, PrintProduct
+from server.models.print_product import PrintProductCategory, PrintProductType, PrintProduct, Vendor
 from markupsafe import escape
 import logging
 import os
@@ -52,6 +52,84 @@ class PrintProductSuccessMessages(Enum):
     PRINT_PRODUCTS_SYNCED_SUCCESSFULLY = "Print products synced successfully"
 
 class PrintProductController:
+
+    @staticmethod
+    def create_manual_product(data: dict) -> Result:
+        """Create a manual product entry for non-Sinalite or manually managed vendors."""
+        result = Result()
+
+        try:
+            name = (data.get('name') or '').strip()
+            sku = (data.get('sku') or '').strip()
+            description = (data.get('description') or '').strip() or None
+            image = (data.get('image') or '').strip() or None
+            vendor_product_id = (data.get('vendor_product_id') or '').strip() or None
+            category_id = data.get('category_id')
+            type_id = data.get('type_id') or 0
+            vendor_id = data.get('vendor_id')
+
+            if not name:
+                result.status = False
+                result.error = 'Product name is required'
+                return result
+            if not sku:
+                result.status = False
+                result.error = 'SKU is required'
+                return result
+            if not category_id:
+                result.status = False
+                result.error = 'category_id is required'
+                return result
+            if not vendor_id:
+                result.status = False
+                result.error = 'vendor_id is required'
+                return result
+
+            category = db.session.get(PrintProductCategory, int(category_id))
+            vendor = db.session.get(Vendor, int(vendor_id))
+            product_type = db.session.get(PrintProductType, int(type_id)) if int(type_id) > 0 else None
+
+            if not category:
+                result.status = False
+                result.error = 'Category not found'
+                return result
+            if not vendor:
+                result.status = False
+                result.error = 'Vendor not found'
+                return result
+            if product_type and product_type.category_id != category.id:
+                result.status = False
+                result.error = 'Selected product type does not belong to this category'
+                return result
+            if PrintProduct.query.filter_by(sku=sku).first():
+                result.status = False
+                result.error = 'SKU already exists'
+                return result
+
+            new_product = PrintProduct(
+                name=name,
+                sku=sku,
+                description=description,
+                image=image,
+                category_id=category.id,
+                type_id=int(type_id) if int(type_id) > 0 else 0,
+                vendor_id=vendor.id,
+                vendor_product_id=vendor_product_id,
+            )
+            db.session.add(new_product)
+            db.session.commit()
+
+            PrintProductController.update_category_classification_status(category.id)
+
+            result.status = True
+            result.data = new_product.to_dict()
+            return result
+        except Exception as e:
+            db.session.rollback()
+            result.status = False
+            result.error = f'Failed to create product: {str(e)}'
+            logger.error('Error creating manual product: %s', e)
+            return result
 
     @staticmethod
     def ensure_default_product_types_for_categories(default_suffix: str = "General") -> Result:

@@ -59,7 +59,7 @@ class PricingController:
         return result
     
     @staticmethod
-    def calculate_price(product_id: int, options: list, store_code: int) -> Result:
+    def calculate_price(product_id: int, options: list, store_code: int, customization: dict | None = None) -> Result:
         """
         Calculate price for a product with selected options.
         
@@ -83,7 +83,7 @@ class PricingController:
                 result.error = "Pricing service not available"
                 return result
             
-            pricing = pricing_service.calculate_product_price(product_id, options, store_code)
+            pricing = pricing_service.calculate_product_price(product_id, options, store_code, customization)
             
             if not pricing:
                 result.status = False

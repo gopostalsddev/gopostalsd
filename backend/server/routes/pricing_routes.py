@@ -24,7 +24,8 @@ product_options_model = api.model("ProductOptions", {
 
 pricing_request_model = api.model("PricingRequest", {
     "options": fields.List(fields.Integer, description="Selected option IDs"),
-    "store_code": fields.Integer(description="Store code (6 for Canada, 9 for US)", default=6)
+    "store_code": fields.Integer(description="Store code (6 for Canada, 9 for US)", default=6),
+    "customization": fields.Raw(description="Customization settings that affect price")
 })
 
 pricing_response_model = api.model("PricingResponse", {
@@ -97,8 +98,9 @@ class ProductPriceResource(Resource):
         
         options = data.get('options', [])
         store_code = data.get('store_code', 6)
+        customization = data.get('customization')
         
-        result = PricingController.calculate_price(product_id, options, store_code)
+        result = PricingController.calculate_price(product_id, options, store_code, customization)
         
         if result.status:
             return result.data

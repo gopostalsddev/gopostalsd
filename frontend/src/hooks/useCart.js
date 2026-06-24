@@ -19,9 +19,9 @@ export function useCartOperations() {
   } = useCart();
 
   // Add item to cart with error handling
-  const addItemToCart = async (productId, selectedOptions, quantity = 1) => {
+  const addItemToCart = async (productId, selectedOptions, quantity = 1, customization = null) => {
     try {
-      const result = await addToCart(productId, selectedOptions, quantity);
+      const result = await addToCart(productId, selectedOptions, quantity, customization);
       if (result.success) {
         return { success: true, message: 'Item added to cart successfully' };
       } else {

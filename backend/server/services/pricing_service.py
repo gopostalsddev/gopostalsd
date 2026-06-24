@@ -36,7 +36,7 @@ class PricingStrategy(ABC):
     """
     
     @abstractmethod
-    def calculate_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
+    def calculate_price(self, product_id: int, options: List[int], store_code: int, customization: Optional[Dict] = None) -> Optional[Dict]:
         """Calculate price for a product with given options."""
         pass
 
@@ -74,20 +74,44 @@ class SinalitePricingStrategy(PricingStrategy):
             'fixed_fee_usd': self._to_decimal(current_app.config.get('PRICING_FIXED_FEE_USD', 0)),
             'minimum_profit_usd': self._to_decimal(current_app.config.get('PRICING_MINIMUM_PROFIT_USD', 0)),
             'rounding_increment': self._to_decimal(current_app.config.get('PRICING_ROUNDING_INCREMENT', '0.05')),
+            'customization_fees': {
+                'none': Decimal('0'),
+                'file_review': self._to_decimal(current_app.config.get('CUSTOMIZATION_FILE_REVIEW_FEE_USD', 10)),
+                'design_assist': self._to_decimal(current_app.config.get('CUSTOMIZATION_DESIGN_ASSIST_FEE_USD', 35)),
+            },
         }
 
-    def _build_option_key(self, options: List[int]) -> str:
-        policy_version = current_app.config.get('PRICING_POLICY_VERSION', 'retail-v1')
-        return f"{policy_version}:{'-'.join(map(str, sorted(options)))}"
+    def _normalize_customization(self, customization: Optional[Dict]) -> Dict[str, Any]:
+        customization = customization or {}
+        service_level = customization.get('serviceLevel', 'none')
+        if service_level not in {'none', 'file_review', 'design_assist'}:
+            service_level = 'none'
 
-    def _apply_retail_pricing(self, vendor_price: Any, options: List[int], package_info: Optional[Dict] = None) -> Dict:
+        uploaded_files = customization.get('uploadedFiles', [])
+        if not isinstance(uploaded_files, list):
+            uploaded_files = []
+
+        return {
+            'serviceLevel': service_level,
+            'designNotes': str(customization.get('designNotes', '') or '').strip()[:1000],
+            'uploadedFiles': uploaded_files[:10],
+        }
+
+    def _build_option_key(self, options: List[int], customization: Optional[Dict] = None) -> str:
+        policy_version = current_app.config.get('PRICING_POLICY_VERSION', 'retail-v1')
+        customization_key = self._normalize_customization(customization).get('serviceLevel', 'none')
+        return f"{policy_version}:{customization_key}:{'-'.join(map(str, sorted(options)))}"
+
+    def _apply_retail_pricing(self, vendor_price: Any, options: List[int], package_info: Optional[Dict] = None, customization: Optional[Dict] = None) -> Dict:
         policy = self._get_pricing_policy()
+        customization = self._normalize_customization(customization)
         vendor_price_decimal = self._to_decimal(vendor_price)
         exchange_rate = policy['cad_to_usd_rate']
         buffer_multiplier = Decimal('1') + (policy['exchange_buffer_percent'] / Decimal('100'))
         converted_cost = vendor_price_decimal * exchange_rate
         buffered_cost = converted_cost * buffer_multiplier
-        landed_cost = buffered_cost + policy['fixed_fee_usd']
+        customization_fee = policy['customization_fees'].get(customization['serviceLevel'], Decimal('0'))
+        landed_cost = buffered_cost + policy['fixed_fee_usd'] + customization_fee
 
         if policy['markup_ratio'] >= Decimal('1'):
             price_from_margin = landed_cost
@@ -108,14 +132,24 @@ class SinalitePricingStrategy(PricingStrategy):
         ]
         if policy['fixed_fee_usd'] > 0:
             explanation.append(f"A fixed fee of {self._round_money(policy['fixed_fee_usd'])} {policy['display_currency']} is added before markup.")
+        if customization_fee > 0:
+            explanation.append(
+                f"Customization service '{customization['serviceLevel']}' adds {self._round_money(customization_fee)} {policy['display_currency']} before markup."
+            )
         if policy['minimum_profit_usd'] > 0:
             explanation.append(f"A minimum profit floor of {self._round_money(policy['minimum_profit_usd'])} {policy['display_currency']} is enforced.")
 
         return {
             'price': float(self._round_money(rounded_price)),
             'currency': policy['display_currency'],
-            'packageInfo': package_info or {},
+            'packageInfo': {
+                **(package_info or {}),
+                'Customization Service': customization['serviceLevel'].replace('_', ' ').title(),
+                'Customization Notes': customization['designNotes'],
+                'Artwork Files': customization['uploadedFiles'],
+            },
             'productOptions': options,
+            'customization': customization,
             'pricingBreakdown': {
                 'vendorCurrency': policy['vendor_currency'],
                 'displayCurrency': policy['display_currency'],
@@ -125,17 +159,19 @@ class SinalitePricingStrategy(PricingStrategy):
                 'exchangeBufferPercent': float(policy['exchange_buffer_percent']),
                 'bufferedCost': float(self._round_money(buffered_cost)),
                 'fixedFee': float(self._round_money(policy['fixed_fee_usd'])),
+                'customizationFee': float(self._round_money(customization_fee)),
                 'landedCost': float(self._round_money(landed_cost)),
                 'markupPercent': float(policy['markup_percent']),
                 'minimumProfit': float(self._round_money(policy['minimum_profit_usd'])),
                 'preRoundedRetailPrice': float(self._round_money(pre_rounded_price)),
                 'roundingIncrement': float(rounding_increment),
                 'retailPrice': float(self._round_money(rounded_price)),
+                'customizationService': customization['serviceLevel'],
                 'explanation': explanation,
             },
         }
     
-    def calculate_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
+    def calculate_price(self, product_id: int, options: List[int], store_code: int, customization: Optional[Dict] = None) -> Optional[Dict]:
         """
         Calculate price using Sinalite API key-based pricing with caching.
         
@@ -149,7 +185,8 @@ class SinalitePricingStrategy(PricingStrategy):
         """
         try:
             # Create option key for caching (sorted for consistency)
-            option_key = self._build_option_key(options)
+            customization = self._normalize_customization(customization)
+            option_key = self._build_option_key(options, customization)
             
             # Check cache first
             cached_pricing = self.repository.get_cached_pricing(product_id, store_code, option_key)
@@ -158,7 +195,8 @@ class SinalitePricingStrategy(PricingStrategy):
                 return self._apply_retail_pricing(
                     cached_pricing.get('price', 0),
                     options,
-                    cached_pricing.get('packageInfo')
+                    cached_pricing.get('packageInfo'),
+                    customization,
                 )
             
             # Use key-based pricing from Sinalite API
@@ -184,7 +222,7 @@ class SinalitePricingStrategy(PricingStrategy):
             # Cache the result
             self.repository.cache_pricing(product_id, store_code, option_key, raw_pricing, options)
             
-            return self._apply_retail_pricing(price_value, options)
+            return self._apply_retail_pricing(price_value, options, customization=customization)
             
         except Exception as e:
             logger.error(f"Error calculating price for product {product_id}: {str(e)}")
@@ -271,7 +309,7 @@ class PricingService:
             logger.error(f"Error getting product variants for product {product_id}: {str(e)}")
             return []
     
-    def calculate_product_price(self, product_id: int, options: List[int], store_code: int) -> Optional[Dict]:
+    def calculate_product_price(self, product_id: int, options: List[int], store_code: int, customization: Optional[Dict] = None) -> Optional[Dict]:
         """
         Calculate price for a product with selected options.
         
@@ -283,7 +321,7 @@ class PricingService:
         Returns:
             Dict containing price and package information
         """
-        return self.pricing_strategy.calculate_price(product_id, options, store_code)
+        return self.pricing_strategy.calculate_price(product_id, options, store_code, customization)
     
     def get_shipping_estimates(self, cart_items: List[Dict], shipping_info: Dict) -> List[Dict]:
         """

@@ -100,7 +100,8 @@ class CartService:
                         product_id: int, 
                         selected_options: Dict[str, Any],
                         quantity: int = 1,
-                        user_id: Optional[int] = None) -> Dict[str, Any]:
+                        user_id: Optional[int] = None,
+                        customization: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Add item to cart with pricing calculation.
         
@@ -147,7 +148,8 @@ class CartService:
             pricing_data = self.pricing_service.calculate_product_price(
                 product_id=product_id,
                 options=selected_options,  # Already a list of option IDs
-                store_code=cart.store_code
+                store_code=cart.store_code,
+                customization=customization,
             )
             
             if not pricing_data:
@@ -167,7 +169,8 @@ class CartService:
             unit_price = self._to_money_decimal(pricing_data.get('price', 0))
             
             # Generate option key from selected options
-            option_key = "-".join(map(str, sorted(selected_options)))
+            customization_key = ((customization or {}).get('serviceLevel') or 'none')
+            option_key = f"{customization_key}:{'-'.join(map(str, sorted(selected_options)))}"
             
             # Check if item already exists in cart
             existing_item = CartItem.query.filter_by(

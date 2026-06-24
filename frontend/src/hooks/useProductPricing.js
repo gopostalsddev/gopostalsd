@@ -5,7 +5,7 @@ import { calculateProductPrice } from '../services/product_service';
  * Custom hook for managing product pricing
  * Follows Single Responsibility Principle
  */
-export const useProductPricing = (productId, selectedOptions, options) => {
+export const useProductPricing = (productId, selectedOptions, options, customization = null) => {
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -44,7 +44,7 @@ export const useProductPricing = (productId, selectedOptions, options) => {
       setError(null);
       
       try {
-        const priceData = await calculateProductPrice(parseInt(productId), optionIds, 6);
+        const priceData = await calculateProductPrice(parseInt(productId), optionIds, 6, customization);
         setPricing(priceData);
       } catch (error) {
         console.error('Error calculating price:', error);
@@ -56,7 +56,7 @@ export const useProductPricing = (productId, selectedOptions, options) => {
     };
 
     calculatePrice();
-  }, [productId, selectedOptions, options]);
+  }, [productId, selectedOptions, options, customization]);
 
   return { pricing, loading, error };
 };

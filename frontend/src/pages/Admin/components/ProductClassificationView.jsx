@@ -46,6 +46,8 @@ import {
   unassignProductFromType,
   updatePrintProductDetails,
   syncProductsForCategory,
+  fetchAllVendors,
+  createManualVendorProduct,
 } from "../../../services/product_service";
 import SpinnerOverlay from "../../../components/SpinnerOverlay";
 import logoImage from "../../../assets/logo.png";
@@ -75,6 +77,17 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
     imageFile: null,
     assignToType: null,
   });
+  const [vendors, setVendors] = useState([]);
+  const [creatingManualProduct, setCreatingManualProduct] = useState(false);
+  const [manualProductForm, setManualProductForm] = useState({
+    name: "",
+    sku: "",
+    description: "",
+    image: "",
+    vendor_id: "",
+    vendor_product_id: "",
+    type_id: "",
+  });
 
   // Load data when component mounts or category changes
   useEffect(() => {
@@ -99,9 +112,10 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
       setInitialLoading(true);
       
       // Load product types and products in parallel
-      const [typesResult, productsResult] = await Promise.all([
+      const [typesResult, productsResult, vendorsResult] = await Promise.all([
         fetchAllProductTypes(),
         fetchAllPrintProductsByCategory(category.id),
+        fetchAllVendors(),
       ]);
 
       
@@ -127,6 +141,8 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
         updateLocalClassificationStatus(productsResult.data);
         
       }
+
+      setVendors(Array.isArray(vendorsResult) ? vendorsResult : []);
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
@@ -241,6 +257,43 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
     } catch (error) {
       console.error("Failed to create product type:", error);
       alert("Failed to create product type!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateManualProduct = async () => {
+    if (!manualProductForm.name || !manualProductForm.sku || !manualProductForm.vendor_id) {
+      alert("Name, SKU, and vendor are required.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await createManualVendorProduct({
+        name: manualProductForm.name,
+        sku: manualProductForm.sku,
+        description: manualProductForm.description,
+        image: manualProductForm.image,
+        category_id: category.id,
+        type_id: manualProductForm.type_id || 0,
+        vendor_id: manualProductForm.vendor_id,
+        vendor_product_id: manualProductForm.vendor_product_id,
+      });
+      setCreatingManualProduct(false);
+      setManualProductForm({
+        name: "",
+        sku: "",
+        description: "",
+        image: "",
+        vendor_id: "",
+        vendor_product_id: "",
+        type_id: "",
+      });
+      await loadData();
+    } catch (error) {
+      console.error("Failed to create manual product:", error);
+      alert(error.message || "Failed to create product");
     } finally {
       setLoading(false);
     }
@@ -636,6 +689,20 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
             }}
           >
             Add Product Type
+          </Button>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => setCreatingManualProduct(true)}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              py: 1.5,
+              fontWeight: 500,
+            }}
+          >
+            Add Product
           </Button>
         </Box>
 
@@ -1325,6 +1392,93 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
           <Button onClick={() => setCreatingProductType(false)}>Cancel</Button>
           <Button onClick={handleCreateProductType} variant="contained">
             Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={creatingManualProduct} onClose={() => setCreatingManualProduct(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add Product</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Use this form to add products from vendors other than Sinalite or to manually manage products that are not synced from the vendor API.
+          </Alert>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Product Name"
+            fullWidth
+            variant="outlined"
+            value={manualProductForm.name}
+            onChange={(e) => setManualProductForm({ ...manualProductForm, name: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="SKU"
+            fullWidth
+            variant="outlined"
+            value={manualProductForm.sku}
+            onChange={(e) => setManualProductForm({ ...manualProductForm, sku: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Vendor</InputLabel>
+            <Select
+              value={manualProductForm.vendor_id}
+              label="Vendor"
+              onChange={(e) => setManualProductForm({ ...manualProductForm, vendor_id: e.target.value })}
+            >
+              {vendors.map((vendor) => (
+                <MenuItem key={vendor.id} value={vendor.id}>{vendor.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Product Type</InputLabel>
+            <Select
+              value={manualProductForm.type_id}
+              label="Product Type"
+              onChange={(e) => setManualProductForm({ ...manualProductForm, type_id: e.target.value })}
+            >
+              <MenuItem value="">Unclassified</MenuItem>
+              {filteredProductTypes.map((type) => (
+                <MenuItem key={type.id} value={type.id}>{type.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            margin="dense"
+            label="Vendor Product ID"
+            fullWidth
+            variant="outlined"
+            value={manualProductForm.vendor_product_id}
+            onChange={(e) => setManualProductForm({ ...manualProductForm, vendor_product_id: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Image URL"
+            fullWidth
+            variant="outlined"
+            value={manualProductForm.image}
+            onChange={(e) => setManualProductForm({ ...manualProductForm, image: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            fullWidth
+            multiline
+            rows={3}
+            variant="outlined"
+            value={manualProductForm.description}
+            onChange={(e) => setManualProductForm({ ...manualProductForm, description: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreatingManualProduct(false)}>Cancel</Button>
+          <Button onClick={handleCreateManualProduct} variant="contained">
+            Add Product
           </Button>
         </DialogActions>
       </Dialog>

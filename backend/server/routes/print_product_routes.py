@@ -54,6 +54,17 @@ product_model = api.model("Product", {
     "updated_at": fields.DateTime(description="Updated timestamp"),
 })
 
+manual_product_model = api.model("ManualProductCreate", {
+    "name": fields.String(required=True, description="Product name"),
+    "sku": fields.String(required=True, description="Unique SKU"),
+    "description": fields.String(description="Product description"),
+    "image": fields.String(description="Product image URL"),
+    "category_id": fields.Integer(required=True, description="Category ID"),
+    "type_id": fields.Integer(description="Product type ID"),
+    "vendor_id": fields.Integer(required=True, description="Vendor ID"),
+    "vendor_product_id": fields.String(description="Vendor-side product identifier"),
+})
+
 
 @api.route("/products")
 class PrintProductResource(Resource):
@@ -70,6 +81,18 @@ class PrintProductResource(Resource):
             return result.data, 200
         else:
             return error_response(result.error, 500, code="PRINT_PRODUCTS_FETCH_ERROR", category="system", retryable=True)
+
+    @api.doc(description="Create a manual product entry for any vendor")
+    @api.expect(manual_product_model)
+    @api.response(201, "Product created successfully")
+    @require_role("Admin")
+    def post(self):
+        data = request.get_json(silent=True) or {}
+        result = PrintProductController.create_manual_product(data)
+
+        if result.status:
+            return result.data, 201
+        return error_response(result.error, 400, code="MANUAL_PRODUCT_CREATE_ERROR", category="business_logic")
         
 @api.route("/categories/all")
 class PrintProductCategoriesResource(Resource):

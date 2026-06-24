@@ -282,17 +282,33 @@ export const fetchProductOptions = async (productId, storeCode = 6) => {
   }
 };
 
-export const calculateProductPrice = async (productId, options, storeCode = 6) => {
+export const calculateProductPrice = async (productId, options, storeCode = 6, customization = null) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/pricing/products/${productId}/price`, {
       product_id: productId,
       options: options,
-      store_code: storeCode
+      store_code: storeCode,
+      customization,
     });
     return response.data;
   } catch (error) {
     console.error("Error calculating product price: ", error);
     return null;
+  }
+};
+
+export const createManualVendorProduct = async (productData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/print/products`, productData, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error creating manual vendor product:", error);
+    const errorMessage = error.response?.data?.error || error.message || "Unknown error occurred";
+    throw new Error(`Failed to create vendor product: ${errorMessage}`);
   }
 };
 

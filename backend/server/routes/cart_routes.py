@@ -56,7 +56,8 @@ cart_model = api.model('Cart', {
 add_to_cart_model = api.model('AddToCartRequest', {
     'product_id': fields.Integer(description='Product ID', required=True),
     'selected_options': fields.Raw(description='Selected product options', required=True),
-    'quantity': fields.Integer(description='Quantity', default=1)
+    'quantity': fields.Integer(description='Quantity', default=1),
+    'customization': fields.Raw(description='Customization payload that affects price')
 })
 
 update_quantity_model = api.model('UpdateQuantityRequest', {
@@ -171,6 +172,10 @@ class AddToCartResource(Resource):
         if not isinstance(selected_options, list):
             return error_response('selected_options must be a list', 400)
 
+        customization = data.get('customization')
+        if customization is not None and not isinstance(customization, dict):
+            return error_response('customization must be an object', 400)
+
         sanitized_options = []
         for option in selected_options:
             option_result = validate_number_input(option, min_value=1, integer_only=True)
@@ -186,7 +191,8 @@ class AddToCartResource(Resource):
             product_id=int(product_id_result.sanitized_data),
             selected_options=sanitized_options,
             quantity=int(quantity_result.sanitized_data),
-            user_id=user_id
+            user_id=user_id,
+            customization=customization,
         )
         
         if result['success']:
