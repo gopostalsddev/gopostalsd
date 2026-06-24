@@ -362,14 +362,23 @@ class SquareAdapter:
         Returns:
             Dict representing Square address
         """
-        # Return a dictionary since Square SDK isn't fully available
+        _country_name_to_code = {
+            'united states': 'US', 'united states of america': 'US',
+            'canada': 'CA', 'mexico': 'MX', 'united kingdom': 'GB',
+            'australia': 'AU', 'germany': 'DE', 'france': 'FR',
+            'japan': 'JP', 'china': 'CN',
+        }
+        raw_country = address_data.get('country', 'US') or 'US'
+        country = raw_country if len(raw_country) == 2 else (
+            _country_name_to_code.get(raw_country.lower(), raw_country[:2].upper())
+        )
         return {
             'address_line_1': address_data.get('street', ''),
             'address_line_2': address_data.get('apt', ''),
             'locality': address_data.get('city', ''),
             'administrative_district_level_1': address_data.get('state', ''),
             'postal_code': address_data.get('zip_code', ''),
-            'country': address_data.get('country', 'US')
+            'country': country
         }
     
     @property
