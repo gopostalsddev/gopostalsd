@@ -118,6 +118,9 @@ def require_cart_auth(f):
                     if auth_service:
                         user = auth_service.get_user_by_session(session_token)
                         if user:
+                            if not user.is_active():
+                                from flask import abort
+                                abort(401, description='Account is not active')
                             if IS_DEVELOPMENT:
                                 logger.debug("[CART AUTH] User authenticated: %s", user.email)
                             logger.debug(f"Authenticated user for cart: {user.email}")
