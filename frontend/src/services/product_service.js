@@ -96,6 +96,7 @@ export const updatePrintProductCategoryDetails = async (categoryDetails) => {
       formData,
       {
         headers: {
+          ...authService.getAuthHeaders(true, true),
           "Content-Type": "multipart/form-data",
         },
       }
@@ -125,6 +126,7 @@ export const updatePrintProductDetails = async (productDetails) => {
       formData,
       {
         headers: {
+          ...authService.getAuthHeaders(true, true),
           "Content-Type": "multipart/form-data",
         },
       }
@@ -194,6 +196,7 @@ export const updateProductType = async (typeId, productTypeData) => {
       formData,
       {
         headers: {
+          ...authService.getAuthHeaders(true, true),
           "Content-Type": "multipart/form-data",
         },
       }
