@@ -355,8 +355,15 @@ class WebhookResource(Resource):
         try:
             # Get webhook data
             payload = request.get_data(as_text=True)
-            signature = request.headers.get('X-Square-Signature', '')
-            webhook_url = request.url
+            signature = request.headers.get('X-Square-Signature', '').strip()
+            # Build the canonical webhook URL from a configured base URL rather than
+            # request.url, which is attacker-controlled via the Host header on a
+            # misconfigured reverse proxy and would let an attacker forge HMAC messages.
+            import os as _os
+            _base = (_os.getenv('SQUARE_WEBHOOK_URL') or
+                     _os.getenv('RENDER_EXTERNAL_URL') or
+                     request.url_root.rstrip('/'))
+            webhook_url = _base.rstrip('/') + '/api/payments/webhook'
             
             # Initialize payment service
             payment_service = PaymentService()

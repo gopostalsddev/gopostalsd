@@ -127,8 +127,11 @@ def require_cart_auth(f):
                         else:
                             logger.debug("No user found for cart session token")
                 except Exception as e:
-                    logger.debug(f"Could not verify cart session: {str(e)}", exc_info=True)
-                    # Continue without user context
+                    logger.warning("Cart session verification error — rejecting token: %s", str(e))
+                    # A token was supplied but verification threw — reject rather than silently
+                    # downgrading to guest, which would allow the caller to bypass ownership checks.
+                    from flask import abort
+                    abort(401, description='Invalid or expired session')
             
             return f(*args, **kwargs)
         except Exception as e:

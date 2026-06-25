@@ -98,14 +98,16 @@ def _verify_cart_ownership(cart_data: dict) -> bool:
     """Return True if the current request may mutate this cart.
 
     Authenticated users may only mutate carts that belong to them.
-    Guest users (no user_id on request) may mutate carts with no owner.
+    Guest users (no user_id on request) may only mutate ownerless carts.
     """
     request_user_id = getattr(request, 'user_id', None)
     cart_user_id = cart_data.get('user_id')
 
-    if request_user_id is not None and cart_user_id is not None:
-        return int(request_user_id) == int(cart_user_id)
-    return True
+    if cart_user_id is not None:
+        # Cart belongs to a registered user — must be authenticated as that exact user.
+        return request_user_id is not None and int(request_user_id) == int(cart_user_id)
+    # Ownerless cart — only an unauthenticated (guest) request may touch it.
+    return request_user_id is None
 
 def get_cart_service():
     """Return the cart service registered in the Flask app context."""

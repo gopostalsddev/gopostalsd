@@ -236,9 +236,12 @@ class OrderDetailResource(Resource):
     @require_auth
     def get(self, order_id):
         """Get order details."""
-        # Get user_id from auth context
+        # Get user_id from auth context — require_auth always sets this; the
+        # None guard below is pure defence-in-depth against middleware ordering bugs.
         user_id = getattr(request, 'user_id', None)
-        
+        if user_id is None:
+            return error_response('Authentication required', 401, code='AUTH_REQUIRED', category='authentication')
+
         order_service = get_order_service()
         result = order_service.get_order(order_id, user_id)
         
@@ -269,6 +272,9 @@ class PaymentResource(Resource):
         current_user = getattr(g, 'current_user', None)
         request_user_id = getattr(request, 'user_id', None)
         if not current_user:
+            return error_response('Authentication required', 401, code='AUTH_REQUIRED', category='authentication')
+
+        if request_user_id is None:
             return error_response('Authentication required', 401, code='AUTH_REQUIRED', category='authentication')
 
         if current_user.role.name != 'Admin':

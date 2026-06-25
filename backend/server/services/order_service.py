@@ -165,14 +165,15 @@ class OrderService:
             Dict containing payment result
         """
         try:
-            # Get order
-            order = Order.query.get(order_id)
+            # Lock the row so concurrent payment attempts serialize here,
+            # preventing double-charges when two requests race to pay the same order.
+            order = Order.query.with_for_update().filter_by(id=order_id).first()
             if not order:
                 return {
                     'success': False,
                     'error': 'Order not found'
                 }
-            
+
             if order.payment_status != PaymentStatus.PENDING:
                 return {
                     'success': False,
@@ -459,10 +460,12 @@ class OrderService:
     def _calculate_tax(self, subtotal: float, store_code: int) -> float:
         """Calculate tax amount."""
         try:
-            # Simple tax calculation - can be enhanced with proper tax service
-            if store_code == 6:  # Canada
+            from server.models.pricing import StoreCode
+            # Only apply known, server-defined tax rates — unrecognised codes get 0%.
+            code = int(store_code)
+            if code == StoreCode.CANADA.value:
                 return subtotal * 0.13  # 13% HST
-            elif store_code == 9:  # US
+            elif code == StoreCode.US.value:
                 return subtotal * 0.08  # 8% average
             return 0.0
         except (TypeError, ValueError):

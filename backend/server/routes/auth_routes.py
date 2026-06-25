@@ -400,6 +400,7 @@ class PasswordResetResource(Resource):
     
     @api.doc('reset_password')
     @api.expect(password_reset_model)
+    @rate_limit_by_ip('AUTH_PASSWORD_RESET_RATE_LIMIT_COUNT', 'AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS', 'auth-password-reset')
     def post(self):
         """Reset user password with token."""
         data = request.get_json(silent=True)
