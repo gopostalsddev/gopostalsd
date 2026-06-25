@@ -74,7 +74,14 @@ class OrderService:
                     'error': 'Cart is empty'
                 }
             
-            # Ensure we associate the order with the authenticated user if available
+            # Ownership check: an authenticated user may only checkout their own cart.
+            # A guest (user_id=None) may only checkout an ownerless cart.
+            if user_id is not None and cart.user_id is not None and cart.user_id != user_id:
+                return {'success': False, 'error': 'Access denied'}
+            if user_id is None and cart.user_id is not None:
+                return {'success': False, 'error': 'Access denied'}
+
+            # Associate the order with the authenticated user if available.
             if user_id is None and cart.user_id:
                 user_id = cart.user_id
             elif user_id and not cart.user_id:

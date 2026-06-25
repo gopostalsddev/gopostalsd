@@ -197,7 +197,13 @@ class AddToCartResource(Resource):
         
         cart_service = get_cart_service()
         cart_check = cart_service.get_cart(session_id)
-        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+        # Fail-closed: only skip ownership check when the cart genuinely does not
+        # exist yet (will be created by add_item_to_cart). Any other fetch failure
+        # is treated as a denial to prevent bypassing the guard via DB errors.
+        if cart_check['success']:
+            if not _verify_cart_ownership(cart_check['cart']):
+                return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+        elif cart_check.get('error') != 'Cart not found':
             return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
 
         result = cart_service.add_item_to_cart(
@@ -242,7 +248,10 @@ class UpdateQuantityResource(Resource):
 
         cart_service = get_cart_service()
         cart_check = cart_service.get_cart(session_id)
-        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+        if cart_check['success']:
+            if not _verify_cart_ownership(cart_check['cart']):
+                return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+        elif cart_check.get('error') != 'Cart not found':
             return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
 
         result = cart_service.update_cart_item_quantity(
@@ -272,7 +281,10 @@ class RemoveItemResource(Resource):
 
         cart_service = get_cart_service()
         cart_check = cart_service.get_cart(session_id)
-        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+        if cart_check['success']:
+            if not _verify_cart_ownership(cart_check['cart']):
+                return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+        elif cart_check.get('error') != 'Cart not found':
             return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
 
         result = cart_service.remove_cart_item(
@@ -300,7 +312,10 @@ class ClearCartResource(Resource):
 
         cart_service = get_cart_service()
         cart_check = cart_service.get_cart(session_id)
-        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+        if cart_check['success']:
+            if not _verify_cart_ownership(cart_check['cart']):
+                return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+        elif cart_check.get('error') != 'Cart not found':
             return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
 
         result = cart_service.clear_cart(session_id)

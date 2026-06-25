@@ -157,7 +157,12 @@ class PaymentProcessResource(Resource):
         from server.models.order import Order as OrderModel, PaymentStatus as PS
         from flask import g
         internal_order_id = data.get('order_id')
-        order_obj = OrderModel.query.get(internal_order_id) if internal_order_id else None
+        # Use a pessimistic row lock so concurrent payment attempts for the same
+        # order serialize here, preventing double-charges in a race condition.
+        order_obj = (
+            db.session.query(OrderModel).with_for_update().filter_by(id=internal_order_id).first()
+            if internal_order_id else None
+        )
         if not order_obj:
             return error_response('Order not found', 404, code='ORDER_NOT_FOUND', category='business_logic')
 
@@ -246,13 +251,15 @@ class RefundResource(Resource):
             return error_response('Amount must be a positive integer', 400)
 
         order_id = data.get('order_id')
+        if not order_id:
+            return error_response('order_id is required', 400, code='ORDER_ID_REQUIRED', category='business_logic')
 
         # Resolve the Square payment ID and validate the refund against the order.
         from server.models.order import Order as OrderModel, Payment as PaymentModel, PaymentStatus as PS, OrderStatus as OS
         import math
 
-        order_obj = OrderModel.query.get(order_id) if order_id else None
-        if order_id and not order_obj:
+        order_obj = OrderModel.query.get(order_id)
+        if not order_obj:
             return error_response('Order not found', 404, code='ORDER_NOT_FOUND', category='business_logic')
 
         if order_obj:
@@ -275,20 +282,31 @@ class RefundResource(Resource):
                 )
 
         # Resolve Square payment ID. Priority:
-        #   1. Explicit payment_id in request body (manual override)
+        #   1. Explicit payment_id in request body (must match a Payment row for this order)
         #   2. Order.payment_id column (denormalised on checkout)
         #   3. Payment table row for the order
-        square_payment_id = data.get('payment_id')
-
-        if not square_payment_id and order_obj:
-            if order_obj.payment_id:
-                square_payment_id = order_obj.payment_id
-            else:
-                payment_row = PaymentModel.query.filter_by(order_id=order_id).order_by(
-                    PaymentModel.created_at.desc()
-                ).first()
-                if payment_row:
-                    square_payment_id = payment_row.external_payment_id
+        square_payment_id = None
+        explicit_id = data.get('payment_id')
+        if explicit_id:
+            # Verify the supplied payment_id actually belongs to this order to
+            # prevent an admin from issuing refunds against arbitrary Square payments.
+            verified_row = PaymentModel.query.filter_by(
+                order_id=order_id, external_payment_id=explicit_id
+            ).first()
+            if not verified_row and order_obj.payment_id != explicit_id:
+                return error_response(
+                    'payment_id does not match any payment record for this order',
+                    400, code='PAYMENT_ID_MISMATCH', category='business_logic'
+                )
+            square_payment_id = explicit_id
+        elif order_obj.payment_id:
+            square_payment_id = order_obj.payment_id
+        else:
+            payment_row = PaymentModel.query.filter_by(order_id=order_id).order_by(
+                PaymentModel.created_at.desc()
+            ).first()
+            if payment_row:
+                square_payment_id = payment_row.external_payment_id
 
         if not square_payment_id:
             return error_response(
