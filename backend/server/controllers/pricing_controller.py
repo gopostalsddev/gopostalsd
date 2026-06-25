@@ -85,13 +85,8 @@ class PricingController:
             
             pricing = pricing_service.calculate_product_price(product_id, options, store_code, customization)
             
-            if not pricing:
-                result.status = False
-                result.error = "Failed to calculate price"
-                return result
-            
             result.status = True
-            result.data = pricing
+            result.data = pricing  # may be None when Sinalite has no price for this combo
             
         except Exception as e:
             logger.error(f"Error calculating price: {str(e)}")

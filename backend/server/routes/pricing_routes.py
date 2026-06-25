@@ -119,7 +119,9 @@ class ProductPriceResource(Resource):
         result = PricingController.calculate_price(product_id, options, store_code, customization)
         
         if result.status:
-            return result.data
+            # None means Sinalite has no price for this option combination — return 200 with price: null
+            # so the frontend can display "unavailable" without treating it as an error
+            return result.data if result.data is not None else {'price': None}
         else:
             return error_response(result.error, 400, code='PRICING_CALCULATION_ERROR', category='business_logic')
 

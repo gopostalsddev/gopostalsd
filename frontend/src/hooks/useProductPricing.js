@@ -47,7 +47,12 @@ export const useProductPricing = (productId, selectedOptions, options, customiza
 
       try {
         const priceData = await calculateProductPrice(parseInt(productId), optionIds, 6, customization);
-        if (!priceData || typeof priceData.price !== 'number') {
+        // price: null means Sinalite has no price for this combo — show unavailable quietly
+        if (!priceData || priceData.price === null || priceData.price === undefined) {
+          setPricing(null);
+          return;
+        }
+        if (typeof priceData.price !== 'number') {
           setError('Price is currently unavailable for this configuration. Please try a different option set.');
           setPricing(null);
           return;
