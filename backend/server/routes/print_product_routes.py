@@ -219,17 +219,16 @@ class PrintProductCategoryUpdateResource(Resource):
     """Resource for updating a print product category's image or description"""
 
     @api.doc(description="Update the description or image of a product category")
-    @api.expect(update_category_parser)
     @require_role("Admin")
     def put(self, category_id):
         """Update category image and/or description"""
-        args = update_category_parser.parse_args()
-        description = args.get("description")
-        image = args.get("image")
+        from flask import request as flask_request
+        description = flask_request.form.get("description")
+        image = flask_request.files.get("image")
 
         if not description and not image:
             return error_response("At least one field (description or image) must be provided", 400)
-        
+
         result = PrintProductController.update_print_product_category(category_id, description, image)
 
         if result.status:
@@ -369,7 +368,6 @@ class PrintProductTypeUpdateResource(Resource):
     """Resource for updating a product type's description or image"""
 
     @api.doc(description="Update the description or image of a product type")
-    @api.expect(update_product_type_parser)
     @api.response(200, "Product type updated successfully")
     @api.response(400, "Bad request")
     @api.response(404, "Product type not found")
@@ -377,13 +375,13 @@ class PrintProductTypeUpdateResource(Resource):
     @require_role("Admin")
     def put(self, type_id):
         """Update product type description and/or image"""
-        args = update_product_type_parser.parse_args()
-        description = args.get("description")
-        image = args.get("image")
+        from flask import request as flask_request
+        description = flask_request.form.get("description")
+        image = flask_request.files.get("image")
 
         if not description and not image:
             return error_response("At least one field (description or image) must be provided", 400)
-        
+
         result = PrintProductController.update_print_product_type(type_id, description, image)
 
         if result.status:
@@ -474,7 +472,6 @@ class PrintProductUpdateResource(Resource):
     """Resource for updating a product's description or image"""
 
     @api.doc(description="Update the description or image of a product")
-    @api.expect(update_category_parser)  # Reusing the same parser structure
     @api.response(200, "Product updated successfully")
     @api.response(400, "Bad request")
     @api.response(404, "Product not found")
@@ -482,9 +479,9 @@ class PrintProductUpdateResource(Resource):
     @require_role("Admin")
     def put(self, product_id):
         """Update product description and/or image"""
-        args = update_category_parser.parse_args()
-        description = args.get("description")
-        image = args.get("image")
+        from flask import request as flask_request
+        description = flask_request.form.get("description")
+        image = flask_request.files.get("image")
 
         if not description and not image:
             return error_response("At least one field (description or image) must be provided", 400)
