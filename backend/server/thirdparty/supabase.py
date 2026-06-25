@@ -10,7 +10,9 @@ class SupabaseAdapter:
 
     def init_app(self, app: Flask):
         self.bucket = app.config["SUPABASE_BUCKET"]
-        self.client = create_client(app.config["SUPABASE_URL"], app.config["SUPABASE_API_KEY"])
+        # Use service role key for backend storage operations (bypasses RLS)
+        key = app.config.get("SUPABASE_SERVICE_KEY") or app.config["SUPABASE_API_KEY"]
+        self.client = create_client(app.config["SUPABASE_URL"], key)
 
     def upload_file(self, file_data: bytes, file_name: str, content_type: str) -> str:
         import logging

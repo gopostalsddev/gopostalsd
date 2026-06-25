@@ -86,6 +86,7 @@ class Config:
     # Supabase file storage
     SUPABASE_URL = os.getenv('SUPABASE_URL')
     SUPABASE_API_KEY = os.getenv('SUPABASE_KEY')
+    SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
     SUPABASE_BUCKET = os.getenv('SUPABASE_BUCKET', 'gopostalsd-uploads')
 
     PRICING_POLICY_VERSION = os.getenv('PRICING_POLICY_VERSION', 'retail-v1')
