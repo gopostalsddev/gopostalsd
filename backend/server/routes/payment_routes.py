@@ -60,10 +60,10 @@ payment_response_model = api.model('PaymentResponse', {
 })
 
 refund_request_model = api.model('RefundRequest', {
-    'payment_id': fields.String(required=True, description='Square payment ID to refund'),
+    'payment_id': fields.String(description='Square payment ID (auto-resolved from order_id if omitted)'),
     'amount': fields.Integer(required=True, description='Refund amount in cents'),
     'reason': fields.String(description='Refund reason'),
-    'order_id': fields.Integer(description='Internal order ID (used to update order status after refund)')
+    'order_id': fields.Integer(description='Internal order ID (used to resolve payment_id and update order status)')
 })
 
 refund_response_model = api.model('RefundResponse', {
@@ -231,22 +231,32 @@ class RefundResource(Resource):
         if not isinstance(data['amount'], int) or data['amount'] <= 0:
             return error_response('Amount must be a positive integer', 400)
 
-        # Resolve the Square payment ID: prefer the explicit field, fall back to
-        # looking up the Payment row for the order (covers legacy orders where
-        # Order.payment_id was not stored at checkout time).
+        # Resolve the Square payment ID.  Priority:
+        #   1. Explicit payment_id in request body (new orders with Order.payment_id set)
+        #   2. Payment table row for the order_id (covers orders that went through process_payment)
+        #   3. Order.payment_id field directly (denormalised copy we now write on checkout)
         square_payment_id = data.get('payment_id')
         order_id = data.get('order_id')
 
         if not square_payment_id and order_id:
-            from server.models.order import Payment as PaymentModel
-            payment_row = PaymentModel.query.filter_by(order_id=order_id).order_by(
-                PaymentModel.created_at.desc()
-            ).first()
-            if payment_row:
-                square_payment_id = payment_row.external_payment_id
+            from server.models.order import Order as OrderModel, Payment as PaymentModel
+            order_obj = OrderModel.query.get(order_id)
+            if order_obj and order_obj.payment_id:
+                square_payment_id = order_obj.payment_id
+            if not square_payment_id:
+                payment_row = PaymentModel.query.filter_by(order_id=order_id).order_by(
+                    PaymentModel.created_at.desc()
+                ).first()
+                if payment_row:
+                    square_payment_id = payment_row.external_payment_id
 
         if not square_payment_id:
-            return error_response('payment_id is required (or provide order_id to look it up)', 400)
+            return error_response(
+                'No payment record found for this order. If the payment was processed outside the system, enter the Square payment ID manually.',
+                422,
+                code='PAYMENT_ID_NOT_FOUND',
+                category='business_logic'
+            )
 
         # Initialize payment service
         payment_service = PaymentService()

@@ -79,6 +79,7 @@ const OrderManagementPage = () => {
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
+  const [refundPaymentId, setRefundPaymentId] = useState('');
   const [refunding, setRefunding] = useState(false);
   const [refundError, setRefundError] = useState('');
 
@@ -190,6 +191,7 @@ const OrderManagementPage = () => {
   const openRefundDialog = () => {
     setRefundAmount(selectedOrder ? Number(selectedOrder.total_amount).toFixed(2) : '');
     setRefundReason('');
+    setRefundPaymentId(selectedOrder?.payment_id || '');
     setRefundError('');
     setRefundDialogOpen(true);
   };
@@ -215,7 +217,7 @@ const OrderManagementPage = () => {
       setRefunding(true);
       setRefundError('');
       await issueRefund({
-        paymentId: selectedOrder.payment_id || undefined,
+        paymentId: refundPaymentId.trim() || selectedOrder.payment_id || undefined,
         orderId: selectedOrder.id,
         amountCents: Math.round(dollars * 100),
         reason: refundReason || undefined,
@@ -623,6 +625,14 @@ const OrderManagementPage = () => {
               multiline
               rows={2}
               placeholder="e.g. Customer requested cancellation"
+            />
+            <TextField
+              label="Square Payment ID (auto-resolved if blank)"
+              value={refundPaymentId}
+              onChange={(e) => setRefundPaymentId(e.target.value)}
+              fullWidth
+              size="small"
+              helperText="Only needed if the automatic lookup fails. Find it in your Square dashboard."
             />
           </Stack>
         </DialogContent>
