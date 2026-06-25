@@ -148,36 +148,43 @@ class PaymentProcessResource(Resource):
         if not data:
             return error_response('Request body is required', 400)
         
-        # Validate required fields
-        required_fields = ['amount', 'source_id']
+        required_fields = ['source_id', 'order_id']
         for field in required_fields:
             if field not in data:
                 return error_response(f'{field} is required', 400)
-        
-        # Validate amount
-        if not isinstance(data['amount'], int) or data['amount'] <= 0:
-            return error_response('Amount must be a positive integer', 400)
-        
+
+        # Validate amount against the actual order total — never trust the client amount.
+        from server.models.order import Order as OrderModel, PaymentStatus as PS
+        internal_order_id = data.get('order_id')
+        order_obj = OrderModel.query.get(internal_order_id) if internal_order_id else None
+        if not order_obj:
+            return error_response('Order not found', 404, code='ORDER_NOT_FOUND', category='business_logic')
+        if order_obj.payment_status == PS.COMPLETED:
+            return error_response('Order already paid', 400, code='ORDER_ALREADY_PAID', category='business_logic')
+
+        # Compute authoritative amount from DB — ignore any client-supplied amount.
+        import math
+        authoritative_amount = math.ceil(float(order_obj.total_amount) * 100)
+
         # Initialize payment service
         payment_service = PaymentService()
-        
+
         if not payment_service.is_configured:
             return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
-        
+
         # Process payment
         result = payment_service.process_payment(
-            amount=data['amount'],
-            currency=data.get('currency', 'USD'),
+            amount=authoritative_amount,
+            currency=order_obj.currency,
             source_id=data['source_id'],
             idempotency_key=data.get('idempotency_key'),
-            buyer_email=data.get('buyer_email'),
-            buyer_phone=data.get('buyer_phone'),
-            shipping_address=data.get('shipping_address'),
-            billing_address=data.get('billing_address'),
-            order_id=data.get('order_id'),
-            note=data.get('note')
+            buyer_email=order_obj.customer_email,
+            buyer_phone=order_obj.customer_phone,
+            shipping_address=order_obj.shipping_address,
+            billing_address=order_obj.billing_address,
+            note=f"Order {order_obj.order_number} payment"
         )
-        
+
         if result['success']:
             return result, 201
         else:
@@ -186,10 +193,10 @@ class PaymentProcessResource(Resource):
 @api.route('/<string:payment_id>')
 class PaymentResource(Resource):
     """Resource for retrieving payment details."""
-    
+
     @api.doc('get_payment')
     @api.response(200, 'Payment fetched', payment_response_model)
-    @require_auth
+    @require_role('Admin')
     def get(self, payment_id):
         """Get payment details by ID."""
         if not payment_id:
@@ -227,23 +234,40 @@ class RefundResource(Resource):
         if 'amount' not in data:
             return error_response('amount is required', 400)
 
-        # Validate amount
         if not isinstance(data['amount'], int) or data['amount'] <= 0:
             return error_response('Amount must be a positive integer', 400)
 
-        # Resolve the Square payment ID.  Priority:
-        #   1. Explicit payment_id in request body (new orders with Order.payment_id set)
-        #   2. Payment table row for the order_id (covers orders that went through process_payment)
-        #   3. Order.payment_id field directly (denormalised copy we now write on checkout)
-        square_payment_id = data.get('payment_id')
         order_id = data.get('order_id')
 
-        if not square_payment_id and order_id:
-            from server.models.order import Order as OrderModel, Payment as PaymentModel
-            order_obj = OrderModel.query.get(order_id)
-            if order_obj and order_obj.payment_id:
+        # Resolve the Square payment ID and validate the refund against the order.
+        from server.models.order import Order as OrderModel, Payment as PaymentModel, PaymentStatus as PS, OrderStatus as OS
+        import math
+
+        order_obj = OrderModel.query.get(order_id) if order_id else None
+        if order_id and not order_obj:
+            return error_response('Order not found', 404, code='ORDER_NOT_FOUND', category='business_logic')
+
+        if order_obj:
+            if order_obj.payment_status == PS.REFUNDED:
+                return error_response('Order has already been refunded', 400, code='ALREADY_REFUNDED', category='business_logic')
+            # Refund amount must not exceed the original charge.
+            max_refund_cents = math.ceil(float(order_obj.total_amount) * 100)
+            if data['amount'] > max_refund_cents:
+                return error_response(
+                    f'Refund amount exceeds original charge ({max_refund_cents} cents)',
+                    400, code='REFUND_EXCEEDS_CHARGE', category='business_logic'
+                )
+
+        # Resolve Square payment ID. Priority:
+        #   1. Explicit payment_id in request body (manual override)
+        #   2. Order.payment_id column (denormalised on checkout)
+        #   3. Payment table row for the order
+        square_payment_id = data.get('payment_id')
+
+        if not square_payment_id and order_obj:
+            if order_obj.payment_id:
                 square_payment_id = order_obj.payment_id
-            if not square_payment_id:
+            else:
                 payment_row = PaymentModel.query.filter_by(order_id=order_id).order_by(
                     PaymentModel.created_at.desc()
                 ).first()
@@ -253,9 +277,7 @@ class RefundResource(Resource):
         if not square_payment_id:
             return error_response(
                 'No payment record found for this order. If the payment was processed outside the system, enter the Square payment ID manually.',
-                422,
-                code='PAYMENT_ID_NOT_FOUND',
-                category='business_logic'
+                422, code='PAYMENT_ID_NOT_FOUND', category='business_logic'
             )
 
         # Initialize payment service

@@ -89,7 +89,6 @@ class Order(db.Model):
             'id': self.id,
             'order_number': self.order_number,
             'user_id': self.user_id,
-            'session_id': self.session_id,
             'customer_email': self.customer_email,
             'customer_first_name': self.customer_first_name,
             'customer_last_name': self.customer_last_name,

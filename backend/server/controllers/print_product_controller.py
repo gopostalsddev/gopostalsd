@@ -14,6 +14,46 @@ from flask import current_app
 
 logger = logging.getLogger(__name__)
 
+# Allowed image extensions and their expected magic byte signatures.
+# SVG is intentionally excluded: it can contain <script> tags and execute JS
+# in the admin browser when served from the same origin.
+_ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+_IMAGE_MAGIC_BYTES = [
+    (b'\xff\xd8\xff', 'image/jpeg'),           # JPEG
+    (b'\x89PNG\r\n\x1a\n', 'image/png'),       # PNG
+    (b'GIF87a', 'image/gif'),                  # GIF 87a
+    (b'GIF89a', 'image/gif'),                  # GIF 89a
+    (b'RIFF', 'image/webp'),                   # WebP (RIFF....WEBP)
+]
+
+
+def _validate_image_upload(image: FileStorage):
+    """
+    Validate an uploaded image by extension allowlist and magic bytes.
+    Returns an error string on failure, or None on success.
+    Also rewinds the file stream so callers can still read() the data.
+    """
+    original_filename = secure_filename(image.filename or '')
+    ext = os.path.splitext(original_filename)[1].lower()
+    if ext not in _ALLOWED_IMAGE_EXTENSIONS:
+        return f"File type '{ext or 'unknown'}' is not allowed. Accepted: jpg, jpeg, png, gif, webp."
+
+    header = image.stream.read(16)
+    image.stream.seek(0)  # rewind so callers can read the full file
+
+    matched = False
+    for magic, _ in _IMAGE_MAGIC_BYTES:
+        if header.startswith(magic):
+            matched = True
+            break
+    # WebP: bytes 0-3 == RIFF and bytes 8-12 == WEBP
+    if not matched and header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+        matched = True
+    if not matched:
+        return "File content does not match a supported image format."
+
+    return None
+
 class PrintProductErrors(Enum):
     FAILED_TO_FETCH_PRINT_PRODUCTS = "Failed to fetch products"
     FAILED_TO_FETCH_PRINT_PRODUCT_CATEGORIES = "Failed to fetch print product categories"
@@ -643,12 +683,13 @@ class PrintProductController:
                         result.error = PrintProductErrors.EMPTY_IMAGE_FILENAME.value
                         return result
 
-                    # Validate file type
-                    content_type = image.content_type
-                    if not content_type or not content_type.startswith('image/'):
+                    # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
+                    image_error = _validate_image_upload(image)
+                    if image_error:
                         result.status = False
-                        result.error = PrintProductErrors.INVALID_IMAGE_FILE.value
+                        result.error = image_error
                         return result
+                    content_type = image.content_type or 'application/octet-stream'
 
                     # Generate unique filename to avoid conflicts
                     original_filename = secure_filename(image.filename)
@@ -815,12 +856,13 @@ class PrintProductController:
                         result.error = PrintProductErrors.EMPTY_IMAGE_FILENAME.value
                         return result
 
-                    # Validate file type
-                    content_type = image.content_type
-                    if not content_type or not content_type.startswith('image/'):
+                    # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
+                    image_error = _validate_image_upload(image)
+                    if image_error:
                         result.status = False
-                        result.error = PrintProductErrors.INVALID_IMAGE_FILE.value
+                        result.error = image_error
                         return result
+                    content_type = image.content_type or 'application/octet-stream'
 
                     # Generate unique filename to avoid conflicts
                     import uuid
@@ -908,12 +950,13 @@ class PrintProductController:
                         result.error = PrintProductErrors.EMPTY_IMAGE_FILENAME.value
                         return result
 
-                    # Validate file type
-                    content_type = image.content_type
-                    if not content_type or not content_type.startswith('image/'):
+                    # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
+                    image_error = _validate_image_upload(image)
+                    if image_error:
                         result.status = False
-                        result.error = PrintProductErrors.INVALID_IMAGE_FILE.value
+                        result.error = image_error
                         return result
+                    content_type = image.content_type or 'application/octet-stream'
 
                     # Generate unique filename to avoid conflicts
                     original_filename = secure_filename(image.filename)
@@ -1172,12 +1215,13 @@ class PrintProductController:
                         result.error = PrintProductErrors.EMPTY_IMAGE_FILENAME.value
                         return result
 
-                    # Validate file type
-                    content_type = image.content_type
-                    if not content_type or not content_type.startswith('image/'):
+                    # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
+                    image_error = _validate_image_upload(image)
+                    if image_error:
                         result.status = False
-                        result.error = PrintProductErrors.INVALID_IMAGE_FILE.value
+                        result.error = image_error
                         return result
+                    content_type = image.content_type or 'application/octet-stream'
 
                     # Generate unique filename to avoid conflicts
                     original_filename = secure_filename(image.filename)

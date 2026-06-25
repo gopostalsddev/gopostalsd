@@ -59,13 +59,10 @@ class InputValidator:
         self.allowed_html_tags = ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li']
         self.allowed_html_attributes = {}
         
-        # Security patterns
-        self.sql_injection_patterns = [
-            r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)",
-            r"(--|#|\/\*|\*\/)",
-            r"(\b(OR|AND)\s+\d+\s*=\s*\d+)",
-            r"(\b(OR|AND)\s+'.*?'\s*=\s*'.*?')",
-        ]
+        # SQL injection pattern list removed: keyword blocklists are trivially bypassed
+        # via obfuscation and reject legitimate input (e.g. "Apt #5", street names with
+        # "--"). The ORM uses parameterized queries exclusively, which is the real defence.
+        self.sql_injection_patterns = []
         
         self.xss_patterns = [
             r"<script[^>]*>.*?</script>",

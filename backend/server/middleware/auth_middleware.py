@@ -75,12 +75,20 @@ def enforce_csrf_protection() -> None:
             logger.warning("Blocked request with missing or invalid CSRF token for path %s", request.path)
             abort(403, description='Missing or invalid CSRF token')
     else:
-        # Unauthenticated state-changing request: validate Origin/Referer to block
-        # cross-site form submissions targeting @optional_auth endpoints (e.g. order creation).
+        # Unauthenticated state-changing request: validate Origin/Referer.
+        # Webhooks carry their own HMAC signature — skip the origin check for them.
+        if '/webhook' in request.path:
+            return
         origin = request.headers.get('Origin', '') or request.headers.get('Referer', '')
-        if origin and not _origin_is_allowed(origin, _get_allowed_origins()):
+        # Block if Origin is absent OR present but not in the allowlist.
+        # A missing Origin on a browser mutation means a cross-site form POST or
+        # a privacy-mode stripped referer — reject both to prevent CSRF.
+        if not origin or not _origin_is_allowed(origin, _get_allowed_origins()):
             from flask import abort
-            logger.warning("Blocked cross-origin unauthenticated request from %s for path %s", origin, request.path)
+            logger.warning(
+                "Blocked unauthenticated %s to %s — origin: %r",
+                request.method, request.path, origin or '<none>',
+            )
             abort(403, description='Request origin not allowed')
 
 
