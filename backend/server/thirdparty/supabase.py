@@ -12,8 +12,8 @@ class SupabaseAdapter:
         self.bucket = app.config["SUPABASE_BUCKET"]
         self.client = create_client(app.config["SUPABASE_URL"], app.config["SUPABASE_API_KEY"])
 
-    def upload_file(self, file_data: bytes, filename: str, content_type: str) -> str:
-        unique_name = f"{int(time.time())}_{filename}"
+    def upload_file(self, file_data: bytes, file_name: str, content_type: str) -> str:
+        unique_name = f"{int(time.time())}_{file_name}"
         self.client.storage.from_(self.bucket).upload(unique_name, file_data, {"content-type": content_type})
         public_url = self.client.storage.from_(self.bucket).get_public_url(unique_name)
         return public_url
