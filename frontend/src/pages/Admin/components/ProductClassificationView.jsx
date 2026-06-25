@@ -304,31 +304,20 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
 
     try {
       setLoading(true);
-      const formData = new FormData();
-      if (productForm.description) {
-        formData.append("description", productForm.description);
-      }
-      if (productForm.imageFile) {
-        formData.append("image", productForm.imageFile);
-      }
 
-      await updateProductType(editingProduct.id, {
+      const success = await updateProductType(editingProduct.id, {
         description: productForm.description,
         imageFile: productForm.imageFile,
       });
-      
-      // Update local state immediately
-      setProductTypes(prev => prev.map(type => 
-        type.id === editingProduct.id 
-          ? { ...type, description: productForm.description || type.description }
-          : type
-      ));
-      
+
+      if (!success) {
+        alert("Failed to update product type. Please try again.");
+        return;
+      }
+
       setEditingProduct(null);
       setProductForm({ description: "", imageFile: null, assignToType: null });
-      
-      // Don't call onCategoryUpdate here - the local state is already updated
-      // The parent will get updated when the user navigates back
+      await loadData();
     } catch (error) {
       console.error("Failed to update product type:", error);
       alert("Failed to update product type!");
@@ -408,25 +397,20 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
       }
 
       // Update product details
-      const formData = new FormData();
-      if (productForm.description) {
-        formData.append("description", productForm.description);
-      }
-      if (productForm.imageFile) {
-        formData.append("image", productForm.imageFile);
-      }
-
-      await updatePrintProductDetails({
+      const success = await updatePrintProductDetails({
         id: selectedProduct.id,
         description: productForm.description,
         imageFile: productForm.imageFile,
       });
-      
+
+      if (!success) {
+        alert("Failed to update product. Please try again.");
+        return;
+      }
+
       setSelectedProduct(null);
       setProductForm({ description: "", imageFile: null, assignToType: null });
-      
-      // Don't call onCategoryUpdate here - let the local state handle the UI
-      // The parent will get updated when the user navigates back or when we explicitly need to sync
+      await loadData();
     } catch (error) {
       console.error("Failed to update product:", error);
       alert("Failed to update product!");
