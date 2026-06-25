@@ -11,6 +11,7 @@ from server.services.payment_service import PaymentService
 from server.middleware.auth_middleware import require_auth, require_role
 from server.middleware.rate_limit_middleware import rate_limit_by_ip
 from server.routes.response_utils import error_response
+from server.config import database as db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -59,9 +60,10 @@ payment_response_model = api.model('PaymentResponse', {
 })
 
 refund_request_model = api.model('RefundRequest', {
-    'payment_id': fields.String(required=True, description='Payment ID to refund'),
+    'payment_id': fields.String(required=True, description='Square payment ID to refund'),
     'amount': fields.Integer(required=True, description='Refund amount in cents'),
-    'reason': fields.String(description='Refund reason')
+    'reason': fields.String(description='Refund reason'),
+    'order_id': fields.Integer(description='Internal order ID (used to update order status after refund)')
 })
 
 refund_response_model = api.model('RefundResponse', {
@@ -74,6 +76,60 @@ refund_response_model = api.model('RefundResponse', {
     'created_at': fields.String(description='Refund creation timestamp'),
     'error': fields.String(description='Error message if refund failed')
 })
+
+def _handle_square_webhook_event(event_type: str, obj: dict) -> None:
+    """Update our DB in response to Square-originated payment/refund events."""
+    from server.models.order import Order, Payment as PaymentModel, Refund, PaymentStatus, OrderStatus
+    from datetime import datetime
+
+    if event_type in ('payment.updated', 'payment.created'):
+        payment_data = obj.get('payment', {})
+        square_payment_id = payment_data.get('id')
+        square_status = payment_data.get('status', '')
+        if not square_payment_id:
+            return
+        payment_row = PaymentModel.query.filter_by(external_payment_id=square_payment_id).first()
+        if not payment_row:
+            return
+        if square_status == 'COMPLETED':
+            payment_row.status = PaymentStatus.COMPLETED
+            payment_row.order.payment_status = PaymentStatus.COMPLETED
+        elif square_status in ('CANCELED', 'FAILED'):
+            payment_row.status = PaymentStatus.FAILED
+        db.session.commit()
+
+    elif event_type in ('refund.updated', 'refund.created'):
+        refund_data = obj.get('refund', {})
+        square_payment_id = refund_data.get('payment_id')
+        square_refund_id = refund_data.get('id')
+        refund_status = refund_data.get('status', '')
+        if not square_payment_id or refund_status != 'COMPLETED':
+            return
+        payment_row = PaymentModel.query.filter_by(external_payment_id=square_payment_id).first()
+        if not payment_row:
+            return
+        order = payment_row.order
+        # Only write DB refund record if we don't have one yet for this Square refund.
+        existing = Refund.query.filter_by(external_refund_id=square_refund_id).first()
+        if not existing:
+            amount_money = refund_data.get('amount_money', {})
+            refund_record = Refund(
+                order_id=order.id,
+                payment_id=payment_row.id,
+                refund_amount=(amount_money.get('amount', 0)) / 100.0,
+                currency=amount_money.get('currency', 'USD'),
+                reason=refund_data.get('reason', 'Square-initiated refund'),
+                external_refund_id=square_refund_id,
+                provider_response=refund_data,
+                processed_at=datetime.utcnow(),
+            )
+            db.session.add(refund_record)
+        order.payment_status = PaymentStatus.REFUNDED
+        order.status = OrderStatus.REFUNDED
+        payment_row.status = PaymentStatus.REFUNDED
+        db.session.commit()
+        logger.info("Order %s marked refunded via Square webhook", order.id)
+
 
 # Define resources
 @api.route('/process')
@@ -184,14 +240,53 @@ class RefundResource(Resource):
         if not payment_service.is_configured:
             return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
         
-        # Process refund
+        # Process refund with Square
         result = payment_service.refund_payment(
             payment_id=data['payment_id'],
             amount=data['amount'],
             reason=data.get('reason')
         )
-        
+
         if result['success']:
+            # Persist audit record and update order status in our DB.
+            order_id = data.get('order_id')
+            if order_id:
+                try:
+                    from server.models.order import Order, Payment as PaymentModel, Refund, PaymentStatus, OrderStatus
+                    from datetime import datetime
+
+                    order = Order.query.get(order_id)
+                    if order:
+                        # Look up our internal Payment row by Square payment ID.
+                        payment_row = PaymentModel.query.filter_by(
+                            order_id=order_id,
+                            external_payment_id=data['payment_id']
+                        ).first()
+
+                        refund_record = Refund(
+                            order_id=order_id,
+                            payment_id=payment_row.id if payment_row else None,
+                            refund_amount=data['amount'] / 100.0,
+                            currency='USD',
+                            reason=data.get('reason') or 'Customer requested refund',
+                            external_refund_id=result.get('refund_id'),
+                            provider_response=result,
+                            processed_at=datetime.utcnow(),
+                        )
+                        db.session.add(refund_record)
+
+                        order.payment_status = PaymentStatus.REFUNDED
+                        order.status = OrderStatus.REFUNDED
+                        if payment_row:
+                            payment_row.status = PaymentStatus.REFUNDED
+
+                        db.session.commit()
+                        logger.info("Refund record created and order %s marked refunded", order_id)
+                except Exception:
+                    logger.error("Error persisting refund record for order %s", order_id, exc_info=True)
+                    db.session.rollback()
+                    # Refund succeeded at Square; don't surface DB error to caller.
+
             return result, 201
         else:
             return error_response(result['error'], 400, code='PAYMENT_REFUND_ERROR', category='external_api')
@@ -219,10 +314,20 @@ class WebhookResource(Resource):
             if not payment_service.validate_webhook(payload, signature, webhook_url):
                 return error_response('Invalid webhook signature', 401, code='INVALID_WEBHOOK_SIGNATURE', category='security')
             
-            # Process webhook (implement based on Square webhook events)
-            # For now, just log the webhook
-            logger.info("Received payment webhook")
-            
+            import json as _json
+            try:
+                event = _json.loads(payload)
+            except Exception:
+                event = {}
+
+            event_type = event.get('type', '')
+            logger.info("Received Square webhook: %s", event_type)
+
+            try:
+                _handle_square_webhook_event(event_type, event.get('data', {}).get('object', {}))
+            except Exception:
+                logger.error("Error handling webhook event %s", event_type, exc_info=True)
+
             return {'status': 'success'}, 200
             
         except Exception:

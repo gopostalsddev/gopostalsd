@@ -29,7 +29,8 @@ import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import InsightsIcon from "@mui/icons-material/Insights";
 import SyncIcon from '@mui/icons-material/Sync';
 import NorthEastIcon from '@mui/icons-material/NorthEast';
-import { fetchAllOrders, fetchOrderStatuses, updateOrderStatus } from '../../services/order_service';
+import { fetchAllOrders, fetchOrderStatuses, updateOrderStatus, issueRefund } from '../../services/order_service';
+import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 
 const statusConfig = {
   processing: { label: "Processing", color: "warning" },
@@ -73,6 +74,13 @@ const OrderManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Refund dialog state
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refunding, setRefunding] = useState(false);
+  const [refundError, setRefundError] = useState('');
 
   const loadOrders = async (statusFilter = selectedStatus) => {
     try {
@@ -177,6 +185,56 @@ const OrderManagementPage = () => {
     setStatusDraft('pending');
     setTrackingNumberDraft('');
     setCarrierNameDraft('');
+  };
+
+  const openRefundDialog = () => {
+    setRefundAmount(selectedOrder ? Number(selectedOrder.total_amount).toFixed(2) : '');
+    setRefundReason('');
+    setRefundError('');
+    setRefundDialogOpen(true);
+  };
+
+  const closeRefundDialog = () => {
+    setRefundDialogOpen(false);
+    setRefundError('');
+  };
+
+  const handleIssueRefund = async () => {
+    if (!selectedOrder?.payment_id) return;
+    const dollars = parseFloat(refundAmount);
+    if (isNaN(dollars) || dollars <= 0) {
+      setRefundError('Enter a valid refund amount.');
+      return;
+    }
+    const maxDollars = Number(selectedOrder.total_amount);
+    if (dollars > maxDollars) {
+      setRefundError(`Refund cannot exceed order total (${formatCurrency(maxDollars)}).`);
+      return;
+    }
+    try {
+      setRefunding(true);
+      setRefundError('');
+      await issueRefund({
+        paymentId: selectedOrder.payment_id,
+        orderId: selectedOrder.id,
+        amountCents: Math.round(dollars * 100),
+        reason: refundReason || undefined,
+      });
+      // Refresh the order row in the list.
+      const updatedOrders = orders.map((o) =>
+        o.id === selectedOrder.id
+          ? { ...o, status: 'refunded', payment_status: 'refunded' }
+          : o
+      );
+      setOrders(updatedOrders);
+      setSelectedOrder((prev) => ({ ...prev, status: 'refunded', payment_status: 'refunded' }));
+      setRefundDialogOpen(false);
+      setSuccess(`Refund of ${formatCurrency(dollars)} issued successfully for order ${selectedOrder.order_number}.`);
+    } catch (err) {
+      setRefundError(err.message || 'Failed to issue refund.');
+    } finally {
+      setRefunding(false);
+    }
   };
 
   const handleFilterChange = async (event) => {
@@ -515,10 +573,68 @@ const OrderManagementPage = () => {
             </Stack>
           )}
         </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between' }}>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<MoneyOffIcon />}
+            disabled={
+              !selectedOrder?.payment_id ||
+              ['refunded', 'cancelled'].includes(selectedOrder?.status)
+            }
+            onClick={openRefundDialog}
+          >
+            Issue Refund
+          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button onClick={closeOrderDialog}>Close</Button>
+            <Button variant="contained" onClick={handleStatusUpdate} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Refund confirmation dialog */}
+      <Dialog open={refundDialogOpen} onClose={closeRefundDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Issue Refund</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {selectedOrder && (
+              <Typography variant="body2" color="text.secondary">
+                Order <strong>{selectedOrder.order_number}</strong> — total{' '}
+                <strong>{formatCurrency(selectedOrder.total_amount)}</strong>
+              </Typography>
+            )}
+            {refundError && <Alert severity="error">{refundError}</Alert>}
+            <TextField
+              label="Refund amount (USD)"
+              type="number"
+              inputProps={{ min: 0.01, step: 0.01 }}
+              value={refundAmount}
+              onChange={(e) => setRefundAmount(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Reason (optional)"
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              fullWidth
+              multiline
+              rows={2}
+              placeholder="e.g. Customer requested cancellation"
+            />
+          </Stack>
+        </DialogContent>
         <DialogActions>
-          <Button onClick={closeOrderDialog}>Close</Button>
-          <Button variant="contained" onClick={handleStatusUpdate} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
+          <Button onClick={closeRefundDialog} disabled={refunding}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleIssueRefund}
+            disabled={refunding}
+          >
+            {refunding ? 'Processing...' : 'Confirm Refund'}
           </Button>
         </DialogActions>
       </Dialog>

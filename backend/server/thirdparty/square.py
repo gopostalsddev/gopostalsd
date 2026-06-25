@@ -309,18 +309,20 @@ class SquareAdapter:
                     'refund_id': None
                 }
             
-            # Create refund request
-            from square.models import CreateRefundRequest, Money
-            
-            refund_money = Money(amount=amount, currency="USD")
-            refund_request = CreateRefundRequest(
-                payment_id=payment_id,
-                amount_money=refund_money,
-                reason=reason or "Customer requested refund"
-            )
-            
-            result = self.client.refunds.create_refund(refund_request)
-            
+            idempotency_key = secrets.token_urlsafe(32)
+            refund_request = {
+                'idempotency_key': idempotency_key,
+                'amount_money': {'amount': amount, 'currency': 'USD'},
+                'payment_id': payment_id,
+                'reason': reason or 'Customer requested refund',
+            }
+
+            # New Square SDK exposes refund_payment; old SDK had create_refund.
+            if hasattr(self.client.refunds, 'refund_payment'):
+                result = self.client.refunds.refund_payment(refund_request)
+            else:
+                result = self.client.refunds.create_refund(refund_request)
+
             if result.is_success():
                 refund = result.body['refund']
                 logger.info(f"Refund processed successfully: {refund['id']}")
@@ -330,7 +332,7 @@ class SquareAdapter:
                     'payment_id': refund['payment_id'],
                     'amount': refund['amount_money']['amount'],
                     'status': refund['status'],
-                    'reason': refund['reason'],
+                    'reason': refund.get('reason'),
                     'created_at': refund['created_at']
                 }
             else:

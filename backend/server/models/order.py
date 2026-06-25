@@ -220,7 +220,7 @@ class Refund(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
-    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=True)
     refund_amount = db.Column(db.Numeric(10, 2), nullable=False)
     currency = db.Column(db.String(3), nullable=False, default='USD')
     reason = db.Column(db.String(500), nullable=True)

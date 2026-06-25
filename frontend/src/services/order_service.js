@@ -54,3 +54,17 @@ export const updateOrderStatus = async (orderId, payload) => {
     throw new Error(normalizeError(error, 'Failed to update order status'));
   }
 };
+
+export const issueRefund = async ({ paymentId, orderId, amountCents, reason }) => {
+  try {
+    const response = await api.post('/payments/refund', {
+      payment_id: paymentId,
+      order_id: orderId,
+      amount: amountCents,
+      reason: reason || undefined,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(normalizeError(error, 'Failed to issue refund'));
+  }
+};
