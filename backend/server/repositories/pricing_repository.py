@@ -4,7 +4,7 @@ Implements the Repository pattern for clean data access separation.
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import logging
 from sqlalchemy.dialects.postgresql import insert
 from server import database as db
@@ -31,7 +31,7 @@ class PricingRepository:
                 option_key=option_key
             ).first()
             
-            if cached and cached.updated_at > datetime.now(timezone.utc) - timedelta(hours=1):
+            if cached and cached.updated_at > datetime.utcnow() - timedelta(hours=1):
                 return {
                     'price': str(cached.price),
                     'packageInfo': cached.package_info,
@@ -60,7 +60,7 @@ class PricingRepository:
                 existing.price = pricing_data.get('price', 0)
                 existing.package_info = pricing_data.get('packageInfo')
                 existing.product_options = pricing_data.get('productOptions')
-                existing.updated_at = datetime.now(timezone.utc)
+                existing.updated_at = datetime.utcnow()
             else:
                 # Create new record
                 new_pricing = ProductPricing(
@@ -99,7 +99,7 @@ class PricingRepository:
     def cache_options(self, product_id: int, options: List[Dict]) -> None:
         """Cache product options for future use."""
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.utcnow()
 
             # Deduplicate payload by option id in case upstream sends repeats.
             deduped_options = {}

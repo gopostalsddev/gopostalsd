@@ -57,7 +57,7 @@ class ProductPricing(db.Model):
     product_id = db.Column(db.Integer, nullable=False)  # Sinalite product ID
     store_code = db.Column(db.Integer, nullable=False)  # Store code (6 for Canada, 9 for US)
     option_key = db.Column(db.String(500), nullable=False)  # Combination of option IDs
-    price = db.Column(db.Numeric(10, 2), nullable=False)
+    price = db.Column(db.Numeric(15, 4), nullable=False)
     package_info = db.Column(JSON, nullable=True)  # Package details from API
     product_options = db.Column(JSON, nullable=True)  # Selected options
     created_at = db.Column(db.DateTime, nullable=False, default=func.now())
@@ -211,7 +211,7 @@ class ProductVariant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, nullable=False)  # Sinalite product ID
     variant_key = db.Column(db.String(500), nullable=False)  # Option combination key
-    price = db.Column(db.Numeric(10, 2), nullable=False)
+    price = db.Column(db.Numeric(15, 4), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=func.now())
     updated_at = db.Column(db.DateTime, nullable=False, default=func.now(), onupdate=func.now())
     

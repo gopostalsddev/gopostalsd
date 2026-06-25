@@ -343,8 +343,15 @@ class SinalitePricingStrategy(PricingStrategy):
                 return None
 
             price_value = extracted_payload.get('price', 0)
+            if not price_value:
+                logger.warning(
+                    "Sinalite returned price=0 for product %s with key %s — treating as no pricing data",
+                    product_id,
+                    vendor_option_key,
+                )
+                return None
             package_info = extracted_payload.get('packageInfo') or {}
-            
+
             # Format the response to match expected structure
             raw_pricing = {
                 'price': price_value,
