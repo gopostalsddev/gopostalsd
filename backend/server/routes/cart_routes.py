@@ -196,6 +196,10 @@ class AddToCartResource(Resource):
         logger.info(f"Adding product {product_id_result.sanitized_data} to cart with options: {sanitized_options}")
         
         cart_service = get_cart_service()
+        cart_check = cart_service.get_cart(session_id)
+        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+            return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+
         result = cart_service.add_item_to_cart(
             session_id=session_id,
             product_id=int(product_id_result.sanitized_data),

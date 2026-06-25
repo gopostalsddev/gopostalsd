@@ -102,7 +102,12 @@ class PrintProductController:
             name = (data.get('name') or '').strip()
             sku = (data.get('sku') or '').strip()
             description = (data.get('description') or '').strip() or None
-            image = (data.get('image') or '').strip() or None
+            _raw_image = (data.get('image') or '').strip()
+            if _raw_image and not _raw_image.startswith('https://'):
+                result.status = False
+                result.error = 'Invalid image URL. Must start with https://'
+                return result
+            image = _raw_image or None
             vendor_product_id = (data.get('vendor_product_id') or '').strip() or None
             category_id = data.get('category_id')
             type_id = data.get('type_id') or 0

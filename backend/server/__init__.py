@@ -89,6 +89,9 @@ def create_server(config="development"):
         response.headers.setdefault('X-Frame-Options', 'DENY')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        # API responses are JSON; CSP has no effect on them but does harden the
+        # HTML error pages Flask renders for 404/500 etc.
+        response.headers.setdefault('Content-Security-Policy', "default-src 'none'")
         return response
     
     # Add startup timestamp for health checks

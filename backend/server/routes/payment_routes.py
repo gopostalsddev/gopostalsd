@@ -258,11 +258,19 @@ class RefundResource(Resource):
         if order_obj:
             if order_obj.payment_status == PS.REFUNDED:
                 return error_response('Order has already been refunded', 400, code='ALREADY_REFUNDED', category='business_logic')
-            # Refund amount must not exceed the original charge.
+
+            # Guard against over-refunding across multiple partial refunds.
+            from server.models.order import Refund as RefundModel
+            from sqlalchemy import func as _func
+            already_refunded_row = db.session.query(
+                _func.coalesce(_func.sum(RefundModel.refund_amount), 0)
+            ).filter_by(order_id=order_id).scalar()
+            already_refunded_cents = math.ceil(float(already_refunded_row) * 100)
             max_refund_cents = math.ceil(float(order_obj.total_amount) * 100)
-            if data['amount'] > max_refund_cents:
+            if data['amount'] + already_refunded_cents > max_refund_cents:
+                remaining = max_refund_cents - already_refunded_cents
                 return error_response(
-                    f'Refund amount exceeds original charge ({max_refund_cents} cents)',
+                    f'Refund amount exceeds remaining refundable balance ({remaining} cents)',
                     400, code='REFUND_EXCEEDS_CHARGE', category='business_logic'
                 )
 

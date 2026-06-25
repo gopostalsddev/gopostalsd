@@ -69,8 +69,10 @@ def validate_production_security_settings() -> None:
     import logging as _log
     _prod_logger = _log.getLogger(__name__)
     if not os.getenv('SQUARE_WEBHOOK_SIGNATURE_KEY', '').strip():
-        _prod_logger.warning(
-            'SQUARE_WEBHOOK_SIGNATURE_KEY is not set — all Square webhook requests will be rejected'
+        raise ValueError(
+            'SQUARE_WEBHOOK_SIGNATURE_KEY must be set in production — '
+            'without it all Square webhook events are silently dropped, '
+            'leaving order statuses stale after payment.'
         )
     if not os.getenv('OAUTH_TOKEN_ENCRYPTION_KEY', '').strip():
         raise ValueError(
