@@ -297,7 +297,7 @@ class ErrorHandler:
             'error_code': error.error_code,
             'category': error.category.value,
             'severity': error.severity.value,
-            'message': error.message,
+            'error_message': error.message,
             'user_message': error.user_message,
             'request_id': error.request_id,
             'user_id': error.user_id,
