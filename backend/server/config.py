@@ -81,6 +81,12 @@ def validate_production_security_settings() -> None:
 class Config:
     # Disable SQLAlchemy event system to improve performance
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+
+    # Supabase file storage
+    SUPABASE_URL = os.getenv('SUPABASE_URL')
+    SUPABASE_API_KEY = os.getenv('SUPABASE_KEY')
+    SUPABASE_BUCKET = os.getenv('SUPABASE_BUCKET', 'gopostalsd-uploads')
 
     PRICING_POLICY_VERSION = os.getenv('PRICING_POLICY_VERSION', 'retail-v1')
     PRICING_VENDOR_CURRENCY = os.getenv('PRICING_VENDOR_CURRENCY', 'CAD').upper()
