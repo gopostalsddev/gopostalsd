@@ -99,7 +99,7 @@ export const updatePrintProductCategoryDetails = async (categoryDetails) => {
 
     return response.status === 200;
   } catch (error) {
-    console.error("Failed to update product category details:", error);
+    console.error("Failed to update product category details:", JSON.stringify(error?.response?.data) || error?.message);
     return false;
   }
 };
