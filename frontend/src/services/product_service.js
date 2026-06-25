@@ -94,12 +94,7 @@ export const updatePrintProductCategoryDetails = async (categoryDetails) => {
     const response = await axios.put(
       `${API_BASE_URL}/print/categories/${categoryDetails.id}/update`,
       formData,
-      {
-        headers: {
-          ...authService.getAuthHeaders(true, true),
-          "Content-Type": "multipart/form-data",
-        },
-      }
+      { headers: authService.getAuthHeaders(true, true) }
     );
 
     return response.status === 200;
@@ -124,12 +119,7 @@ export const updatePrintProductDetails = async (productDetails) => {
     const response = await axios.put(
       `${API_BASE_URL}/print/products/${productDetails.id}/update`,
       formData,
-      {
-        headers: {
-          ...authService.getAuthHeaders(true, true),
-          "Content-Type": "multipart/form-data",
-        },
-      }
+      { headers: authService.getAuthHeaders(true, true) }
     );
 
     return response.status === 200;
@@ -194,12 +184,7 @@ export const updateProductType = async (typeId, productTypeData) => {
     const response = await axios.put(
       `${API_BASE_URL}/print/product-types/${typeId}/update`,
       formData,
-      {
-        headers: {
-          ...authService.getAuthHeaders(true, true),
-          "Content-Type": "multipart/form-data",
-        },
-      }
+      { headers: authService.getAuthHeaders(true, true) }
     );
 
     return response.status === 200;
