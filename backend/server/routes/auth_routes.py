@@ -350,6 +350,7 @@ class RefreshResource(Resource):
     @api.doc('refresh_session')
     @api.param('refresh_token', 'Refresh token', required=True)
     @api.response(200, 'Session refreshed successfully', session_model)
+    @rate_limit_by_ip('AUTH_LOGIN_RATE_LIMIT_COUNT', 'AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'auth-refresh')
     def post(self):
         """Refresh user session with refresh token."""
         data = request.get_json(silent=True) or {}

@@ -82,6 +82,13 @@ def create_server(config="development"):
     # Enforce CSRF validation for authenticated state-changing requests.
     from server.middleware.auth_middleware import enforce_csrf_protection
     server.before_request(enforce_csrf_protection)
+
+    @server.after_request
+    def _add_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        return response
     
     # Add startup timestamp for health checks
     from datetime import datetime, timezone
