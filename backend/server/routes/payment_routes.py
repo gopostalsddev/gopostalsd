@@ -360,9 +360,10 @@ class WebhookResource(Resource):
             # request.url, which is attacker-controlled via the Host header on a
             # misconfigured reverse proxy and would let an attacker forge HMAC messages.
             import os as _os
-            _base = (_os.getenv('SQUARE_WEBHOOK_URL') or
-                     _os.getenv('RENDER_EXTERNAL_URL') or
-                     request.url_root.rstrip('/'))
+            _base = _os.getenv('SQUARE_WEBHOOK_URL') or _os.getenv('RENDER_EXTERNAL_URL')
+            if not _base:
+                logger.error("Webhook base URL not configured — set SQUARE_WEBHOOK_URL or RENDER_EXTERNAL_URL")
+                return error_response('Webhook not configured', 500, code='WEBHOOK_CONFIG_ERROR', category='configuration')
             webhook_url = _base.rstrip('/') + '/api/payments/webhook'
             
             # Initialize payment service

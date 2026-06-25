@@ -130,8 +130,10 @@ class CartResource(Resource):
         
         cart_service = get_cart_service()
         result = cart_service.get_cart(session_id)
-        
+
         if result['success']:
+            if not _verify_cart_ownership(result['cart']):
+                return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
             return result['cart'], 200
         else:
             return error_response(result['error'], 400, code='CART_FETCH_ERROR', category='business_logic')
@@ -328,8 +330,12 @@ class ShippingResource(Resource):
         session_id, session_error = _get_required_session_id()
         if session_error:
             return session_error
-        
+
         cart_service = get_cart_service()
+        cart_check = cart_service.get_cart(session_id)
+        if cart_check['success'] and not _verify_cart_ownership(cart_check['cart']):
+            return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
+
         result = cart_service.calculate_shipping(
             session_id=session_id,
             destination_address=address_result.sanitized_data
@@ -366,8 +372,10 @@ class CartSummaryResource(Resource):
         
         cart_service = get_cart_service()
         result = cart_service.get_cart(session_id)
-        
+
         if result['success']:
+            if not _verify_cart_ownership(result['cart']):
+                return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
             cart = result['cart']
             return {
                 'item_count': cart.get('item_count', 0),
