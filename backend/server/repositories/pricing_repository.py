@@ -163,24 +163,35 @@ class PricingRepository:
             logger.error(f"Error retrieving cached variants: {str(e)}")
             return None
     
+    # Sinalite uses large sentinel values (e.g. 137540000) to mark unavailable variants.
+    # Real print products don't exceed ~$5000 CAD, so we ignore anything above this.
+    _MAX_CACHEABLE_PRICE = 99_999
+
     def cache_variants(self, product_id: int, variants: List[Dict]) -> None:
         """Cache product variants for future use."""
         try:
             # Clear existing variants for this product
             ProductVariant.query.filter_by(product_id=product_id).delete()
-            
-            # Add new variants
-            for variant in variants:
+
+            valid_variants = [
+                v for v in variants
+                if v.get('price') is not None and float(v['price']) <= self._MAX_CACHEABLE_PRICE
+            ]
+            skipped = len(variants) - len(valid_variants)
+            if skipped:
+                logger.info("Skipping %d sentinel-priced variants for product %s", skipped, product_id)
+
+            for variant in valid_variants:
                 new_variant = ProductVariant(
                     product_id=product_id,
                     variant_key=variant['key'],
                     price=variant['price']
                 )
                 db.session.add(new_variant)
-            
+
             db.session.commit()
-            logger.info(f"Cached {len(variants)} variants for product {product_id}")
-            
+            logger.info(f"Cached {len(valid_variants)} variants for product {product_id}")
+
         except Exception as e:
             logger.error(f"Error caching variants: {str(e)}")
             db.session.rollback()

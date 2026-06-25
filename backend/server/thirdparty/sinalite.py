@@ -104,23 +104,24 @@ class SinaliteAdapter:
     def get_product_price(self, product_id, store_code, product_options):
         """
         Get pricing information for a specific product configuration.
-        
+
         Args:
             product_id (int): The product ID
             store_code (int): Store code (6 for Canada, 9 for US)
             product_options (list): List of option IDs
-            
+
         Returns:
             dict: Price and package information
         """
         endpoint = f"/price/{product_id}/{store_code}"
         payload = {"productOptions": product_options}
-        
+
         response = make_http_request(self, "POST", endpoint, data=payload, requires_auth=True)
-        
+        logger.info("Sinalite get_product_price(%s, options=%s) raw response: %s", product_id, product_options, response)
+
         if response:
             return response
-        
+
         logger.error(f"{self.name} failed to retrieve pricing for product ID {product_id}")
         return None
     
@@ -147,20 +148,21 @@ class SinaliteAdapter:
     def get_price_by_key(self, product_id, key):
         """
         Get variant price using product ID and key.
-        
+
         Args:
             product_id (int): The product ID
             key (str): The variant key
-            
+
         Returns:
             dict: Price information
         """
         endpoint = f"/pricebykey/{product_id}/{key}"
         response = make_http_request(self, "GET", endpoint, requires_auth=True)
-        
+        logger.info("Sinalite get_price_by_key(%s, key=%s) raw response: %s", product_id, key, response)
+
         if response:
             return response
-        
+
         logger.error(f"{self.name} failed to retrieve price for product ID {product_id} with key {key}")
         return None
     

@@ -146,13 +146,18 @@ class SinalitePricingStrategy(PricingStrategy):
         if not variants:
             return None
 
+        MAX_SANE_PRICE = 99_999  # Sinalite uses large sentinels for unavailable variants
+
         normalized_target_key = self._normalize_variant_key(vendor_option_key)
         for variant in variants:
             variant_key = variant.get('key') or variant.get('variant_key')
             if not variant_key:
                 continue
+            price = variant.get('price', 0)
+            if price is not None and float(price) > MAX_SANE_PRICE:
+                continue  # skip sentinel
             if self._normalize_variant_key(variant_key) == normalized_target_key:
-                return {'price': variant.get('price', 0)}
+                return {'price': price}
 
         return None
 
