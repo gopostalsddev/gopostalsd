@@ -73,8 +73,9 @@ def validate_production_security_settings() -> None:
             'SQUARE_WEBHOOK_SIGNATURE_KEY is not set — all Square webhook requests will be rejected'
         )
     if not os.getenv('OAUTH_TOKEN_ENCRYPTION_KEY', '').strip():
-        _prod_logger.warning(
-            'OAUTH_TOKEN_ENCRYPTION_KEY is not set — OAuth tokens will be stored in plaintext'
+        raise ValueError(
+            'OAUTH_TOKEN_ENCRYPTION_KEY must be set in production — '
+            'OAuth access tokens cannot be stored in plaintext.'
         )
 
 

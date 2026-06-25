@@ -226,16 +226,18 @@ class SquareAdapter:
                 logger.error(f"Square payment failed: {error_messages}")
                 return {
                     'success': False,
-                    'error': f'Square payment failed: {", ".join(error_messages)}',
-                    'errors': errors,
+                    # Return a generic message to the client — Square error details
+                    # (CVV_FAILURE, ADDRESS_VERIFICATION_FAILURE, etc.) are logged
+                    # server-side only to prevent card-probing oracles.
+                    'error': 'Payment was declined. Please check your card details and try again.',
                     'payment_id': None
                 }
-                
+
         except Exception as e:
             logger.error(f"Error processing Square payment: {str(e)}")
             return {
                 'success': False,
-                'error': f'Square payment error: {str(e)}',
+                'error': 'An error occurred while processing your payment. Please try again.',
                 'payment_id': None
             }
     

@@ -155,10 +155,18 @@ class PaymentProcessResource(Resource):
 
         # Validate amount against the actual order total — never trust the client amount.
         from server.models.order import Order as OrderModel, PaymentStatus as PS
+        from flask import g
         internal_order_id = data.get('order_id')
         order_obj = OrderModel.query.get(internal_order_id) if internal_order_id else None
         if not order_obj:
             return error_response('Order not found', 404, code='ORDER_NOT_FOUND', category='business_logic')
+
+        # Ownership check: non-admins may only pay for their own orders.
+        current_user = getattr(g, 'current_user', None)
+        if current_user and current_user.role.name != 'Admin':
+            if order_obj.user_id is None or order_obj.user_id != current_user.id:
+                return error_response('Access denied', 403, code='ACCESS_DENIED', category='authorization')
+
         if order_obj.payment_status == PS.COMPLETED:
             return error_response('Order already paid', 400, code='ORDER_ALREADY_PAID', category='business_logic')
 

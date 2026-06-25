@@ -77,7 +77,8 @@ def enforce_csrf_protection() -> None:
     else:
         # Unauthenticated state-changing request: validate Origin/Referer.
         # Webhooks carry their own HMAC signature — skip the origin check for them.
-        if '/webhook' in request.path:
+        _WEBHOOK_PATHS = {'/api/payments/webhook', '/api/payments/webhook/'}
+        if request.path in _WEBHOOK_PATHS:
             return
         origin = request.headers.get('Origin', '') or request.headers.get('Referer', '')
         # Block if Origin is absent OR present but not in the allowlist.

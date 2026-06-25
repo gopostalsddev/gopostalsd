@@ -325,9 +325,10 @@ class LogoutResource(Resource):
     @api.param('session_token', 'Session token', required=True)
     def post(self):
         """Logout user by invalidating session."""
-        data = request.get_json(silent=True) or {}
-        session_token = data.get('session_token') or _extract_bearer_token()
-        
+        # Token must come from the Authorization header so the double-submit CSRF
+        # check runs. A body-supplied token bypasses CSRF enforcement entirely.
+        session_token = _extract_bearer_token()
+
         if not session_token:
             return error_response('Session token is required', 400)
 
