@@ -200,6 +200,8 @@ class OrderService:
                 # Create payment record (only if we have a payment_id)
                 payment = None
                 if payment_result.get('payment_id'):
+                    order.payment_id = payment_result['payment_id']  # denormalise onto Order for easy lookup
+                    order.payment_provider = self.payment_service.provider
                     payment = Payment(
                         order_id=order.id,
                         payment_provider=self.payment_service.provider,

@@ -224,25 +224,39 @@ class RefundResource(Resource):
         if not data:
             return error_response('Request body is required', 400)
         
-        # Validate required fields
-        required_fields = ['payment_id', 'amount']
-        for field in required_fields:
-            if field not in data:
-                return error_response(f'{field} is required', 400)
-        
+        if 'amount' not in data:
+            return error_response('amount is required', 400)
+
         # Validate amount
         if not isinstance(data['amount'], int) or data['amount'] <= 0:
             return error_response('Amount must be a positive integer', 400)
-        
+
+        # Resolve the Square payment ID: prefer the explicit field, fall back to
+        # looking up the Payment row for the order (covers legacy orders where
+        # Order.payment_id was not stored at checkout time).
+        square_payment_id = data.get('payment_id')
+        order_id = data.get('order_id')
+
+        if not square_payment_id and order_id:
+            from server.models.order import Payment as PaymentModel
+            payment_row = PaymentModel.query.filter_by(order_id=order_id).order_by(
+                PaymentModel.created_at.desc()
+            ).first()
+            if payment_row:
+                square_payment_id = payment_row.external_payment_id
+
+        if not square_payment_id:
+            return error_response('payment_id is required (or provide order_id to look it up)', 400)
+
         # Initialize payment service
         payment_service = PaymentService()
-        
+
         if not payment_service.is_configured:
             return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
-        
+
         # Process refund with Square
         result = payment_service.refund_payment(
-            payment_id=data['payment_id'],
+            payment_id=square_payment_id,
             amount=data['amount'],
             reason=data.get('reason')
         )
@@ -260,7 +274,7 @@ class RefundResource(Resource):
                         # Look up our internal Payment row by Square payment ID.
                         payment_row = PaymentModel.query.filter_by(
                             order_id=order_id,
-                            external_payment_id=data['payment_id']
+                            external_payment_id=square_payment_id
                         ).first()
 
                         refund_record = Refund(

@@ -200,7 +200,7 @@ const OrderManagementPage = () => {
   };
 
   const handleIssueRefund = async () => {
-    if (!selectedOrder?.payment_id) return;
+    if (!selectedOrder) return;
     const dollars = parseFloat(refundAmount);
     if (isNaN(dollars) || dollars <= 0) {
       setRefundError('Enter a valid refund amount.');
@@ -215,7 +215,7 @@ const OrderManagementPage = () => {
       setRefunding(true);
       setRefundError('');
       await issueRefund({
-        paymentId: selectedOrder.payment_id,
+        paymentId: selectedOrder.payment_id || undefined,
         orderId: selectedOrder.id,
         amountCents: Math.round(dollars * 100),
         reason: refundReason || undefined,
@@ -579,7 +579,7 @@ const OrderManagementPage = () => {
             color="error"
             startIcon={<MoneyOffIcon />}
             disabled={
-              !selectedOrder?.payment_id ||
+              selectedOrder?.payment_status !== 'completed' ||
               ['refunded', 'cancelled'].includes(selectedOrder?.status)
             }
             onClick={openRefundDialog}
