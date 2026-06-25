@@ -290,7 +290,9 @@ export const calculateProductPrice = async (productId, options, storeCode = 6, c
     return response.data;
   } catch (error) {
     console.error("Error calculating product price: ", error);
-    const backendMessage = error?.response?.data?.error || error?.response?.data?.message;
+    const errData = error?.response?.data?.error;
+    const backendMessage = (typeof errData === 'string' ? errData : errData?.message)
+      || error?.response?.data?.message;
     throw new Error(backendMessage || 'Failed to calculate price for selected options');
   }
 };
