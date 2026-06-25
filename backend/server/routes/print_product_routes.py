@@ -222,9 +222,8 @@ class PrintProductCategoryUpdateResource(Resource):
     @require_role("Admin")
     def put(self, category_id):
         """Update category image and/or description"""
-        from flask import request as flask_request
-        description = flask_request.form.get("description")
-        image = flask_request.files.get("image")
+        description = request.form.get("description")
+        image = request.files.get("image")
 
         if not description and not image:
             return error_response("At least one field (description or image) must be provided", 400)
@@ -375,9 +374,8 @@ class PrintProductTypeUpdateResource(Resource):
     @require_role("Admin")
     def put(self, type_id):
         """Update product type description and/or image"""
-        from flask import request as flask_request
-        description = flask_request.form.get("description")
-        image = flask_request.files.get("image")
+        description = request.form.get("description")
+        image = request.files.get("image")
 
         if not description and not image:
             return error_response("At least one field (description or image) must be provided", 400)
@@ -479,9 +477,8 @@ class PrintProductUpdateResource(Resource):
     @require_role("Admin")
     def put(self, product_id):
         """Update product description and/or image"""
-        from flask import request as flask_request
-        description = flask_request.form.get("description")
-        image = flask_request.files.get("image")
+        description = request.form.get("description")
+        image = request.files.get("image")
 
         if not description and not image:
             return error_response("At least one field (description or image) must be provided", 400)

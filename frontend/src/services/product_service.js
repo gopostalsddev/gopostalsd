@@ -189,7 +189,7 @@ export const updateProductType = async (typeId, productTypeData) => {
 
     return response.status === 200;
   } catch (error) {
-    console.error("Failed to update product type details:", error?.response?.data || error);
+    console.error("Failed to update product type details:", JSON.stringify(error?.response?.data) || error?.message);
     return false;
   }
 };
