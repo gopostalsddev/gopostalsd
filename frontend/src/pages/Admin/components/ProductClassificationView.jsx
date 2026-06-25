@@ -45,6 +45,7 @@ import {
   assignProductToType,
   unassignProductFromType,
   updatePrintProductDetails,
+  updatePrintProductCategoryDetails,
   syncProductsForCategory,
   fetchAllVendors,
   createManualVendorProduct,
@@ -58,6 +59,8 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [productTypes, setProductTypes] = useState([]);
   const [products, setProducts] = useState([]);
+  const [categoryImage, setCategoryImage] = useState(category.image || null);
+  const [categoryImageFile, setCategoryImageFile] = useState(null);
   const [localClassificationStatus, setLocalClassificationStatus] = useState(category.product_classification_status || {});
   
   // Product Type Management
@@ -444,6 +447,31 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
     ? products.filter(p => p.type_id === selectedProductType)
     : [];
 
+  const handleUpdateCategoryImage = async () => {
+    if (!categoryImageFile) return;
+    try {
+      setLoading(true);
+      const success = await updatePrintProductCategoryDetails({
+        id: category.id,
+        description: category.description,
+        imageFile: categoryImageFile,
+      });
+      if (!success) {
+        alert("Failed to update category image. Please try again.");
+        return;
+      }
+      const objectUrl = URL.createObjectURL(categoryImageFile);
+      setCategoryImage(objectUrl);
+      setCategoryImageFile(null);
+      if (onCategoryUpdate) onCategoryUpdate();
+    } catch (error) {
+      console.error("Failed to update category image:", error);
+      alert("Failed to update category image!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Function to sync changes with parent when navigating back
   const handleBackWithSync = () => {
     // Call onCategoryUpdate to ensure parent has latest data
@@ -580,10 +608,50 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
             </Button>
           </Typography>
           
+          {/* Category image upload */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1, flexWrap: "wrap" }}>
+            <Box
+              sx={{
+                width: 80, height: 80,
+                borderRadius: 2, overflow: "hidden",
+                border: "2px solid #e0e0e0", flexShrink: 0,
+              }}
+            >
+              <img
+                src={categoryImage || logoImage}
+                alt={category.name}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                Category image (shown on shop)
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setCategoryImageFile(e.target.files[0] || null)}
+                  style={{ fontSize: "0.8rem" }}
+                />
+                {categoryImageFile && (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={handleUpdateCategoryImage}
+                    disabled={loading}
+                  >
+                    Upload
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          </Box>
+
           {localClassificationStatus && !localClassificationStatus.all_classified && (
-            <Alert 
-              severity="warning" 
-              sx={{ 
+            <Alert
+              severity="warning"
+              sx={{
                 maxWidth: 500,
                 borderRadius: 2,
                 "& .MuiAlert-icon": {
