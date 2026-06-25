@@ -73,6 +73,7 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [quantity, setQuantity] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [livePreviewUrl, setLivePreviewUrl] = React.useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [fileError, setFileError] = useState(null);
   const [previewFiles, setPreviewFiles] = useState([]);
@@ -260,6 +261,18 @@ const ProductDetailPage = ({ product, onBack }) => {
       setSelectedOptions(initialSelections);
     }
   }, [options]);
+
+  // Keep a live object URL for the first uploaded file so the design preview card
+  // shows the actual artwork instead of the product/logo image.
+  React.useEffect(() => {
+    if (uploadedFiles.length === 0) {
+      setLivePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(uploadedFiles[0]);
+    setLivePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [uploadedFiles]);
 
   // Combine errors from different sources
   const displayError = error || optionsError || pricingError;
@@ -1056,11 +1069,20 @@ const ProductDetailPage = ({ product, onBack }) => {
                 </Typography>
                 <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
                   <Box sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
-                    <img
-                      src={product.image || productTypeImage || logoImage}
-                      alt={product.name}
-                      style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
-                    />
+                    {livePreviewUrl ? (
+                      <embed
+                        src={livePreviewUrl}
+                        type="application/pdf"
+                        style={{ width: '100%', height: '180px', border: 'none' }}
+                        title={uploadedFiles[0]?.name}
+                      />
+                    ) : (
+                      <img
+                        src={product.image || productTypeImage || logoImage}
+                        alt={product.name}
+                        style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
+                      />
+                    )}
                   </Box>
                   <CardContent>
                     <Typography variant="subtitle1" fontWeight={700} gutterBottom>
