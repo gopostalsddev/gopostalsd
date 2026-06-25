@@ -198,11 +198,13 @@ class ShippingEstimatesResource(Resource):
             return error_response('items and shippingInfo are required', 400)
         
         result = PricingController.get_shipping_estimates(items, shipping_info)
-        
+
         if result.status:
             return result.data['shipping_options']
         else:
-            return error_response(result.error, 400, code='SHIPPING_ESTIMATE_ERROR', category='business_logic')
+            # Return empty list instead of 400 — Sinalite unavailability is not
+            # a bad request; the frontend shows "unavailable" and lets users proceed.
+            return []
 
 
 # Note: The api namespace is exported directly and registered in routes/__init__.py

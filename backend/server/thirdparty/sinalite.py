@@ -182,12 +182,14 @@ class SinaliteAdapter:
             "items": items,
             "shippingInfo": shipping_info
         }
-        
+
         logger.debug("Sending shipping estimate request to Sinalite API")
         logger.debug(f"Items count: {len(items)}")
         logger.debug(f"Destination: {shipping_info.get('city')}, {shipping_info.get('stateCode')}")
 
-        response = make_http_request(self, "POST", endpoint, data=payload, requires_auth=True)
+        # Use shorter retries for shipping — 500s here usually mean Sinalite can't price
+        # the product, not a transient error, so 3×2s is just unnecessary latency.
+        response = make_http_request(self, "POST", endpoint, data=payload, requires_auth=True, max_retries=2, retry_delay=1)
 
         if response and "body" in response:
             logger.debug("Shipping estimate response received")

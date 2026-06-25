@@ -508,11 +508,15 @@ const ProductDetailPage = ({ product, onBack }) => {
       };
 
       const estimates = await getShippingEstimates(requestData);
-      setShippingEstimates(estimates);
-      setShowShippingDialog(true);
+      if (!estimates || estimates.length === 0) {
+        setError('Shipping estimates are currently unavailable for this product. Please contact us for a shipping quote.');
+      } else {
+        setShippingEstimates(estimates);
+        setShowShippingDialog(true);
+      }
     } catch (error) {
       console.error('Error getting shipping estimates:', error);
-      setError(getErrorMessage(error?.response?.data?.error, 'Failed to get shipping estimates'));
+      setError(getErrorMessage(error?.response?.data?.error, 'Unable to retrieve shipping estimates. Please contact us for a quote.'));
     } finally {
       setShippingLoading(false);
     }
