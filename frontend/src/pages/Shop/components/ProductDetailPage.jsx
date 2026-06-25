@@ -982,7 +982,9 @@ const ProductDetailPage = ({ product, onBack }) => {
                 </Box>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  Select options to see price
+                  {options.length > 0 && Object.keys(selectedOptions).length === options.length
+                    ? 'Price unavailable for this option combination'
+                    : 'Select options above to see price'}
                 </Typography>
               )}
             </Box>

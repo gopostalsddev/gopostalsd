@@ -43,7 +43,8 @@ export const useProductPricing = (productId, selectedOptions, options, customiza
 
       setLoading(true);
       setError(null);
-      
+      setPricing(null); // clear stale price while recalculating
+
       try {
         const priceData = await calculateProductPrice(parseInt(productId), optionIds, 6, customization);
         if (!priceData || typeof priceData.price !== 'number') {

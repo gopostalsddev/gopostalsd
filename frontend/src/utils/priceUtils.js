@@ -9,8 +9,10 @@
  * @returns {string} Formatted price string
  */
 export const formatPrice = (price) => {
-  if (!price) return 'Price not available';
-  return `$${parseFloat(price).toFixed(2)}`;
+  if (price === null || price === undefined || price === '') return 'Price not available';
+  const num = parseFloat(price);
+  if (isNaN(num)) return 'Price not available';
+  return `$${num.toFixed(2)}`;
 };
 
 /**
@@ -20,8 +22,10 @@ export const formatPrice = (price) => {
  * @returns {number} Total price
  */
 export const calculateTotalPrice = (unitPrice, quantity) => {
-  if (!unitPrice) return 0;
-  return parseFloat(unitPrice) * quantity;
+  if (unitPrice === null || unitPrice === undefined) return 0;
+  const num = parseFloat(unitPrice);
+  if (isNaN(num)) return 0;
+  return num * quantity;
 };
 
 /**
