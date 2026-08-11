@@ -39,4 +39,4 @@ jobs:
         run: sha256sum --check --strict MANIFEST.sha256
       - name: Run authority contract tests
         working-directory: backend
-        run: python -m pytest -q tests/test_gp23_rehearsal_authority.py
+        run: python -m pytest -q --no-cov tests/test_gp23_rehearsal_authority.py
