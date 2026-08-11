@@ -91,6 +91,7 @@ def validate_production_security_settings() -> None:
 class Config:
     # Disable SQLAlchemy event system to improve performance
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    READINESS_DB_TIMEOUT_MS = int(os.getenv('READINESS_DB_TIMEOUT_MS', '2000'))
     ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
     # Supabase file storage

@@ -19,7 +19,7 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: bash deploy.sh
-    healthCheckPath: /
+    healthCheckPath: /health/ready
     buildFilter:
       paths:
         - backend/**
