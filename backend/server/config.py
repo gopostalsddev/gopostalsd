@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from server.logging_config import configure_logging
 from server.square_config import square_webhook_url, validate_square_configuration
 from server.email_config import trusted_proxy_hops, validate_production_email_settings
+from server.storage_config import validate_production_storage_settings
 
 # Configure third party libraries
 database = SQLAlchemy()
@@ -72,6 +73,7 @@ def validate_production_security_settings() -> None:
     square_webhook_url()
     validate_production_email_settings()
     trusted_proxy_hops(required=True)
+    validate_production_storage_settings()
 
     import logging as _log
     _prod_logger = _log.getLogger(__name__)

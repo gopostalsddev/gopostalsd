@@ -144,6 +144,9 @@ def create_server(config="development", *, migration_mode=None):
     else:  # Default to development configuration
         server.config.from_object(DevelopmentConfig)
 
+    from server.request_limits import configure_request_limits
+    configure_request_limits(server)
+
     # Log the loaded environment and Sinalite URL
     logger.info(f"Loaded Environment: {config}")
     logger.info(f"Sinalite: {server.config['SINALITE_BASE_URL']}")

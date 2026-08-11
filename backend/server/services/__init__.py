@@ -1,5 +1,6 @@
 from flask import Flask
 from server.services.file_storage_service import LocalFileStorage, RemoteFileStorage
+from server.storage_config import storage_backend
 
 _ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 _MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
@@ -31,7 +32,9 @@ class FileStorage:
     def init_app(self, app: Flask):
         environment = app.config.get("ENVIRONMENT", "development")
 
-        if environment in ["development", "testing"]:
+        backend = storage_backend(required=environment == "production")
+
+        if backend == "local":
             self.backend = LocalFileStorage()
         else:
             self.backend = RemoteFileStorage()

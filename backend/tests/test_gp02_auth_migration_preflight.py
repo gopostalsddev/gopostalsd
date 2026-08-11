@@ -74,6 +74,9 @@ def _production_env(database_url):
             "EMAIL_FROM_NAME": "Go Postal SD",
             "MAILERSEND_API_KEY": "gp02-test-mailersend-key",
             "SUPABASE_URL": "https://example.supabase.co",
+            "SUPABASE_SERVICE_KEY": "gp02-test-service-role-key",
+            "SUPABASE_BUCKET": "gp02-test-bucket",
+            "FILE_STORAGE_BACKEND": "supabase",
             "SUPABASE_KEY": (
                 "eyJhbGciOiJIUzI1NiJ9."
                 "eyJyb2xlIjoic2VydmljZV9yb2xlIn0."

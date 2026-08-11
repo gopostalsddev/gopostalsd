@@ -111,6 +111,10 @@ def test_production_security_validation_requires_coherent_square_config():
         "EMAIL_FROM_ADDRESS": "support@gopostalsd.com",
         "EMAIL_FROM_NAME": "Go Postal SD",
         "MAILERSEND_API_KEY": "gp04-test-mailersend-key",
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_SERVICE_KEY": "gp04-test-service-role-key",
+        "SUPABASE_BUCKET": "gp04-test-bucket",
+        "FILE_STORAGE_BACKEND": "supabase",
         **PRODUCTION,
     }
     with patch.dict("os.environ", base, clear=True):
