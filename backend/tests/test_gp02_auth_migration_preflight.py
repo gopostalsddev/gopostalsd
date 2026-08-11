@@ -22,6 +22,11 @@ PARENT_REVISION = "b6dd5b87b433"
 SAFE_EMAIL = "safe.user@example.test"
 SAFE_PASSWORD = "SafePass1!"
 SALT = "a" * 64
+SYNTHETIC_SUPABASE_JWT = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJyb2xlIjoic2VydmljZV9yb2xlIn0."
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+)
 SAFE_HASH = (
     SALT
     + ":"
@@ -74,14 +79,10 @@ def _production_env(database_url):
             "EMAIL_FROM_NAME": "Go Postal SD",
             "MAILERSEND_API_KEY": "gp02-test-mailersend-key",
             "SUPABASE_URL": "https://example.supabase.co",
-            "SUPABASE_SERVICE_KEY": "gp02-test-service-role-key",
+            "SUPABASE_SERVICE_KEY": SYNTHETIC_SUPABASE_JWT,
             "SUPABASE_BUCKET": "gp02-test-bucket",
             "FILE_STORAGE_BACKEND": "supabase",
-            "SUPABASE_KEY": (
-                "eyJhbGciOiJIUzI1NiJ9."
-                "eyJyb2xlIjoic2VydmljZV9yb2xlIn0."
-                "gp02-test-signature"
-            ),
+            "SUPABASE_KEY": SYNTHETIC_SUPABASE_JWT,
             "RUN_DB_MIGRATE": "1",
             "FLASK_APP": "app.py",
         }
