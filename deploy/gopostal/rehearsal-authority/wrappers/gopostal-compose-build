@@ -1,0 +1,12 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+assert_boundary
+compose build --pull web
+assert_project_resources
+docker build --pull \
+  --file "$GOP_SHARE/frontend.Dockerfile" \
+  --tag "gopostal-rehearsal-frontend:$GOP_IMAGE_TAG" \
+  --label "com.docker.compose.project=$GOP_PROJECT" \
+  "$GOP_SOURCE/frontend"
+assert_project_resources

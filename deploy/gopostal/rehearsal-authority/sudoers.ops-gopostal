@@ -1,0 +1,15 @@
+Defaults:ops-gopostal env_reset, use_pty, !requiretty
+Defaults:ops-gopostal secure_path=/usr/sbin:/usr/bin:/sbin:/bin
+
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-sync-source ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-compose-build ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-compose-up ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-compose-down ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-compose-restart ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-status ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-logs ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-migrate ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-bootstrap ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-test ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-backup ""
+ops-gopostal ALL=(root) NOPASSWD: /usr/local/bin/gopostal-restore-rehearsal ""

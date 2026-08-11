@@ -1,2 +1,5 @@
 backend/requirements.txt text eol=lf
 *.sh text eol=lf
+deploy/gopostal/rehearsal-authority/wrappers/* text eol=lf
+deploy/gopostal/rehearsal-authority/*.ops-gopostal text eol=lf
+deploy/gopostal/rehearsal-authority/** text eol=lf

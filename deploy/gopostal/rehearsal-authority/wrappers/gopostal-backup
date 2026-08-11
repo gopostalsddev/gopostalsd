@@ -1,0 +1,20 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+assert_boundary
+
+install -d -m 0700 -o root -g root "$GOP_BACKUPS"
+timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+archive="$GOP_BACKUPS/gopostal-rehearsal-${timestamp}.dump"
+partial="$archive.partial"
+trap 'rm -f -- "$partial"' EXIT
+
+compose exec -T db sh -eu -c \
+  'exec pg_dump --format=custom --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >"$partial"
+[ "$(stat -c %s "$partial")" -ge 1024 ] || { printf 'backup is implausibly small\n' >&2; exit 1; }
+compose exec -T db pg_restore --list <"$partial" >/dev/null
+mv "$partial" "$archive"
+trap - EXIT
+(cd "$GOP_BACKUPS" && sha256sum "${archive##*/}" >"${archive##*/}.sha256")
+chmod 0600 "$archive" "$archive.sha256"
+printf 'GoPostal rehearsal backup: %s\n' "${archive##*/}"

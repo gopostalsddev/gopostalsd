@@ -1,0 +1,7 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+assert_boundary
+compose run --rm --no-deps web flask bootstrap-data
+compose run --rm --no-deps web flask bootstrap-data
+printf 'GoPostal reference bootstrap completed twice (idempotency check)\n'
