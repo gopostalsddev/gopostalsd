@@ -30,6 +30,9 @@ jobs:
     env:
       SINALITE_CLIENT_ID: gp01-ci-client
       SINALITE_CLIENT_SECRET: gp01-ci-secret
+      # Import-time ProductionConfig validation requires a URL. The migration
+      # test still creates a separate uniquely named disposable database.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       TEST_POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v4
