@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOPOSTAL_IMAGE_TAG: ci
+      ENVIRONMENT: testing
+      DATABASE_URL: "sqlite:///:memory:"
+      SINALITE_CLIENT_ID: gp14-ci-client
+      SINALITE_CLIENT_SECRET: gp14-ci-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

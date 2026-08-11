@@ -24,7 +24,7 @@ jobs:
         working-directory: backend
         env:
           ENVIRONMENT: testing
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
           SINALITE_CLIENT_ID: gp16-ci-client
           SINALITE_CLIENT_SECRET: gp16-ci-secret
         run: >-

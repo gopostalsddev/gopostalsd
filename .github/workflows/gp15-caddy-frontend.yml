@@ -25,6 +25,7 @@ jobs:
         working-directory: backend
         run: >-
           python -m pytest
+          --noconftest
           -o "addopts=--verbose --tb=short --strict-markers"
           tests/test_gp15_caddy_frontend_contract.py
       - name: Validate production Caddy configuration
