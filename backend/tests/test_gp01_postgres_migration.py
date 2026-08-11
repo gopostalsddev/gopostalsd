@@ -108,7 +108,9 @@ def test_empty_postgres_migrates_bootstraps_and_boots_twice_without_mutation():
             connection.exec_driver_sql(f'CREATE DATABASE "{database_name}"')
 
         env = _production_env(test_url_value)
-        _run([sys.executable, "-m", "flask", "db", "upgrade"], env)
+        migration_result = _run(
+            [sys.executable, "-m", "flask", "db", "upgrade"], env
+        )
 
         alembic_config = AlembicConfig(str(BACKEND_DIR / "migrations" / "alembic.ini"))
         alembic_config.set_main_option(
@@ -118,6 +120,12 @@ def test_empty_postgres_migrates_bootstraps_and_boots_twice_without_mutation():
         assert heads == ["gp01_pricing_policy"]
 
         test_engine = sa.create_engine(test_url)
+        assert sa.inspect(test_engine).has_table("alembic_version"), (
+            "flask db upgrade exited successfully without creating "
+            "alembic_version\n"
+            f"stdout:\n{migration_result.stdout}\n"
+            f"stderr:\n{migration_result.stderr}"
+        )
         with test_engine.connect() as connection:
             current = connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
