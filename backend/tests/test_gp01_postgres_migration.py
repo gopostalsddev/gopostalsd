@@ -48,6 +48,7 @@ def _production_env(database_url):
             "SINALITE_CLIENT_ID": "gp01-test-client",
             "SINALITE_CLIENT_SECRET": "gp01-test-secret",
             "SQUARE_WEBHOOK_SIGNATURE_KEY": "gp01-test-signature",
+            "SQUARE_WEBHOOK_URL": "https://example.invalid/api/payments/webhook",
             "SQUARE_ENVIRONMENT": "sandbox",
             "SQUARE_ACCESS_TOKEN": "gp01-test-square-token",
             "SQUARE_APPLICATION_ID": "sandbox-sq0idb-gp01-test",

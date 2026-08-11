@@ -103,6 +103,7 @@ def test_production_security_validation_requires_coherent_square_config():
         "JWT_SECRET_KEY": "gp04-production-jwt",
         "SQUARE_MOCK_PAYMENTS": "false",
         "SQUARE_WEBHOOK_SIGNATURE_KEY": "gp04-webhook",
+        "SQUARE_WEBHOOK_URL": "https://example.invalid/api/payments/webhook",
         "OAUTH_TOKEN_ENCRYPTION_KEY": "gp04-oauth-key",
         **PRODUCTION,
     }

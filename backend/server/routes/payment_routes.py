@@ -12,6 +12,7 @@ from server.middleware.auth_middleware import require_auth, require_role
 from server.middleware.rate_limit_middleware import rate_limit_by_ip
 from server.routes.response_utils import error_response
 from server.config import database as db
+from server.square_config import SquareConfigurationError, square_webhook_url
 import logging
 
 logger = logging.getLogger(__name__)
@@ -380,17 +381,17 @@ class WebhookResource(Resource):
         """Handle payment webhook notifications."""
         try:
             # Get webhook data
-            payload = request.get_data(as_text=True)
-            signature = request.headers.get('X-Square-Signature', '').strip()
-            # Build the canonical webhook URL from a configured base URL rather than
-            # request.url, which is attacker-controlled via the Host header on a
-            # misconfigured reverse proxy and would let an attacker forge HMAC messages.
-            import os as _os
-            _base = _os.getenv('SQUARE_WEBHOOK_URL') or _os.getenv('RENDER_EXTERNAL_URL')
-            if not _base:
-                logger.error("Webhook base URL not configured — set SQUARE_WEBHOOK_URL or RENDER_EXTERNAL_URL")
+            payload = request.get_data(cache=True)
+            signature = request.headers.get(
+                'x-square-hmacsha256-signature', ''
+            ).strip()
+            # Square signs the exact configured notification URL. Never derive it
+            # from request host/proxy headers or append a path to a base URL.
+            try:
+                webhook_url = square_webhook_url()
+            except SquareConfigurationError:
+                logger.error("Square webhook URL is not configured correctly")
                 return error_response('Webhook not configured', 500, code='WEBHOOK_CONFIG_ERROR', category='configuration')
-            webhook_url = _base.rstrip('/') + '/api/payments/webhook'
             
             # Initialize payment service
             payment_service = PaymentService()

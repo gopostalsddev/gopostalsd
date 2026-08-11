@@ -6,7 +6,7 @@ from server.services import FileStorage
 from server.thirdparty import SinaliteAdapter as Sinalite
 from dotenv import load_dotenv
 from server.logging_config import configure_logging
-from server.square_config import validate_square_configuration
+from server.square_config import square_webhook_url, validate_square_configuration
 
 # Configure third party libraries
 database = SQLAlchemy()
@@ -68,6 +68,7 @@ def validate_production_security_settings() -> None:
         raise ValueError('SQUARE_MOCK_PAYMENTS must not be true in production')
 
     validate_square_configuration(require_credentials=True)
+    square_webhook_url()
 
     import logging as _log
     _prod_logger = _log.getLogger(__name__)

@@ -155,7 +155,7 @@ class PaymentService:
         
         return info
     
-    def validate_webhook(self, payload: str, signature: str, webhook_url: str) -> bool:
+    def validate_webhook(self, payload: bytes | str, signature: str, webhook_url: str) -> bool:
         """
         Validate payment webhook signature.
         

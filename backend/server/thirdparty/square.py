@@ -415,7 +415,7 @@ class SquareAdapter:
             'sdk_available': SQUARE_AVAILABLE
         }
     
-    def validate_webhook_signature(self, payload: str, signature: str, webhook_url: str) -> bool:
+    def validate_webhook_signature(self, payload: bytes | str, signature: str, webhook_url: str) -> bool:
         """
         Validate Square webhook signature.
         
@@ -434,7 +434,8 @@ class SquareAdapter:
                 return False
 
             # Square HMAC-SHA256: base64(HMAC(key, notification_url + body))
-            message = (webhook_url + payload).encode('utf-8')
+            payload_bytes = payload.encode('utf-8') if isinstance(payload, str) else payload
+            message = webhook_url.encode('utf-8') + payload_bytes
             expected = base64.b64encode(
                 hmac.new(signature_key.encode('utf-8'), message, hashlib.sha256).digest()
             ).decode('utf-8')

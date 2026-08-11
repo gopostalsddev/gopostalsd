@@ -58,6 +58,8 @@ Optional integrations:
   - `SQUARE_APPLICATION_ID`
   - `SQUARE_LOCATION_ID`
   - `SQUARE_ENVIRONMENT=sandbox`
+  - `SQUARE_WEBHOOK_URL=https://your-host.example/api/payments/webhook`
+  - `SQUARE_WEBHOOK_SIGNATURE_KEY`
 
 ### Frontend (`frontend/.env`)
 

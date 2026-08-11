@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from typing import Mapping
+from urllib.parse import urlsplit
 
 
 VALID_SQUARE_ENVIRONMENTS = frozenset({"sandbox", "production"})
@@ -71,3 +72,27 @@ def validate_square_configuration(
             environment, values["SQUARE_APPLICATION_ID"].strip()
         )
     return environment
+
+
+def square_webhook_url(environ: Mapping[str, str] | None = None) -> str:
+    """Return the exact HTTPS notification URL configured in Square."""
+    values = os.environ if environ is None else environ
+    value = values.get("SQUARE_WEBHOOK_URL", "").strip()
+    if not value:
+        raise SquareConfigurationError(
+            "SQUARE_WEBHOOK_URL must be the full Square notification URL"
+        )
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+        or parsed.path != "/api/payments/webhook"
+    ):
+        raise SquareConfigurationError(
+            "SQUARE_WEBHOOK_URL must be an exact HTTPS /api/payments/webhook URL"
+        )
+    return value

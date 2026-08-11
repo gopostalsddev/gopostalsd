@@ -87,6 +87,8 @@ services:
         sync: false
       - key: SQUARE_WEBHOOK_SIGNATURE_KEY
         sync: false
+      - key: SQUARE_WEBHOOK_URL
+        sync: false
       # Required: Fernet key for encrypting OAuth tokens at rest.
       # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
       - key: OAUTH_TOKEN_ENCRYPTION_KEY
