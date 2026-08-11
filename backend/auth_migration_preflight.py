@@ -163,10 +163,7 @@ def _check_existing_auth_table(
         len(missing) + missing_user_fk + missing_unique_keys,
         f"Existing {table} lacks required columns, relationships, or uniqueness.",
     )
-    if missing:
-        return
-
-    if "user_id" in columns:
+    if "user_id" in columns and inspector.has_table("users"):
         collector.add(
             f"existing_auth.{table}.orphaned_users",
             _scalar(

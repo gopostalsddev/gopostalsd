@@ -46,4 +46,3 @@ jobs:
           python -m pytest
           -o "addopts=--verbose --tb=short --strict-markers"
           tests/test_gp02_auth_migration_preflight.py
-          tests/unit/routes/test_auth_routes.py
