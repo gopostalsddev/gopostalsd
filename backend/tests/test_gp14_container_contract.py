@@ -10,6 +10,9 @@ COMPOSE = (
     ROOT / "deploy" / "gopostal" / "docker-compose.production.yml"
 ).read_text(encoding="utf-8")
 DOCKERIGNORE = (ROOT / "backend" / ".dockerignore").read_text(encoding="utf-8")
+WORKFLOW = (ROOT / ".github/workflows/gp14-container-contract.yml").read_text(
+    encoding="utf-8"
+)
 
 
 def _service_block(name, next_name=None):
@@ -72,3 +75,9 @@ def test_health_and_logging_contracts_match_gp12():
 def test_no_upload_volume_or_cross_application_resource_name():
     assert not re.search(r"uploads?.*:/", COMPOSE, flags=re.I)
     assert "rezza" not in COMPOSE.lower()
+
+
+def test_privileged_compose_steps_preserve_only_the_required_image_tag():
+    command = 'sudo env GOPOSTAL_IMAGE_TAG="$GOPOSTAL_IMAGE_TAG"'
+    assert WORKFLOW.count(command) == 2
+    assert "sudo docker compose" not in WORKFLOW
