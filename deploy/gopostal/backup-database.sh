@@ -5,6 +5,8 @@ readonly BACKUP_DIR='/var/backups/gopostal'
 readonly RELEASE_DIR='/srv/gopostal/current'
 readonly COMPOSE_FILE="$RELEASE_DIR/deploy/gopostal/docker-compose.production.yml"
 readonly OFFSITE_HOOK='/usr/local/sbin/gopostal-backup-offsite'
+readonly METRIC_DIR='/var/lib/node_exporter/textfile_collector'
+readonly METRIC_FILE="$METRIC_DIR/gopostal-backup.prom"
 
 if [[ $EUID -ne 0 ]]; then
     printf 'GoPostal backups must run as root\n' >&2
@@ -106,5 +108,15 @@ if ! "$OFFSITE_HOOK" "$archive" "$checksum" "$metadata"; then
     printf 'Local backup verified, but encrypted off-host copy failed\n' >&2
     exit 2
 fi
+
+# Publish success only after both the local archive and encrypted off-host copy
+# pass. On later failure the timestamp intentionally grows stale and alerts.
+install -d -m 0755 -o root -g root "$METRIC_DIR"
+metric_partial="$METRIC_FILE.$$"
+printf '# HELP gopostal_backup_last_success_timestamp_seconds Unix time of the last complete local and off-host backup.\n' >"$metric_partial"
+printf '# TYPE gopostal_backup_last_success_timestamp_seconds gauge\n' >>"$metric_partial"
+printf 'gopostal_backup_last_success_timestamp_seconds %s\n' "$(date -u +%s)" >>"$metric_partial"
+chmod 0644 "$metric_partial"
+mv -f "$metric_partial" "$METRIC_FILE"
 
 printf 'GoPostal backup complete: %s (%s bytes)\n' "${archive##*/}" "$bytes"

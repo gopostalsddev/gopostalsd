@@ -1,0 +1,96 @@
+groups:
+  - name: gopostal-availability
+    rules:
+      - alert: GoPostalPublicUnavailable
+        expr: probe_success{job="blackbox-gopostal",probe="root"} == 0 or absent(probe_success{job="blackbox-gopostal",probe="root"})
+        for: 2m
+        labels:
+          severity: critical
+          application: gopostal
+        annotations:
+          summary: GoPostal public endpoint is unavailable
+
+      - alert: GoPostalReadinessUnavailable
+        expr: probe_success{job="blackbox-gopostal",probe="readiness"} == 0 or absent(probe_success{job="blackbox-gopostal",probe="readiness"})
+        for: 2m
+        labels:
+          severity: critical
+          application: gopostal
+        annotations:
+          summary: GoPostal database-aware readiness is unavailable
+
+      - alert: GoPostalCertificateExpiresSoon
+        expr: probe_ssl_earliest_cert_expiry{job="blackbox-gopostal"} - time() < 1209600 or absent(probe_ssl_earliest_cert_expiry{job="blackbox-gopostal"})
+        for: 15m
+        labels:
+          severity: warning
+          application: gopostal
+        annotations:
+          summary: GoPostal TLS certificate expires within 14 days
+
+      - alert: GoPostalBackendContainerMissing
+        expr: absent(container_last_seen{name=~"/?gopostal_web"})
+        for: 2m
+        labels:
+          severity: critical
+          application: gopostal
+        annotations:
+          summary: GoPostal web container is missing from cAdvisor
+
+      - alert: GoPostalDatabaseUnavailable
+        expr: pg_up{job="gopostal-postgres"} == 0 or absent(pg_up{job="gopostal-postgres"})
+        for: 2m
+        labels:
+          severity: critical
+          application: gopostal
+        annotations:
+          summary: GoPostal PostgreSQL exporter reports unavailable
+
+  - name: gopostal-capacity-and-recovery
+    rules:
+      - alert: GoPostalContainerMemoryHigh
+        expr: container_memory_working_set_bytes{name=~"/?gopostal_web"} / container_spec_memory_limit_bytes{name=~"/?gopostal_web"} > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          application: gopostal
+        annotations:
+          summary: GoPostal web container memory exceeds 90 percent
+
+      - alert: GoPostalHostDiskLow
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.15
+        for: 15m
+        labels:
+          severity: warning
+          application: gopostal
+        annotations:
+          summary: Host root filesystem has less than 15 percent free
+
+      - alert: GoPostalBackupMissingOrStale
+        expr: absent(gopostal_backup_last_success_timestamp_seconds) or time() - gopostal_backup_last_success_timestamp_seconds > 129600
+        for: 15m
+        labels:
+          severity: critical
+          application: gopostal
+        annotations:
+          summary: GoPostal verified off-host backup is absent or older than 36 hours
+
+  - name: gopostal-http
+    rules:
+      - alert: GoPostalHttp5xxElevated
+        expr: sum(rate(caddy_http_requests_total{job="caddy-gopostal",code=~"5.."}[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          application: gopostal
+        annotations:
+          summary: GoPostal is returning elevated HTTP 5xx responses
+
+      - alert: GoPostalHttpLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(caddy_http_request_duration_seconds_bucket{job="caddy-gopostal"}[5m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+          application: gopostal
+        annotations:
+          summary: GoPostal p95 HTTP latency exceeds two seconds

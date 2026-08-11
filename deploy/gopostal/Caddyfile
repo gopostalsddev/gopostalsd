@@ -1,5 +1,8 @@
 {
 	admin localhost:2019
+	metrics {
+		per_host
+	}
 }
 
 {$GOPOSTAL_HOST} {
