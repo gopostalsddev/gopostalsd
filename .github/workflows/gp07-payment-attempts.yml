@@ -1,0 +1,32 @@
+name: GP-07 durable payment attempts
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  payment-attempts:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "sqlite:///:memory:"
+      SINALITE_CLIENT_ID: gp07-ci-client
+      SINALITE_CLIENT_SECRET: gp07-ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt
+        working-directory: backend
+      - name: Stable payment identity and retry verification
+        working-directory: backend
+        run: >-
+          python -m pytest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp07_payment_attempts.py

@@ -20,13 +20,20 @@ class PaymentService:
     supporting multiple payment providers through adapters.
     """
     
-    def __init__(self, provider: str = "square"):
+    def __init__(self, provider: str | SquareAdapter = "square"):
         """
         Initialize payment service with specified provider.
         
         Args:
             provider: Payment provider ('square', 'stripe', 'paypal', etc.)
         """
+        # Keep adapter injection available for deterministic tests and future
+        # provider factories without weakening the production default.
+        if not isinstance(provider, str):
+            self.provider = "square"
+            self.client = provider
+            return
+
         self.provider = provider.lower()
         self.client = None
         
@@ -57,6 +64,7 @@ class PaymentService:
                        shipping_address: Dict[str, Any] = None,
                        billing_address: Dict[str, Any] = None,
                        order_id: str = None,
+                       reference_id: str = None,
                        note: str = None) -> Dict[str, Any]:
         """
         Process a payment using the configured provider.
@@ -92,6 +100,7 @@ class PaymentService:
             shipping_address=shipping_address,
             billing_address=billing_address,
             order_id=order_id,
+            reference_id=reference_id,
             note=note
         )
     

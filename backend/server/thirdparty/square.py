@@ -128,6 +128,7 @@ class SquareAdapter:
                        shipping_address: Dict[str, Any] = None,
                        billing_address: Dict[str, Any] = None,
                        order_id: str = None,
+                       reference_id: str = None,
                        note: str = None) -> Dict[str, Any]:
         """
         Process a payment through Square.
@@ -209,6 +210,8 @@ class SquareAdapter:
             # Add order and note information
             if order_id:
                 payment_request['order_id'] = order_id
+            if reference_id:
+                payment_request['reference_id'] = reference_id
             if note:
                 payment_request['note'] = note
 
@@ -240,7 +243,8 @@ class SquareAdapter:
                     # (CVV_FAILURE, ADDRESS_VERIFICATION_FAILURE, etc.) are logged
                     # server-side only to prevent card-probing oracles.
                     'error': 'Payment was declined. Please check your card details and try again.',
-                    'payment_id': None
+                    'payment_id': None,
+                    'outcome_known': True,
                 }
 
         except Exception as e:
@@ -248,7 +252,8 @@ class SquareAdapter:
             return {
                 'success': False,
                 'error': 'An error occurred while processing your payment. Please try again.',
-                'payment_id': None
+                'payment_id': None,
+                'outcome_known': False,
             }
     
     def get_payment(self, payment_id: str) -> Dict[str, Any]:

@@ -80,7 +80,10 @@ refund_response_model = api.model('RefundResponse', {
 
 def _handle_square_webhook_event(event_type: str, obj: dict) -> None:
     """Update our DB in response to Square-originated payment/refund events."""
-    from server.models.order import Order, Payment as PaymentModel, Refund, PaymentStatus, OrderStatus
+    from server.models.order import (
+        Payment as PaymentModel, PaymentAttempt, Refund,
+        PaymentStatus, OrderStatus,
+    )
     from datetime import datetime
 
     if event_type in ('payment.updated', 'payment.created'):
@@ -89,14 +92,55 @@ def _handle_square_webhook_event(event_type: str, obj: dict) -> None:
         square_status = payment_data.get('status', '')
         if not square_payment_id:
             return
-        payment_row = PaymentModel.query.filter_by(external_payment_id=square_payment_id).first()
-        if not payment_row:
-            return
+        payment_row = PaymentModel.query.filter_by(
+            payment_provider='square', external_payment_id=square_payment_id
+        ).first()
+        attempt = None
+        if not payment_row and payment_data.get('reference_id'):
+            attempt = PaymentAttempt.query.filter_by(
+                provider='square',
+                provider_reference=payment_data['reference_id'],
+            ).first()
+            if attempt:
+                amount_money = payment_data.get('amount_money', {})
+                if (
+                    amount_money.get('amount') != attempt.amount_cents
+                    or amount_money.get('currency') != attempt.currency
+                ):
+                    raise ValueError('Square webhook amount does not match payment attempt')
         if square_status == 'COMPLETED':
+            order = payment_row.order if payment_row else (attempt.order if attempt else None)
+            if not payment_row and attempt:
+                payment_row = PaymentModel(
+                    order_id=attempt.order_id,
+                    payment_provider='square',
+                    external_payment_id=square_payment_id,
+                    amount=attempt.amount_cents / 100,
+                    currency=attempt.currency,
+                    status=PaymentStatus.COMPLETED,
+                    payment_method='card',
+                    provider_response=payment_data,
+                )
+                db.session.add(payment_row)
+            if not payment_row:
+                return
             payment_row.status = PaymentStatus.COMPLETED
-            payment_row.order.payment_status = PaymentStatus.COMPLETED
+            order.payment_status = PaymentStatus.COMPLETED
+            order.status = OrderStatus.PROCESSING
+            order.payment_provider = 'square'
+            order.payment_id = square_payment_id
+            if attempt:
+                attempt.status = 'succeeded'
+                attempt.external_payment_id = square_payment_id
+                attempt.provider_response = payment_data
+                attempt.completed_at = datetime.utcnow()
         elif square_status in ('CANCELED', 'FAILED'):
-            payment_row.status = PaymentStatus.FAILED
+            if payment_row:
+                payment_row.status = PaymentStatus.FAILED
+            if attempt:
+                attempt.status = 'failed'
+                attempt.last_error_code = 'provider_declined'
+                attempt.order.payment_status = PaymentStatus.PENDING
 
     elif event_type in ('refund.updated', 'refund.created'):
         refund_data = obj.get('refund', {})
