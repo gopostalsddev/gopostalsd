@@ -108,9 +108,18 @@ class User(db.Model):
 
     def is_locked(self):
         """Check if user account is locked due to failed login attempts."""
-        if self.locked_until and self.locked_until > datetime.now(timezone.utc):
-            return True
-        return False
+        if not self.locked_until:
+            return False
+
+        # The historical column is timezone-naive. PostgreSQL and SQLite may
+        # therefore return a naive value even when an aware UTC datetime was
+        # originally assigned. Compare within the value's own convention.
+        now = (
+            datetime.now(timezone.utc)
+            if self.locked_until.tzinfo is not None
+            else datetime.now(timezone.utc).replace(tzinfo=None)
+        )
+        return self.locked_until > now
 
     def is_active(self):
         """Check if user account is active."""

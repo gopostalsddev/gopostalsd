@@ -31,6 +31,10 @@ services:
         value: production
       - key: DEBUG
         value: "false"
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: ENABLE_SWAGGER_UI
+        value: "false"
       - key: FLASK_APP
         value: app.py
       - key: LOG_LEVEL

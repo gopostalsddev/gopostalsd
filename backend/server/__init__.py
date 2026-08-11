@@ -167,8 +167,9 @@ def create_server(config="development", *, migration_mode=None):
     # Initialize sinalite api support
     sinalite.init_app(server)
 
-    # Initialize swagger documentation
-    swagger.init_app(server)
+    # Production exposes neither the Swagger UI nor its machine-readable spec.
+    # Route namespaces remain active; only documentation endpoints are omitted.
+    swagger.init_app(server, add_specs=config != 'production')
 
     # Initialize file storage for image storing
     filestorage.init_app(server)

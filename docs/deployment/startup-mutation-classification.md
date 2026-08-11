@@ -10,7 +10,7 @@ side-effect free with respect to database schema and business data.
 | Default `PricingPolicy` row | Required application bootstrap data | Created by explicit, idempotent `flask bootstrap-data` after migration |
 | Default type for a category with none | Required application bootstrap data | Explicit, idempotent `flask bootstrap-data`; never automatic boot |
 | Enable all categories when none enabled | Business bootstrap policy | Explicit opt-in `flask bootstrap-data --enable-categories-if-none` |
-| Production admin | Required one-time administrative bootstrap | Explicit `flask bootstrap-admin`; credentials removed afterward |
+| Production admin | Required one-time administrative bootstrap | Explicit `RUN_ADMIN_BOOTSTRAP=true flask bootstrap-admin`; credentials removed afterward and normal boot refuses them |
 | `utility_scripts/create_order_tables.py` direct table create/drop | Legacy/dead schema bypass | Must not be used; Alembic order migration is authoritative |
 | `utility_scripts/setup_database.py` | Legacy deployment helper | Compatibility only; production deployment uses `migrate.sh` then explicit bootstrap commands |
 
@@ -20,7 +20,7 @@ Required deployment sequence:
 2. Run `backend/migrate.sh` as a one-shot step.
 3. Assert Alembic current revision equals its single head.
 4. Run `flask bootstrap-data` deliberately.
-5. Optionally run `flask bootstrap-admin` once, then remove `ADMIN_*`.
+5. Optionally run `RUN_ADMIN_BOOTSTRAP=true flask bootstrap-admin` once, then remove `RUN_ADMIN_BOOTSTRAP` and every `ADMIN_*` value.
 6. Start Gunicorn with `backend/deploy.sh`.
 
 Do not run `db.create_all()` or the legacy order-table utility in any deployed

@@ -34,6 +34,10 @@ def register_commands(app) -> None:
     @app.cli.command("bootstrap-admin")
     def bootstrap_admin_command() -> None:
         """Create the configured production admin after migrations/bootstrap."""
+        if os.getenv("RUN_ADMIN_BOOTSTRAP", "false").lower() != "true":
+            raise click.ClickException(
+                "RUN_ADMIN_BOOTSTRAP=true is required for this one-time command."
+            )
         if not os.getenv("ADMIN_EMAIL") or not os.getenv("ADMIN_PASSWORD"):
             raise click.ClickException(
                 "ADMIN_EMAIL and ADMIN_PASSWORD must be supplied for this one-time command."
@@ -42,4 +46,6 @@ def register_commands(app) -> None:
         if not ensure_production_admin(app):
             raise click.ClickException("Production admin bootstrap failed.")
 
-        click.echo("Production admin bootstrap complete.")
+        click.echo(
+            "Production admin bootstrap complete. Remove RUN_ADMIN_BOOTSTRAP and all ADMIN_* values before runtime boot."
+        )

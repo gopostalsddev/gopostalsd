@@ -1,0 +1,33 @@
+name: GP-16 auth and runtime security
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  auth-runtime-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt
+        working-directory: backend
+      - name: Account oracle and runtime contract
+        working-directory: backend
+        env:
+          ENVIRONMENT: testing
+          DATABASE_URL: sqlite:///:memory:
+          SINALITE_CLIENT_ID: gp16-ci-client
+          SINALITE_CLIENT_SECRET: gp16-ci-secret
+        run: >-
+          python -m pytest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp16_auth_runtime_security.py
