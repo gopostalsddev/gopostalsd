@@ -219,74 +219,20 @@ def _handle_square_webhook_event(event_type: str, obj: dict) -> None:
 # Define resources
 @api.route('/process')
 class PaymentProcessResource(Resource):
-    """Resource for processing payments."""
+    """Retired bypass route; charging belongs to the order lifecycle."""
     
     @api.doc('process_payment')
-    @api.expect(payment_request_model)
-    @api.response(201, 'Payment processed', payment_response_model)
+    @api.response(410, 'Use the canonical order payment endpoint')
     @require_auth
     @rate_limit_by_ip('PAYMENT_RATE_LIMIT_COUNT', 'PAYMENT_RATE_LIMIT_WINDOW_SECONDS', 'payment-process')
     def post(self):
         """Process a payment."""
-        data = request.get_json(silent=True)
-        
-        if not data:
-            return error_response('Request body is required', 400)
-        
-        required_fields = ['source_id', 'order_id']
-        for field in required_fields:
-            if field not in data:
-                return error_response(f'{field} is required', 400)
-
-        # Validate amount against the actual order total — never trust the client amount.
-        from server.models.order import Order as OrderModel, PaymentStatus as PS
-        from flask import g
-        internal_order_id = data.get('order_id')
-        # Use a pessimistic row lock so concurrent payment attempts for the same
-        # order serialize here, preventing double-charges in a race condition.
-        order_obj = (
-            db.session.query(OrderModel).with_for_update().filter_by(id=internal_order_id).first()
-            if internal_order_id else None
+        return error_response(
+            'This payment endpoint is retired; use /api/orders/<order_id>/payment',
+            410,
+            code='PAYMENT_ROUTE_RETIRED',
+            category='business_logic',
         )
-        if not order_obj:
-            return error_response('Order not found', 404, code='ORDER_NOT_FOUND', category='business_logic')
-
-        # Ownership check: non-admins may only pay for their own orders.
-        current_user = getattr(g, 'current_user', None)
-        if current_user and current_user.role.name != 'Admin':
-            if order_obj.user_id is None or order_obj.user_id != current_user.id:
-                return error_response('Access denied', 403, code='ACCESS_DENIED', category='authorization')
-
-        if order_obj.payment_status == PS.COMPLETED:
-            return error_response('Order already paid', 400, code='ORDER_ALREADY_PAID', category='business_logic')
-
-        # Compute authoritative amount from DB — ignore any client-supplied amount.
-        import math
-        authoritative_amount = math.ceil(float(order_obj.total_amount) * 100)
-
-        # Initialize payment service
-        payment_service = PaymentService()
-
-        if not payment_service.is_configured:
-            return error_response('Payment service not configured', 500, code='PAYMENT_SERVICE_UNAVAILABLE', category='external_api', retryable=True)
-
-        # Process payment
-        result = payment_service.process_payment(
-            amount=authoritative_amount,
-            currency=order_obj.currency,
-            source_id=data['source_id'],
-            idempotency_key=data.get('idempotency_key'),
-            buyer_email=order_obj.customer_email,
-            buyer_phone=order_obj.customer_phone,
-            shipping_address=order_obj.shipping_address,
-            billing_address=order_obj.billing_address,
-            note=f"Order {order_obj.order_number} payment"
-        )
-
-        if result['success']:
-            return result, 201
-        else:
-            return error_response(result['error'], 400, code='PAYMENT_PROCESSING_ERROR', category='external_api')
 
 @api.route('/<string:payment_id>')
 class PaymentResource(Resource):
