@@ -177,11 +177,19 @@ def test_acceptance_starts_with_integrity_and_covers_forbidden_surfaces():
         "argument injection denied",
         "approved source synchronization succeeds",
         "application exposure is localhost-only",
+        "frontend exposure is localhost-only",
+        "PostgreSQL has no host port",
+        "all published ports reject wildcard exposure",
         "host networking and privileged mode absent",
         "TOTAL FAIL",
     )
     for phrase in required_phrases:
         assert phrase in ACCEPTANCE
+    assert "config --format json" in ACCEPTANCE
+    assert 'port.get("host_ip", "")' in ACCEPTANCE
+    assert 'service.get("network_mode") == "host"' in ACCEPTANCE
+    assert 'service.get("privileged") is True' in ACCEPTANCE
+    assert "case \"$config\" in *'127.0.0.1:" not in ACCEPTANCE
 
 
 def test_install_verifier_rejects_drift_stale_wrappers_and_orphan_grants():

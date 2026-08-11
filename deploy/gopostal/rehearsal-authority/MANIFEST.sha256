@@ -1,4 +1,4 @@
-aa2684eca4069a4045e413bb8d9d98304d8a13874aac38749e9d959c7b024fd9 *./acceptance.sh
+9dd95967891a19263d429032387d65bc0c14cf3cd37afcc495449e98c478cdb2 *./acceptance.sh
 2d44d1117b3ec367ee296e5b3bc70456f2e9cecf0d6509ff3c8ba5b4203f9add *./docker-compose.rehearsal.yml
 607d97f8155b876c208ad446502c13ee68b3e789de7ffce6048e3856e5d7d1e5 *./frontend.Dockerfile
 f9dac94c4dfc0cbe4f50385cce2c2c0a55ea53aa57a85b427723e16285f83fba *./lib/gopostal-common.inc

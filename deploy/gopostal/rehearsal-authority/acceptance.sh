@@ -93,16 +93,65 @@ expect_success 'fixed project status succeeds' sudo -u "$IDENTITY" sudo -n /usr/
 
 config=$(GOPOSTAL_IMAGE_TAG="$EXPECTED_SHA" docker compose \
   --project-name gopostal-rehearsal --project-directory "$STACK" \
-  --env-file "$STACK/.env" -f "$STACK/docker-compose.rehearsal.yml" config 2>/dev/null) || config=''
-case "$config" in *'127.0.0.1:8510'*) pass 'application exposure is localhost-only' ;; *) fail 'application exposure is localhost-only' ;; esac
-case "$config" in *'127.0.0.1:8511'*) pass 'frontend exposure is localhost-only' ;; *) fail 'frontend exposure is localhost-only' ;; esac
+  --env-file "$STACK/.env" -f "$STACK/docker-compose.rehearsal.yml" config --format json 2>/dev/null) || config=''
+
+effective_port_is_exact() {
+  local service=$1 target=$2 published=$3
+  printf '%s' "$config" | python3 -c '
+import json, sys
+document = json.load(sys.stdin)
+ports = document.get("services", {}).get(sys.argv[1], {}).get("ports", [])
+expected = ("127.0.0.1", int(sys.argv[2]), str(sys.argv[3]))
+actual = [
+    (str(port.get("host_ip", "")), int(port.get("target", -1)), str(port.get("published", "")))
+    for port in ports
+]
+raise SystemExit(0 if actual == [expected] else 1)
+' "$service" "$target" "$published"
+}
+
+database_has_no_published_port() {
+  printf '%s' "$config" | python3 -c '
+import json, sys
+document = json.load(sys.stdin)
+ports = document.get("services", {}).get("db", {}).get("ports", [])
+raise SystemExit(0 if not ports else 1)
+'
+}
+
+all_published_ports_are_loopback() {
+  printf '%s' "$config" | python3 -c '
+import json, sys
+document = json.load(sys.stdin)
+ports = [
+    port
+    for service in document.get("services", {}).values()
+    for port in service.get("ports", [])
+]
+raise SystemExit(0 if ports and all(str(port.get("host_ip", "")) == "127.0.0.1" for port in ports) else 1)
+'
+}
+
+no_host_network_or_privileged_service() {
+  printf '%s' "$config" | python3 -c '
+import json, sys
+document = json.load(sys.stdin)
+services = document.get("services", {}).values()
+unsafe = any(
+    service.get("network_mode") == "host" or service.get("privileged") is True
+    for service in services
+)
+raise SystemExit(1 if unsafe else 0)
+'
+}
+
+if effective_port_is_exact web 5000 8510; then pass 'application exposure is localhost-only'; else fail 'application exposure is localhost-only'; fi
+if effective_port_is_exact frontend 8080 8511; then pass 'frontend exposure is localhost-only'; else fail 'frontend exposure is localhost-only'; fi
+if database_has_no_published_port; then pass 'PostgreSQL has no host port'; else fail 'PostgreSQL has no host port'; fi
+if all_published_ports_are_loopback; then pass 'all published ports reject wildcard exposure'; else fail 'all published ports reject wildcard exposure'; fi
 case "$config" in *'gopostal_rehearsal_postgres'*) pass 'dedicated PostgreSQL volume is fixed' ;; *) fail 'dedicated PostgreSQL volume is fixed' ;; esac
 case "$config" in *'gopostal_rehearsal_data'*) pass 'dedicated data network is fixed' ;; *) fail 'dedicated data network is fixed' ;; esac
-if printf '%s' "$config" | grep -Eq 'network_mode:[[:space:]]*host|privileged:[[:space:]]*true'; then
-  fail 'host networking and privileged mode absent'
-else
-  pass 'host networking and privileged mode absent'
-fi
+if no_host_network_or_privileged_service; then pass 'host networking and privileged mode absent'; else fail 'host networking and privileged mode absent'; fi
 
 printf '\nTOTAL PASS: %s\nTOTAL FAIL: %s\n' "$passes" "$failures"
 [ "$failures" -eq 0 ]
