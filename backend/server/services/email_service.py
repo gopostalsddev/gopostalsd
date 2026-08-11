@@ -1,10 +1,10 @@
-import os
 import logging
 from typing import Dict, Any, Optional
 from flask import Flask
 from markupsafe import escape as html_escape
 from server.thirdparty.mailersend import MailerSendAdapter
 from server.thirdparty.smtp import SMTPAdapter
+from server.email_config import load_email_settings
 
 logger = logging.getLogger(__name__)
 
@@ -14,52 +14,8 @@ class EmailService:
     def __init__(self):
         self.client = None
         self.provider = None
-        # Get frontend URL from environment, with better defaults
-        self.base_url = self._get_frontend_url()
-        # Backend URL is used for actions that must always resolve even when
-        # frontend route rewrites are unavailable.
-        self.backend_url = self._get_backend_url()
-    
-    def _get_frontend_url(self) -> str:
-        """Get the frontend URL with proper environment detection."""
-        # Prefer an explicit Render frontend URL when present because it is
-        # guaranteed to be routable even if a custom domain is misconfigured.
-        render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
-        if render_frontend_url:
-            return render_frontend_url.rstrip('/')
-
-        frontend_url = os.getenv('FRONTEND_URL')
-        if frontend_url:
-            # Remove trailing slash to avoid double slashes in URLs
-            return frontend_url.rstrip('/')
-        
-        # Auto-detect based on environment
-        environment = os.getenv('ENVIRONMENT', 'development').lower()
-        
-        if environment == 'production':
-            # Production should always have FRONTEND_URL set
-            logger.warning("FRONTEND_URL not set in production environment!")
-            return 'https://gopostalsd-website.onrender.com'  # Safe fallback for production
-        elif environment == 'staging':
-            return 'https://staging.gopostalsd.com'
-        else:
-            # Development environment
-            return 'http://localhost:3000'
-
-    def _get_backend_url(self) -> str:
-        """Get the backend public URL with sensible environment fallbacks."""
-        render_external_url = os.getenv('RENDER_EXTERNAL_URL')
-        if render_external_url:
-            return render_external_url.rstrip('/')
-
-        backend_url = os.getenv('BACKEND_URL')
-        if backend_url:
-            return backend_url.rstrip('/')
-
-        environment = os.getenv('ENVIRONMENT', 'development').lower()
-        if environment == 'production':
-            return 'https://gopostalsd.onrender.com'
-        return 'http://localhost:5000'
+        settings = load_email_settings()
+        self.base_url = settings.public_base_url if settings else 'http://localhost:5173'
     
     def init_app(self, app: Flask, provider: Optional[str] = None):
         """
@@ -67,20 +23,14 @@ class EmailService:
         
         Args:
             app: Flask application instance
-            provider: Email provider ('mailersend', 'smtp', or None for auto-detect)
+            provider: Optional test/development override. Production uses EMAIL_PROVIDER.
         """
         # Determine provider
-        if provider:
-            self.provider = provider.lower()
-        else:
-            # Auto-detect based on environment variables
-            if os.getenv('MAILERSEND_API_KEY'):
-                self.provider = 'mailersend'
-            elif os.getenv('SMTP_USERNAME') and os.getenv('SMTP_PASSWORD'):
-                self.provider = 'smtp'
-            else:
-                logger.warning("No email provider configured. Set MAILERSEND_API_KEY or SMTP_USERNAME/SMTP_PASSWORD")
-                return
+        settings = load_email_settings()
+        self.provider = provider.lower() if provider else (settings.provider if settings else None)
+        if not self.provider:
+            logger.warning("No email provider configured; set EMAIL_PROVIDER")
+            return
         
         try:
             if self.provider == 'mailersend':
@@ -90,7 +40,7 @@ class EmailService:
                 self.client = SMTPAdapter()
                 provider_name = "SMTP"
             else:
-                logger.error(f"Unknown email provider: {self.provider}")
+                logger.error("Unknown email provider configured")
                 return
             
             if self.client.is_configured:
@@ -100,8 +50,8 @@ class EmailService:
                 logger.warning(f"Email service initialized with {provider_name} but not configured")
                 logger.info(f"Frontend URL configured as: {self.base_url}")
                 
-        except Exception as e:
-            logger.error(f"Failed to initialize {self.provider} email service: {str(e)}")
+        except Exception:
+            logger.exception("Failed to initialize configured email service")
             self.client = None
     
     def send_email(self, to_email: str, subject: str, text_content: str, html_content: str = None, reply_to: str = None) -> Dict[str, Any]:
@@ -157,9 +107,7 @@ class EmailService:
         """Send email verification email."""
         subject = "Verify Your Email - Go Postal SD"
 
-        # Use backend verification endpoint so email verification still works
-        # even if frontend route rewrites/custom domains are misconfigured.
-        verification_url = f"{self.backend_url}/api/auth/verify-email?token={token}"
+        verification_url = f"{self.base_url}/#/verify-email?token={token}"
         
         text_content = f"""
                 Hello {first_name},
@@ -219,7 +167,7 @@ class EmailService:
         """Send password reset email."""
         subject = "Reset Your Password - Go Postal SD"
         
-        reset_url = f"{self.base_url}/reset-password?token={token}"
+        reset_url = f"{self.base_url}/#/reset-password?token={token}"
         
         text_content = f"""
             Hello {first_name},

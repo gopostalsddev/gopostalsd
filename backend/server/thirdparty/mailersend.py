@@ -18,15 +18,15 @@ class MailerSendAdapter:
         """
         self.api_key = api_key or os.getenv('MAILERSEND_API_KEY')
         self.client = None
-        self.from_email = os.getenv('FROM_EMAIL', 'noreply@gopostalsd.com')
-        self.from_name = os.getenv('FROM_NAME', 'Go Postal SD')
+        self.from_email = os.getenv('EMAIL_FROM_ADDRESS', 'support@gopostalsd.com')
+        self.from_name = os.getenv('EMAIL_FROM_NAME', 'Go Postal SD')
 
         if self.api_key:
             try:
                 self.client = MailerSendClient(api_key=self.api_key)
                 logger.info("MailerSend client initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize MailerSend client: {str(e)}")
+            except Exception:
+                logger.error("Failed to initialize MailerSend client")
                 self.client = None
         else:
             logger.warning("MAILERSEND_API_KEY not found in environment variables")
@@ -92,11 +92,11 @@ class MailerSendAdapter:
                 'recipient': to_email,
             }
 
-        except Exception as e:
-            logger.error(f"Error sending email via MailerSend: {str(e)}")
+        except Exception:
+            logger.error("MailerSend delivery failed")
             return {
                 'success': False,
-                'error': f'MailerSend error: {str(e)}',
+                'error': 'MailerSend delivery failed',
                 'recipient': to_email,
             }
 

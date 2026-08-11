@@ -58,6 +58,11 @@ def _production_env(database_url):
             "AUTO_ENABLE_CATEGORIES_WHEN_NONE": "false",
             "FRONTEND_URL": "https://example.invalid",
             "BACKEND_URL": "https://example.invalid",
+            "PUBLIC_BASE_URL": "https://launch.example.test",
+            "EMAIL_PROVIDER": "mailersend",
+            "EMAIL_FROM_ADDRESS": "support@gopostalsd.com",
+            "EMAIL_FROM_NAME": "Go Postal SD",
+            "MAILERSEND_API_KEY": "gp01-test-mailersend-key",
             "SUPABASE_URL": "https://example.supabase.co",
             "SUPABASE_KEY": (
                 "eyJhbGciOiJIUzI1NiJ9."

@@ -30,13 +30,13 @@ class SMTPAdapter:
             from_email: From email address
             from_name: From name
         """
-        self.smtp_server = smtp_server or os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+        self.smtp_server = smtp_server or os.getenv('SMTP_HOST', 'smtp.gmail.com')
         self.smtp_port = smtp_port or int(os.getenv('SMTP_PORT', '587'))
         self.username = username or os.getenv('SMTP_USERNAME')
         self.password = password or os.getenv('SMTP_PASSWORD')
         self.use_tls = use_tls if use_tls is not None else os.getenv('SMTP_USE_TLS', 'true').lower() == 'true'
-        self.from_email = from_email or os.getenv('FROM_EMAIL', 'noreply@gopostalsd.com')
-        self.from_name = from_name or os.getenv('FROM_NAME', 'Go Postal SD')
+        self.from_email = from_email or os.getenv('EMAIL_FROM_ADDRESS', 'support@gopostalsd.com')
+        self.from_name = from_name or os.getenv('EMAIL_FROM_NAME', 'Go Postal SD')
         
         # Validate configuration
         self._is_configured = bool(self.username and self.password)
@@ -107,27 +107,27 @@ class SMTPAdapter:
                     'reply_to': reply_to_email
                 }
                 
-        except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"SMTP authentication failed: {str(e)}")
+        except smtplib.SMTPAuthenticationError:
+            logger.error("SMTP authentication failed")
             return {
                 'success': False,
-                'error': f'SMTP authentication failed: {str(e)}',
+                'error': 'SMTP authentication failed',
                 'recipient': to_email,
                 'provider': 'SMTP'
             }
-        except smtplib.SMTPException as e:
-            logger.error(f"SMTP error: {str(e)}")
+        except smtplib.SMTPException:
+            logger.error("SMTP delivery failed")
             return {
                 'success': False,
-                'error': f'SMTP error: {str(e)}',
+                'error': 'SMTP delivery failed',
                 'recipient': to_email,
                 'provider': 'SMTP'
             }
-        except Exception as e:
-            logger.error(f"Unexpected error sending email via SMTP: {str(e)}")
+        except Exception:
+            logger.error("Unexpected SMTP delivery failure")
             return {
                 'success': False,
-                'error': f'SMTP error: {str(e)}',
+                'error': 'SMTP delivery failed',
                 'recipient': to_email,
                 'provider': 'SMTP'
             }

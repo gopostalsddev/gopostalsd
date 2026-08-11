@@ -53,6 +53,10 @@ services:
           name: gopostalsd-website
           type: web
           envVarKey: RENDER_EXTERNAL_URL
+      # Owner-controlled launch variable. Set only after the client confirms
+      # the canonical public origin; account-action links fail closed without it.
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY
@@ -65,14 +69,12 @@ services:
         value: https://apiconnect.sinalite.com
       - key: MAILERSEND_API_KEY
         sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        sync: false
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
+      - key: EMAIL_PROVIDER
+        value: mailersend
+      - key: EMAIL_FROM_ADDRESS
+        value: support@gopostalsd.com
+      - key: EMAIL_FROM_NAME
+        value: Go Postal SD
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
