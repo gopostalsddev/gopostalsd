@@ -2,6 +2,12 @@ import pytest
 import tempfile
 import os
 from unittest.mock import Mock, patch, MagicMock
+
+# TestingConfig validates these at import time even though unit tests mock the
+# external adapter. Keep deterministic non-secret values inside the test suite.
+os.environ.setdefault("SINALITE_CLIENT_ID", "gp01-test-client")
+os.environ.setdefault("SINALITE_CLIENT_SECRET", "gp01-test-secret")
+
 from server.config import database as db
 from server import create_server
 from server.factories.main_factory import MainFactory

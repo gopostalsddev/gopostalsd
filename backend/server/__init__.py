@@ -18,7 +18,7 @@ def _is_running_db_migrate() -> bool:
     return "db" in sys.argv
 
 
-def create_server(config="development"):
+def create_server(config="development", *, migration_mode=None):
     """
     Factory function to create and configure the Flask application.
     
@@ -28,8 +28,12 @@ def create_server(config="development"):
     Returns:
         Flask: Configured Flask application instance
     """
+    if migration_mode is None:
+        migration_mode = _is_running_db_migrate()
+
     # Create Flask application instance
     server = Flask(__name__)
+    server.config['MIGRATION_MODE'] = migration_mode
 
     # Trust exactly one upstream proxy (Render/Gunicorn) for X-Forwarded-For.
     # This makes request.remote_addr the real client IP rather than the proxy's address.
@@ -102,7 +106,11 @@ def create_server(config="development"):
     if config == "testing":
         server.config.from_object(TestingConfig)
     elif config == "production":
-        validate_production_security_settings()
+        # A one-shot migration never serves traffic and should not require
+        # payment/webhook secrets merely to initialize Alembic. Runtime boot
+        # still validates the complete production security contract.
+        if not migration_mode:
+            validate_production_security_settings()
         server.config.from_object(ProductionConfig)
     else:  # Default to development configuration
         server.config.from_object(DevelopmentConfig)
@@ -114,13 +122,15 @@ def create_server(config="development"):
     # Initialize database support
     database.init_app(server)
 
-    if config == "production" and not _is_running_db_migrate():
-        with server.app_context():
-            from server.startup_admin import ensure_production_admin
-            ensure_production_admin(server)
-
-    # Initialize database support
+    # Initialize migration support. Models are imported at module load so
+    # Alembic metadata is available without initializing routes/integrations.
     migrate.init_app(server, database)
+
+    from server.cli import register_commands
+    register_commands(server)
+
+    if migration_mode:
+        return server
 
     # Initialize sinalite api support
     sinalite.init_app(server)
@@ -178,10 +188,5 @@ def create_server(config="development"):
         ErrorHandler(server)
     except ImportError:
         logger.warning("Advanced error handler dependencies are unavailable; continuing with default handlers")
-
-    if config == "production":
-        with server.app_context():
-            from server.startup import ensure_database_structures
-            ensure_database_structures()
 
     return server
