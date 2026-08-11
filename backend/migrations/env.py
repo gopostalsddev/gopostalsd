@@ -131,7 +131,13 @@ def run_migrations_online():
 
     connectable = get_engine()
 
-    with connectable.connect() as connection:
+    # The legacy-revision inspection executes SQL before Alembic opens its
+    # transaction. Under SQLAlchemy 2 that implicitly begins a transaction;
+    # using a plain ``connect()`` context would then roll back the migration
+    # work when the connection closes. Own one explicit outer transaction so
+    # both the compatibility remap and every migration revision commit
+    # atomically.
+    with connectable.begin() as connection:
         remap_legacy_revision_ids(connection)
         context.configure(
             connection=connection,
