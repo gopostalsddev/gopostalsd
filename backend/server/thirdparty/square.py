@@ -306,7 +306,10 @@ class SquareAdapter:
                 'payment': None
             }
     
-    def refund_payment(self, payment_id: str, amount: int, reason: str = None) -> Dict[str, Any]:
+    def refund_payment(
+        self, payment_id: str, amount: int, reason: str = None,
+        idempotency_key: str = None,
+    ) -> Dict[str, Any]:
         """
         Refund a payment.
         
@@ -326,7 +329,8 @@ class SquareAdapter:
                     'refund_id': None
                 }
             
-            idempotency_key = secrets.token_urlsafe(32)
+            if not idempotency_key:
+                idempotency_key = secrets.token_urlsafe(32)
             refund_request = {
                 'idempotency_key': idempotency_key,
                 'amount_money': {'amount': amount, 'currency': 'USD'},
@@ -360,7 +364,8 @@ class SquareAdapter:
                     'success': False,
                     'error': f'Square refund failed: {", ".join(error_messages)}',
                     'errors': errors,
-                    'refund_id': None
+                    'refund_id': None,
+                    'outcome_known': True,
                 }
                 
         except Exception as e:
@@ -368,7 +373,8 @@ class SquareAdapter:
             return {
                 'success': False,
                 'error': f'Square refund error: {str(e)}',
-                'refund_id': None
+                'refund_id': None,
+                'outcome_known': False,
             }
     
     def _create_square_address(self, address_data: Dict[str, Any]) -> Dict[str, Any]:

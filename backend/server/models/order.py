@@ -246,6 +246,11 @@ class Refund(db.Model):
     This stores refund information for completed orders.
     """
     __tablename__ = 'refunds'
+    __table_args__ = (
+        db.UniqueConstraint(
+            'external_refund_id', name='uq_refunds_external_refund_id'
+        ),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
@@ -280,3 +285,28 @@ class Refund(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'processed_at': self.processed_at.isoformat() if self.processed_at else None
         }
+
+
+class RefundAttempt(db.Model):
+    """Durable identity and balance reservation for a provider refund."""
+
+    __tablename__ = 'refund_attempts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False, index=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False, index=True)
+    provider = db.Column(db.String(50), nullable=False)
+    idempotency_key = db.Column(db.String(64), nullable=False, unique=True)
+    amount_cents = db.Column(db.Integer, nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    reason = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='reserved', index=True)
+    external_refund_id = db.Column(db.String(255), nullable=True, unique=True)
+    provider_response = db.Column(JSON, nullable=True)
+    last_error_code = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=func.now())
+    updated_at = db.Column(db.DateTime, nullable=False, default=func.now(), onupdate=func.now())
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    order = db.relationship('Order', backref='refund_attempts')
+    payment = db.relationship('Payment', backref='refund_attempts')

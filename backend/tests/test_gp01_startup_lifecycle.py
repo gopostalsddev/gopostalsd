@@ -33,7 +33,7 @@ def test_repository_has_exactly_one_alembic_head():
 
     heads = ScriptDirectory.from_config(config).get_heads()
 
-    assert heads == ["gp07_payment_attempts"]
+    assert heads == ["gp08_refund_attempts"]
 
 
 def test_migration_mode_skips_runtime_integrations_and_bootstrap():

@@ -521,4 +521,4 @@ def test_safe_fixture_migrates_and_authentication_state_survives_to_head():
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "gp07_payment_attempts"
+            ).scalar_one() == "gp08_refund_attempts"

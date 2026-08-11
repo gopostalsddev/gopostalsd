@@ -122,7 +122,10 @@ class PaymentService:
         
         return self.client.get_payment(payment_id)
     
-    def refund_payment(self, payment_id: str, amount: int, reason: str = None) -> Dict[str, Any]:
+    def refund_payment(
+        self, payment_id: str, amount: int, reason: str = None,
+        idempotency_key: str = None,
+    ) -> Dict[str, Any]:
         """
         Refund a payment.
         
@@ -140,7 +143,9 @@ class PaymentService:
                 'error': f'Payment service not configured. Set {self.provider.upper()}_ACCESS_TOKEN environment variable.'
             }
         
-        return self.client.refund_payment(payment_id, amount, reason)
+        return self.client.refund_payment(
+            payment_id, amount, reason, idempotency_key=idempotency_key
+        )
     
     @property
     def is_configured(self) -> bool:
