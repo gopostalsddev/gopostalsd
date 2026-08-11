@@ -13,6 +13,7 @@ readonly BACKUP_DIR='/var/backups/gopostal-rehearsal'
 readonly EVIDENCE_DIR='/var/lib/gopostal-rehearsal/evidence'
 readonly SUDOERS='/etc/sudoers.d/ops-gopostal'
 readonly -a EXPECTED_WRAPPERS=(gopostal-backup gopostal-bootstrap gopostal-compose-build gopostal-compose-down gopostal-compose-restart gopostal-compose-up gopostal-logs gopostal-migrate gopostal-restore-rehearsal gopostal-status gopostal-sync-source gopostal-test)
+readonly -a DIRECT_SCRIPTS=(provision.sh verify-installed.sh acceptance.sh)
 
 if [ "$(id -u)" -ne 0 ]; then
   printf 'run provisioning as root\n' >&2
@@ -31,10 +32,26 @@ case "$key" in ssh-ed25519\ *) ;; *) printf 'only a single ssh-ed25519 public ke
 cd "$BASE_DIR"
 sha256sum --check --strict "$MANIFEST"
 
+repo_root=$(git -C "$BASE_DIR" rev-parse --show-toplevel)
+for script in "${DIRECT_SCRIPTS[@]}"; do
+  [ -x "$BASE_DIR/$script" ] || { printf 'bundle script is not executable: %s\n' "$script" >&2; exit 78; }
+  relative=${BASE_DIR#"$repo_root"/}/$script
+  [ "$(git -C "$repo_root" ls-files -s -- "$relative" | awk '{print $1}')" = '100755' ] || {
+    printf 'bundle script Git mode is not 100755: %s\n' "$script" >&2; exit 78;
+  }
+done
+
 mapfile -t wrappers < <(find wrappers -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort)
 [ "${#wrappers[@]}" -eq 12 ] || { printf 'expected 12 wrappers, found %s\n' "${#wrappers[@]}" >&2; exit 78; }
 [ "$(printf '%s\n' "${wrappers[@]}")" = "$(printf '%s\n' "${EXPECTED_WRAPPERS[@]}")" ] || { printf 'wrapper inventory mismatch\n' >&2; exit 78; }
 for wrapper in "${wrappers[@]}"; do bash -n "wrappers/$wrapper"; done
+for wrapper in "${wrappers[@]}"; do
+  [ -x "wrappers/$wrapper" ] || { printf 'bundle wrapper is not executable: %s\n' "$wrapper" >&2; exit 78; }
+  relative=${BASE_DIR#"$repo_root"/}/wrappers/$wrapper
+  [ "$(git -C "$repo_root" ls-files -s -- "$relative" | awk '{print $1}')" = '100755' ] || {
+    printf 'bundle wrapper Git mode is not 100755: %s\n' "$wrapper" >&2; exit 78;
+  }
+done
 bash -n provision.sh
 bash -n verify-installed.sh
 bash -n acceptance.sh

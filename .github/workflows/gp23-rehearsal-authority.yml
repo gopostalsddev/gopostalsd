@@ -29,6 +29,10 @@ jobs:
         run: |
           set -euo pipefail
           bundle=deploy/gopostal/rehearsal-authority
+          test -x "$bundle/provision.sh"
+          test -x "$bundle/verify-installed.sh"
+          test -x "$bundle/acceptance.sh"
+          test -z "$(find "$bundle/wrappers" -maxdepth 1 -type f ! -perm -0100 -print -quit)"
           bash -n "$bundle/provision.sh"
           bash -n "$bundle/verify-installed.sh"
           bash -n "$bundle/acceptance.sh"

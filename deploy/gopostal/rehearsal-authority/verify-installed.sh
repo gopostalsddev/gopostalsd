@@ -13,7 +13,20 @@ if [ -n "$BUNDLE" ]; then
   [ -d "$BUNDLE" ] && [ ! -L "$BUNDLE" ] || { printf 'invalid bundle directory\n' >&2; exit 66; }
   cd "$BUNDLE"
   sha256sum --check --strict MANIFEST.sha256 >/dev/null
+  repo_root=$(git -C "$BUNDLE" rev-parse --show-toplevel)
+  for script in provision.sh verify-installed.sh acceptance.sh; do
+    [ -x "$BUNDLE/$script" ] || { printf 'bundle script is not executable: %s\n' "$script" >&2; exit 78; }
+    relative=${BUNDLE#"$repo_root"/}/$script
+    [ "$(git -C "$repo_root" ls-files -s -- "$relative" | awk '{print $1}')" = '100755' ] || {
+      printf 'bundle script Git mode is not 100755: %s\n' "$script" >&2; exit 78;
+    }
+  done
   for name in "${EXPECTED[@]}"; do
+    [ -x "$BUNDLE/wrappers/$name" ] || { printf 'bundle wrapper is not executable: %s\n' "$name" >&2; exit 78; }
+    relative=${BUNDLE#"$repo_root"/}/wrappers/$name
+    [ "$(git -C "$repo_root" ls-files -s -- "$relative" | awk '{print $1}')" = '100755' ] || {
+      printf 'bundle wrapper Git mode is not 100755: %s\n' "$name" >&2; exit 78;
+    }
     bundle_hash=$(sha256sum "wrappers/$name" | cut -d ' ' -f1)
     installed_hash=$(sha256sum "/usr/local/bin/$name" | cut -d ' ' -f1)
     [ "$bundle_hash" = "$installed_hash" ] || { printf 'wrapper hash mismatch: %s\n' "$name" >&2; exit 78; }

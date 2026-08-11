@@ -28,6 +28,15 @@ EXPECTED_WRAPPERS = {
     "gopostal-backup",
     "gopostal-restore-rehearsal",
 }
+DIRECT_SCRIPTS = {
+    "deploy/gopostal/rehearsal-authority/provision.sh",
+    "deploy/gopostal/rehearsal-authority/verify-installed.sh",
+    "deploy/gopostal/rehearsal-authority/acceptance.sh",
+    *{
+        f"deploy/gopostal/rehearsal-authority/wrappers/{name}"
+        for name in EXPECTED_WRAPPERS
+    },
+}
 
 
 def test_exact_wrapper_inventory_and_no_argument_sudo_grants():
@@ -56,6 +65,22 @@ def test_all_wrappers_are_bash_syntax_clean_and_fail_on_arguments():
         subprocess.run(["bash", "-n", str(script)], check=True)
     for wrapper in WRAPPER_DIR.iterdir():
         assert 'no_args "$@"' in wrapper.read_text()
+
+
+def test_every_directly_executed_bundle_script_has_git_mode_100755():
+    result = subprocess.run(
+        ["git", "ls-files", "--stage", "--", *sorted(DIRECT_SCRIPTS)],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    modes = {
+        line.split(maxsplit=1)[1].split("\t", maxsplit=1)[1]: line.split(maxsplit=1)[0]
+        for line in result.stdout.splitlines()
+    }
+    assert set(modes) == DIRECT_SCRIPTS
+    assert set(modes.values()) == {"100755"}
 
 
 def test_common_boundary_is_fixed_and_scrubs_redirection_environment():
@@ -165,6 +190,7 @@ def test_install_verifier_rejects_drift_stale_wrappers_and_orphan_grants():
     assert "installed wrapper inventory mismatch" in VERIFY
     assert "expected 12 exact no-argument sudo grants" in VERIFY
     assert "orphan or duplicate ops-gopostal sudo grant detected" in VERIFY
+    assert "bundle script Git mode is not 100755" in VERIFY
     assert "sha256sum --check --strict" in VERIFY
     assert "bash -n" in VERIFY
     assert "visudo -cf" in VERIFY
