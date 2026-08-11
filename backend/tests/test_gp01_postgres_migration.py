@@ -70,13 +70,17 @@ def _production_env(database_url):
             "EMAIL_FROM_NAME": "Go Postal SD",
             "MAILERSEND_API_KEY": "gp01-test-mailersend-key",
             "SUPABASE_URL": "https://example.supabase.co",
-            "SUPABASE_SERVICE_KEY": "gp01-test-service-role-key",
+            "SUPABASE_SERVICE_KEY": (
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+                "eyJyb2xlIjoic2VydmljZV9yb2xlIn0."
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            ),
             "SUPABASE_BUCKET": "gp01-test-bucket",
             "FILE_STORAGE_BACKEND": "supabase",
             "SUPABASE_KEY": (
-                "eyJhbGciOiJIUzI1NiJ9."
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
                 "eyJyb2xlIjoic2VydmljZV9yb2xlIn0."
-                "gp01-test-signature"
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
             ),
             "RUN_DB_MIGRATE": "1",
             "FLASK_APP": "app.py",
