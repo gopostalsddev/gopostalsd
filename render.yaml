@@ -79,6 +79,8 @@ services:
         sync: false
       - key: SQUARE_ACCESS_TOKEN
         sync: false
+      - key: SQUARE_ENVIRONMENT
+        value: production
       - key: SQUARE_APPLICATION_ID
         sync: false
       - key: SQUARE_LOCATION_ID
@@ -113,5 +115,7 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
       - key: VITE_SQUARE_APPLICATION_ID
         sync: false
+      - key: VITE_SQUARE_ENVIRONMENT
+        value: production
       - key: VITE_SQUARE_LOCATION_ID
         sync: false

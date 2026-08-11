@@ -14,6 +14,8 @@ import secrets
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
+from server.square_config import validate_square_configuration
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -61,18 +63,26 @@ class SquareAdapter:
     handling authentication, payment processing, and error management.
     """
     
-    def __init__(self, access_token: Optional[str] = None, environment: str = "sandbox"):
+    def __init__(self, access_token: Optional[str] = None, environment: str | None = None):
         """
         Initialize Square Payment adapter.
         
         Args:
             access_token: Square access token (defaults to SQUARE_ACCESS_TOKEN env var)
-            environment: Square environment ('sandbox' or 'production')
+            environment: Optional explicit environment. It must agree with
+                SQUARE_ENVIRONMENT when both are supplied.
         """
         self.access_token = access_token or os.getenv('SQUARE_ACCESS_TOKEN')
-        self.environment = environment.lower()
         self.application_id = os.getenv('SQUARE_APPLICATION_ID')
         self.location_id = os.getenv('SQUARE_LOCATION_ID')
+        configuration = dict(os.environ)
+        if access_token:
+            configuration['SQUARE_ACCESS_TOKEN'] = access_token
+        self.environment = validate_square_configuration(
+            explicit_environment=environment,
+            environ=configuration,
+            require_credentials=True,
+        )
         self.client = None
         self._is_configured = False
         
