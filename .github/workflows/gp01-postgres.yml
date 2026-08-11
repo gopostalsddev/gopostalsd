@@ -1,6 +1,9 @@
 name: GP-01 PostgreSQL migration lifecycle
 
 on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
   pull_request:
   workflow_dispatch:
 
