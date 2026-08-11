@@ -1,7 +1,7 @@
 f28039c1f673e635ed6987b855a4c0e127a33c195f2f850099db39d123d57fb6 *./acceptance.sh
 2d44d1117b3ec367ee296e5b3bc70456f2e9cecf0d6509ff3c8ba5b4203f9add *./docker-compose.rehearsal.yml
 607d97f8155b876c208ad446502c13ee68b3e789de7ffce6048e3856e5d7d1e5 *./frontend.Dockerfile
-deccbd0c488c0e261b143923f450b26c750e74e43ae3315900ce949ce1426f8d *./lib/gopostal-common.inc
+4d285a4e3096d101d0d1b1750f908bb58fbec103e732f52fe412d82c7f903062 *./lib/gopostal-common.inc
 630a7d01a06790dbc0e1afba02a8c8d9a83d5ea168ad5a660bbc0cd74b4051b6 *./provision.sh
 1f61dbf4db68764b59922e8a7c8031e08c346783a14d6f7c5280d178114986d0 *./sudoers.ops-gopostal
 3edd33692d5e08fca30627723c76d8c0da5813bc64b9dcc6f4e71e778122b41d *./verify-installed.sh
@@ -15,5 +15,5 @@ deccbd0c488c0e261b143923f450b26c750e74e43ae3315900ce949ce1426f8d *./lib/gopostal
 c50417fbe472d1eb8e27e04033b74aa8397f54783cf47ecfbc99ec664eb6d7fb *./wrappers/gopostal-migrate
 b9975086f417a13687e40f32a34906a1f2951d609a3111e4e43cbdecd30ff70b *./wrappers/gopostal-restore-rehearsal
 285cc08713b2ffa0fdabfafb0f3f00798d019ab2899053bce86559e4893058f3 *./wrappers/gopostal-status
-01d4afb4652e102976cdc9de6f5b8fa9448442af08330663b8adfc0658ce7b9c *./wrappers/gopostal-sync-source
+f7515d64f19241692fc11666b7b5195b5972e34b30ac807ade1e23568245be01 *./wrappers/gopostal-sync-source
 836f53fcc4a9542b639ce45ce46904670479dfb75a0bf7d793cdb697236503c5 *./wrappers/gopostal-test

@@ -90,6 +90,7 @@ def test_common_boundary_is_fixed_and_scrubs_redirection_environment():
         "GOP_STACK='/srv/docker/stacks/gopostal-rehearsal'",
         "GOP_REPOSITORY='https://github.com/gopostalsddev/gopostalsd.git'",
         "GOP_SHA='3854704d30c42b9c725f938a55e124c18a9a2119'",
+        "GOP_BRANCH='codex/gopostal-rehearsal-authority'",
         "--project-name \"$GOP_PROJECT\"",
         "-f \"$GOP_COMPOSE\"",
     )
@@ -119,6 +120,8 @@ def test_source_sync_is_exact_public_git_flow_and_never_user_selectable():
     assert 'git clone --no-checkout --origin origin "$GOP_REPOSITORY"' in sync
     assert 'git -C "$tmp" checkout --detach "$GOP_SHA"' in sync
     assert 'git -C "$GOP_SOURCE" fetch --no-tags origin "$GOP_BRANCH"' in sync
+    assert 'git -C "$GOP_SOURCE" checkout --detach "$GOP_SHA"' in sync
+    assert 'assert_source_checkout' in sync
     assert 'assert_source' in sync
     assert "$1" not in sync
     assert "reset --hard" not in sync

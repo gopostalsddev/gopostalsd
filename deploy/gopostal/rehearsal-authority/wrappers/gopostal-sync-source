@@ -20,9 +20,13 @@ if [ ! -e "$GOP_SOURCE" ]; then
   mv "$tmp" "$GOP_SOURCE"
   trap - EXIT
 else
-  assert_source
+  # A reviewed repin must be able to advance a clean, correctly-owned checkout
+  # from the previously approved SHA.  Validate identity and cleanliness before
+  # fetching, then detach at the new immutable SHA and apply the full assertion.
+  assert_source_checkout
   git -C "$GOP_SOURCE" fetch --no-tags origin "$GOP_BRANCH"
   git -C "$GOP_SOURCE" cat-file -e "$GOP_SHA^{commit}"
+  git -C "$GOP_SOURCE" checkout --detach "$GOP_SHA"
 fi
 
 assert_source

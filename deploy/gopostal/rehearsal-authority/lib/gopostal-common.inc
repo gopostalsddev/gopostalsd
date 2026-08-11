@@ -23,7 +23,7 @@ readonly GOP_SHARE='/usr/local/share/gopostal-rehearsal-authority'
 readonly GOP_BACKUPS='/var/backups/gopostal-rehearsal'
 readonly GOP_EVIDENCE='/var/lib/gopostal-rehearsal/evidence'
 readonly GOP_REPOSITORY='https://github.com/gopostalsddev/gopostalsd.git'
-readonly GOP_BRANCH='codex/gp01-migration-startup-separation'
+readonly GOP_BRANCH='codex/gopostal-rehearsal-authority'
 readonly GOP_SHA='3854704d30c42b9c725f938a55e124c18a9a2119'
 readonly GOP_IMAGE_TAG='3854704d30c42b9c725f938a55e124c18a9a2119'
 readonly -a GOP_ALLOWED_CONTAINERS=(gopostal_rehearsal_db gopostal_rehearsal_web gopostal_rehearsal_frontend)
@@ -60,20 +60,24 @@ require_root_directory() {
   (( (8#$mode & 022) == 0 )) || { printf 'directory is group/world writable: %s\n' "$path" >&2; exit 78; }
 }
 
-assert_source() {
+assert_source_checkout() {
   require_root_directory "$GOP_SOURCE"
   [ "$(git -C "$GOP_SOURCE" remote get-url --all origin | wc -l)" -eq 1 ] &&
     [ "$(git -C "$GOP_SOURCE" remote get-url origin)" = "$GOP_REPOSITORY" ] || {
     printf 'unexpected GoPostal origin\n' >&2; exit 78;
-  }
-  [ "$(git -C "$GOP_SOURCE" rev-parse HEAD)" = "$GOP_SHA" ] || {
-    printf 'GoPostal source is not at the reviewed SHA\n' >&2; exit 78;
   }
   git -C "$GOP_SOURCE" diff --quiet --ignore-submodules -- &&
     git -C "$GOP_SOURCE" diff --cached --quiet --ignore-submodules -- &&
     [ -z "$(git -C "$GOP_SOURCE" status --porcelain --untracked-files=normal)" ] || {
       printf 'GoPostal source tree is dirty\n' >&2; exit 78;
     }
+}
+
+assert_source() {
+  assert_source_checkout
+  [ "$(git -C "$GOP_SOURCE" rev-parse HEAD)" = "$GOP_SHA" ] || {
+    printf 'GoPostal source is not at the reviewed SHA\n' >&2; exit 78;
+  }
 }
 
 assert_stack() {
