@@ -32,7 +32,7 @@ def _is_production() -> bool:
     return os.getenv("ENVIRONMENT", "development").strip().lower() == "production"
 
 
-def _public_base_url(*, required: bool) -> str:
+def public_base_url(*, required: bool) -> str:
     value = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
     if not value:
         if required:
@@ -109,10 +109,28 @@ def load_email_settings(*, required: bool | None = None) -> EmailSettings | None
         provider=provider,
         from_address=from_address,
         from_name=from_name,
-        public_base_url=_public_base_url(required=required),
+        public_base_url=public_base_url(required=required),
     )
 
 
 def validate_production_email_settings() -> None:
     """Validate production email configuration without contacting a provider."""
     load_email_settings(required=True)
+
+
+def trusted_proxy_hops(*, required: bool) -> int:
+    """Return the explicit number of trusted reverse proxies.
+
+    The launch topology has one ingress reverse proxy. Trusting more hops would
+    let a client-controlled forwarded value move into the trusted position.
+    """
+    raw = os.getenv("TRUSTED_PROXY_HOPS", "").strip()
+    if not raw:
+        if required:
+            raise EmailConfigurationError(
+                "TRUSTED_PROXY_HOPS must be explicitly set to 1 in production"
+            )
+        return 0
+    if raw != "1":
+        raise EmailConfigurationError("TRUSTED_PROXY_HOPS must be exactly 1")
+    return 1

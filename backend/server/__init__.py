@@ -5,6 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from server.config import DevelopmentConfig, TestingConfig, ProductionConfig, validate_production_security_settings
 from server.config import database, migrate, sinalite, swagger, filestorage
 from server.models import * # So that they can be detected by migrations
+from server.email_config import public_base_url, trusted_proxy_hops
 import logging
 import os
 import sys
@@ -16,6 +17,48 @@ def _is_running_db_migrate() -> bool:
     if os.getenv("RUN_DB_MIGRATE"):
         return True
     return "db" in sys.argv
+
+
+def _configure_proxy_boundary(server, config: str, migration_mode: bool) -> int:
+    """Apply the explicit ingress trust boundary and return its hop count."""
+    proxy_hops = trusted_proxy_hops(
+        required=config == "production" and not migration_mode
+    )
+    if proxy_hops:
+        server.wsgi_app = ProxyFix(
+            server.wsgi_app,
+            x_for=proxy_hops,
+            x_proto=proxy_hops,
+            x_host=proxy_hops,
+        )
+    return proxy_hops
+
+
+def _resolve_cors_origins(config: str, migration_mode: bool) -> list[str]:
+    """Resolve credentialed browser origins without provider-host fallbacks."""
+    if config == "production" and not migration_mode:
+        return [public_base_url(required=True)]
+    if config == "production":
+        return []
+
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
+    render_external_url = os.getenv('RENDER_EXTERNAL_URL')
+    env_origins = [
+        origin
+        for origin in (frontend_url, render_frontend_url, render_external_url)
+        if origin
+    ]
+    origins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'https://localhost:5173',
+    ]
+    for origin in env_origins:
+        if origin not in origins:
+            origins.append(origin)
+    return origins
 
 
 def create_server(config="development", *, migration_mode=None):
@@ -35,30 +78,15 @@ def create_server(config="development", *, migration_mode=None):
     server = Flask(__name__)
     server.config['MIGRATION_MODE'] = migration_mode
 
-    # Trust exactly one upstream proxy (Render/Gunicorn) for X-Forwarded-For.
-    # This makes request.remote_addr the real client IP rather than the proxy's address.
-    server.wsgi_app = ProxyFix(server.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    # Runtime production is reachable through exactly one ingress proxy. Tests,
+    # development, and one-shot migrations trust no forwarded headers by default.
+    _configure_proxy_boundary(server, config, migration_mode)
 
     # Configure CORS with allowed origins
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-    render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
-    render_external_url = os.getenv('RENDER_EXTERNAL_URL')
+    cors_origins = _resolve_cors_origins(config, migration_mode)
 
-    env_origins = [origin for origin in [frontend_url, render_frontend_url, render_external_url] if origin]
-    if config == "production":
-        cors_origins = list(dict.fromkeys(env_origins))
-    else:
-        cors_origins = [
-            'http://localhost:5173',
-            'http://localhost:3000',
-            'http://localhost:8080',
-            'https://localhost:5173',
-        ]
-        for origin in env_origins:
-            if origin not in cors_origins:
-                cors_origins.append(origin)
-
-    if not cors_origins:
+    if not cors_origins and not migration_mode:
         raise ValueError("No CORS origins configured for this environment")
     
     # Extract base domain for Codespaces (e.g., curly-spoon-jj57pprxw5q93qjwq)
@@ -82,6 +110,7 @@ def create_server(config="development", *, migration_mode=None):
     }
     # Match all API endpoints (e.g., /api/auth/me), not just repeated slash paths.
     CORS(server, resources={r"/api/.*": cors_config})
+    server.config['_CORS_ORIGINS'] = cors_origins
 
     # Enforce CSRF validation for authenticated state-changing requests.
     from server.middleware.auth_middleware import enforce_csrf_protection

@@ -106,6 +106,7 @@ def test_production_security_validation_requires_coherent_square_config():
         "SQUARE_WEBHOOK_URL": "https://example.invalid/api/payments/webhook",
         "OAUTH_TOKEN_ENCRYPTION_KEY": "gp04-oauth-key",
         "PUBLIC_BASE_URL": "https://launch.example.test",
+        "TRUSTED_PROXY_HOPS": "1",
         "EMAIL_PROVIDER": "mailersend",
         "EMAIL_FROM_ADDRESS": "support@gopostalsd.com",
         "EMAIL_FROM_NAME": "Go Postal SD",

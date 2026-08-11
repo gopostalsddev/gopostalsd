@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test:square-config": "node --test tests/squareConfig.test.mjs",
+    "test:api-base-url": "node --test tests/apiBaseUrl.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
