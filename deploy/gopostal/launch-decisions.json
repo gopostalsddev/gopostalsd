@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "decisions": [
+    {
+      "id": "database_launch_path",
+      "status": "APPROVED",
+      "value": "fresh_postgresql",
+      "note": "GP-03B selected; GoPostal has never served live clients."
+    },
+    {
+      "id": "historical_data_recovery",
+      "status": "NOT_APPLICABLE",
+      "value": null,
+      "note": "Reopen only if the owner identifies and requests recovery of a backup."
+    },
+    {
+      "id": "email_provider",
+      "status": "APPROVED",
+      "value": "mailersend",
+      "note": "Configuration and tests use placeholders until live access is authorized."
+    },
+    {
+      "id": "default_sender",
+      "status": "APPROVED",
+      "value": "support@gopostalsd.com",
+      "note": "Sender use remains conditional on MailerSend domain verification."
+    },
+    {
+      "id": "canonical_url",
+      "status": "PENDING",
+      "value": null,
+      "note": "Awaiting client confirmation; never infer it from the sender domain."
+    },
+    {
+      "id": "dns_change_authority",
+      "status": "PENDING",
+      "value": null,
+      "note": "Record only an authorization reference, not registrar credentials."
+    },
+    {
+      "id": "mailersend_domain_verification",
+      "status": "PENDING",
+      "value": null,
+      "note": "Requires owner-controlled DNS and live provider status."
+    },
+    {
+      "id": "square_production_configuration",
+      "status": "PENDING",
+      "value": null,
+      "note": "Requires live provider access; no credential value belongs here."
+    },
+    {
+      "id": "object_storage_production_configuration",
+      "status": "PENDING",
+      "value": null,
+      "note": "Confirm provider, bucket ownership, retention, and access boundary."
+    },
+    {
+      "id": "offsite_backup_provider",
+      "status": "PENDING",
+      "value": null,
+      "note": "Select an encrypted destination independent of the VPS."
+    },
+    {
+      "id": "backup_retention_rpo_rto",
+      "status": "PENDING",
+      "value": null,
+      "note": "Owner must approve retention, RPO, and RTO after restore rehearsal."
+    },
+    {
+      "id": "alert_recipient",
+      "status": "PENDING",
+      "value": null,
+      "note": "Record a non-secret routing reference after authorization."
+    },
+    {
+      "id": "rollback_authority",
+      "status": "PENDING",
+      "value": null,
+      "note": "Name the launch rollback commander out of band."
+    },
+    {
+      "id": "initial_admin_identity",
+      "status": "PENDING",
+      "value": null,
+      "note": "Approve out of band; do not commit personal data or bootstrap credentials."
+    }
+  ]
+}
