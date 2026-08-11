@@ -11,7 +11,7 @@ jobs:
   square-environment:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: sqlite:///:memory:
+      DATABASE_URL: "sqlite:///:memory:"
       SINALITE_CLIENT_ID: gp04-ci-client
       SINALITE_CLIENT_SECRET: gp04-ci-secret
     steps:
