@@ -97,7 +97,6 @@ def _handle_square_webhook_event(event_type: str, obj: dict) -> None:
             payment_row.order.payment_status = PaymentStatus.COMPLETED
         elif square_status in ('CANCELED', 'FAILED'):
             payment_row.status = PaymentStatus.FAILED
-        db.session.commit()
 
     elif event_type in ('refund.updated', 'refund.created'):
         refund_data = obj.get('refund', {})
@@ -128,7 +127,6 @@ def _handle_square_webhook_event(event_type: str, obj: dict) -> None:
         order.payment_status = PaymentStatus.REFUNDED
         order.status = OrderStatus.REFUNDED
         payment_row.status = PaymentStatus.REFUNDED
-        db.session.commit()
         logger.info("Order %s marked refunded via Square webhook", order.id)
 
 
@@ -407,15 +405,39 @@ class WebhookResource(Resource):
             try:
                 event = _json.loads(payload)
             except Exception:
-                event = {}
+                return error_response('Invalid webhook payload', 400, code='INVALID_WEBHOOK_PAYLOAD', category='validation')
+
+            if not isinstance(event, dict):
+                return error_response('Invalid webhook payload', 400, code='INVALID_WEBHOOK_PAYLOAD', category='validation')
 
             event_type = event.get('type', '')
+            event_id = event.get('event_id', '')
+            if not isinstance(event_id, str) or not event_id.strip() or not isinstance(event_type, str) or not event_type.strip():
+                return error_response('Webhook event_id and type are required', 400, code='INVALID_WEBHOOK_EVENT', category='validation')
             logger.info("Received Square webhook: %s", event_type)
+
+            from server.services.square_webhook_inbox import (
+                WebhookEventConflict, claim_event, mark_failed,
+                mark_processed, register_event,
+            )
+            try:
+                receipt, _created = register_event(
+                    event_id.strip(), event_type.strip(), event, payload
+                )
+            except WebhookEventConflict:
+                logger.error("Square event ID was reused with different content")
+                return error_response('Webhook event conflict', 409, code='WEBHOOK_EVENT_CONFLICT', category='security')
+
+            if not claim_event(receipt.id):
+                return {'status': 'duplicate'}, 200
 
             try:
                 _handle_square_webhook_event(event_type, event.get('data', {}).get('object', {}))
-            except Exception:
+                mark_processed(receipt.id)
+            except Exception as exc:
                 logger.error("Error handling webhook event %s", event_type, exc_info=True)
+                mark_failed(receipt.id, exc)
+                return error_response('Webhook processing failed', 503, code='WEBHOOK_PROCESSING_FAILED', category='system', retryable=True)
 
             return {'status': 'success'}, 200
             

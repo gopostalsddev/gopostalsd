@@ -13,7 +13,7 @@ from server.thirdparty.square import SquareAdapter
 
 WEBHOOK_URL = "https://payments.example.test/api/payments/webhook"
 SIGNATURE_KEY = "gp05-test-signature-key"
-BODY = b'{\n  "type": "payment.updated", "data": {"object": {}}\n}'
+BODY = b'{\n  "event_id": "gp05-event-1", "type": "payment.updated", "data": {"object": {}}\n}'
 
 
 def _signature(body=BODY, url=WEBHOOK_URL):

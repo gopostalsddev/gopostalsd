@@ -122,7 +122,7 @@ def test_empty_postgres_migrates_bootstraps_and_boots_twice_without_mutation():
             "script_location", str(BACKEND_DIR / "migrations")
         )
         heads = ScriptDirectory.from_config(alembic_config).get_heads()
-        assert heads == ["gp01_pricing_policy"]
+        assert heads == ["gp06_square_webhook_inbox"]
 
         test_engine = sa.create_engine(test_url)
         assert sa.inspect(test_engine).has_table("alembic_version"), (

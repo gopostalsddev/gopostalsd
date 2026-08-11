@@ -40,7 +40,9 @@ as a fresh installation and that there is no real-client historical dataset.
 GP-01 already supplies authoritative technical evidence for an empty database:
 
 - empty PostgreSQL traverses the complete migration graph;
-- exactly one Alembic head, `gp01_pricing_policy`, is reached;
+- exactly one Alembic head is reached (the GP-01 checkpoint was
+  `gp01_pricing_policy`; fresh launch always migrates to the then-current sole
+  head);
 - explicit bootstrap succeeds and is idempotent;
 - two production-mode boots cause no schema or row mutations.
 
