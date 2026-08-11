@@ -23,15 +23,20 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def _run(command, env):
-    return subprocess.run(
-        command,
-        cwd=BACKEND_DIR,
-        env=env,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
+    try:
+        return subprocess.run(
+            command,
+            cwd=BACKEND_DIR,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise AssertionError(
+            f"command failed: {command!r}\nstdout:\n{exc.stdout}\nstderr:\n{exc.stderr}"
+        ) from exc
 
 
 def _production_env(database_url):

@@ -25,6 +25,7 @@
 				replace key REDACTED
 			}
 		}
+	}
 
 	header {
 		Strict-Transport-Security "{$GOPOSTAL_HSTS:max-age=0}"

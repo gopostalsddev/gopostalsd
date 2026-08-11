@@ -75,8 +75,8 @@ jobs:
           EOF
           sudo chmod 0600 /etc/gopostal/database.env /etc/gopostal/production.env
       - name: Validate effective Compose configuration
-        run: docker compose -f deploy/gopostal/docker-compose.production.yml config --quiet
+        run: sudo docker compose -f deploy/gopostal/docker-compose.production.yml config --quiet
       - name: Build exact runtime image
-        run: docker compose -f deploy/gopostal/docker-compose.production.yml build web
+        run: sudo docker compose -f deploy/gopostal/docker-compose.production.yml build web
       - name: Verify image user
         run: test "$(docker image inspect gopostal-web:ci --format '{{.Config.User}}')" = "10001:10001"
