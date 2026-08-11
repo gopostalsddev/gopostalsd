@@ -76,12 +76,12 @@ def test_access_log_is_json_bounded_and_redacted():
         assert value in CADDY
 
 
-def test_temporary_basic_auth_excludes_only_exact_webhook_path():
-    assert "@protected not path /api/payments/webhook" in TEMPORARY
-    assert "basic_auth @protected" in TEMPORARY
-    assert "GOPOSTAL_BASIC_AUTH_USER" in TEMPORARY
-    assert "GOPOSTAL_BASIC_AUTH_HASH" in TEMPORARY
-    assert TEMPORARY.index("basic_auth @protected") < TEMPORARY.index("@webhook path")
+def test_temporary_host_uses_owner_cidr_without_auth_header_collision():
+    assert "@outside_owner not remote_ip {$GOPOSTAL_OWNER_CIDR}" in TEMPORARY
+    assert 'respond @outside_owner "Forbidden" 403' in TEMPORARY
+    assert "basic_auth" not in TEMPORARY
+    assert "GOPOSTAL_BASIC_AUTH" not in TEMPORARY
+    assert TEMPORARY.index("respond @outside_owner") < TEMPORARY.index("@webhook path")
 
 
 def test_publish_script_uses_immutable_sha_directory_and_atomic_symlink():

@@ -13,10 +13,16 @@ an explicit prerequisite.
   hostname are validated. Set the approved production policy only afterward.
 
 For a temporary protected hostname, use `Caddyfile.temporary` and provide a
-non-secret username plus a Caddy bcrypt hash through
-`GOPOSTAL_BASIC_AUTH_USER` and `GOPOSTAL_BASIC_AUTH_HASH`. The exact
-`/api/payments/webhook` path bypasses Basic Auth so Square can deliver signed
-webhooks. Every other path remains protected.
+single owner-controlled IPv4 or IPv6 CIDR through `GOPOSTAL_OWNER_CIDR` (for
+example, `192.0.2.10/32`). Requests outside that CIDR receive HTTP 403 before
+any frontend or API handler runs. The temporary site deliberately does not use
+HTTP Basic Auth: Basic Auth and GoPostal sessions both require the
+`Authorization` header, so combining them causes the browser's Bearer token to
+replace its Basic credentials and creates a repeated authentication challenge.
+
+The allowlist covers every path, including the payment webhook. Live provider
+webhooks are therefore not accepted on this temporary owner-only hostname;
+they remain a launch-host acceptance item.
 
 ## Release build and publication
 

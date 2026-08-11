@@ -6,10 +6,12 @@
 }
 
 {$GOPOSTAL_HOST} {
-	@protected not path /api/payments/webhook
-	basic_auth @protected {
-		{$GOPOSTAL_BASIC_AUTH_USER} {$GOPOSTAL_BASIC_AUTH_HASH}
-	}
+	# HTTP Basic Auth and the application's Bearer session both use the
+	# Authorization header, so they cannot protect the same origin without
+	# repeatedly challenging authenticated application requests.  A temporary
+	# rehearsal is instead restricted to the owner-controlled source CIDR.
+	@outside_owner not remote_ip {$GOPOSTAL_OWNER_CIDR}
+	respond @outside_owner "Forbidden" 403
 
 	encode zstd gzip
 

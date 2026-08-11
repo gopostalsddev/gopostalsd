@@ -43,14 +43,12 @@ jobs:
         env:
           GOPOSTAL_HOST: temporary.example.test
           GOPOSTAL_RELEASE_ROOT: /srv/gopostal/current/frontend-dist
-          GOPOSTAL_BASIC_AUTH_USER: owner
-          GOPOSTAL_BASIC_AUTH_HASH: $2a$14$012345678901234567890u01234567890123456789012345678901
+          GOPOSTAL_OWNER_CIDR: 192.0.2.10/32
         run: >-
           docker run --rm
           -e GOPOSTAL_HOST
           -e GOPOSTAL_RELEASE_ROOT
-          -e GOPOSTAL_BASIC_AUTH_USER
-          -e GOPOSTAL_BASIC_AUTH_HASH
+          -e GOPOSTAL_OWNER_CIDR
           -v "$PWD/deploy/gopostal/Caddyfile.temporary:/etc/caddy/Caddyfile:ro"
           caddy:2.10.2-alpine
           caddy validate --config /etc/caddy/Caddyfile
