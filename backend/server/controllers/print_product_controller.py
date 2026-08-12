@@ -363,6 +363,8 @@ class PrintProductController:
                 raise ValueError("No categories returned from Sinalite API")
         except Exception as e:
             logger.error("Failed to fetch categories from Sinalite API: %s", e)
+            result.status = False
+            result.error = "Failed to fetch product categories from Sinalite"
             result.data = {"message": "Failed to sync product categories"}
             return result
 
@@ -373,6 +375,8 @@ class PrintProductController:
             }
         except Exception as e:
             logger.error("Failed to fetch existing product categories: %s", e)
+            result.status = False
+            result.error = "Failed to read existing product categories"
             result.data = {"message": "Failed to sync product categories"}
             return result
 
@@ -395,6 +399,8 @@ class PrintProductController:
             except Exception as e:
                 logger.error("Failed to sync new product categories: %s", e)
                 db.session.rollback()  # ✅ Rollback in case of failure
+                result.status = False
+                result.error = "Failed to save synchronized product categories"
                 result.data = {"message": "Failed to sync product categories"}
                 return result
 

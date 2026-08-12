@@ -122,7 +122,7 @@ export function CartProvider({ children }) {
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: true });
       const sessionId = getSessionId();
       
-      const response = await api.get(`/cart/?session_id=${sessionId}`, { skipAuth: true });
+      const response = await api.get(`/cart/?session_id=${sessionId}`);
       
       // Backend returns { success: true, cart: {...} }
       if (response.data && response.data.cart) {
@@ -167,8 +167,7 @@ export function CartProvider({ children }) {
         quantity: quantity,
         customization,
       }, {
-        params: { session_id: sessionId },
-        skipAuth: true
+        params: { session_id: sessionId }
       });
       
       // Backend returns the cart object directly (cart_service returns result['cart'])
@@ -200,8 +199,7 @@ export function CartProvider({ children }) {
       const response = await api.put(`/cart/items/${cartItemId}/quantity`, {
         quantity: quantity
       }, {
-        params: { session_id: sessionId },
-        skipAuth: true
+        params: { session_id: sessionId }
       });
       
       // Backend returns the cart object directly
@@ -231,8 +229,7 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       const response = await api.delete(`/cart/items/${cartItemId}`, {
-        params: { session_id: sessionId },
-        skipAuth: true
+        params: { session_id: sessionId }
       });
       
       if (response.data) {
@@ -259,8 +256,7 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       await api.delete('/cart/clear', {
-        params: { session_id: sessionId },
-        skipAuth: true
+        params: { session_id: sessionId }
       });
       
       dispatch({ type: CART_ACTIONS.CLEAR_CART });
@@ -274,6 +270,15 @@ export function CartProvider({ children }) {
     }
   };
 
+  // Order creation clears the persisted cart in the same database
+  // transaction as the order. Checkout must only reset browser state after a
+  // successful payment; issuing a second DELETE would target an already
+  // consumed cart and can fail its ownership check.
+  const clearLocalCart = () => {
+    dispatch({ type: CART_ACTIONS.CLEAR_CART });
+    dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
+  };
+
   // Calculate shipping
   const calculateShipping = async (destinationAddress) => {
     if (!isAuthenticated) {
@@ -285,8 +290,7 @@ export function CartProvider({ children }) {
       const sessionId = getSessionId();
       
       const response = await api.post('/cart/shipping', destinationAddress, {
-        params: { session_id: sessionId },
-        skipAuth: true
+        params: { session_id: sessionId }
       });
       
       if (response.data.success) {
@@ -316,7 +320,7 @@ export function CartProvider({ children }) {
   const getCartSummary = async () => {
     try {
       const sessionId = getSessionId();
-      const response = await api.get(`/cart/summary?session_id=${sessionId}`, { skipAuth: true });
+      const response = await api.get(`/cart/summary?session_id=${sessionId}`);
       
       
       if (response.data) {
@@ -349,6 +353,7 @@ export function CartProvider({ children }) {
     updateQuantity,
     removeItem,
     clearCart,
+    clearLocalCart,
     calculateShipping,
     setSelectedShipping,
     getCartSummary

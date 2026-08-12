@@ -22,12 +22,8 @@ class RoleService:
         pass
 
     def _initialize_default_roles(self):
-        """Initialize default roles and permissions if they don't exist."""
+        """Idempotently ensure every required system role and permission exists."""
         try:
-            # Check if roles already exist
-            if Role.query.first():
-                return
-
             # Create permissions
             permissions = [
                 # User permissions
@@ -61,8 +57,9 @@ class RoleService:
             ]
 
             for perm_data in permissions:
-                permission = Permission(**perm_data)
-                db.session.add(permission)
+                if not Permission.query.filter_by(name=perm_data['name']).first():
+                    permission = Permission(**perm_data)
+                    db.session.add(permission)
 
             # Create roles
             roles = [
@@ -100,6 +97,8 @@ class RoleService:
             ]
 
             for role_data in roles:
+                if Role.query.filter_by(name=role_data['name']).first():
+                    continue
                 role = Role(
                     name=role_data['name'],
                     description=role_data['description'],

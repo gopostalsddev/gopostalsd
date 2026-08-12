@@ -9,6 +9,7 @@ from sqlalchemy import inspect, text
 from server import database as db
 from server.controllers.print_product_controller import PrintProductController
 from server.models.pricing import PricingPolicy
+from server.services.role_service import RoleService
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,8 @@ REQUIRED_BOOTSTRAP_TABLES = {
     "pricing_policies",
     "print_product_categories",
     "print_product_types",
+    "permissions",
+    "roles",
 }
 
 
@@ -59,6 +62,11 @@ def bootstrap_required_data(*, enable_categories_if_none: bool = False) -> dict:
     if not default_types_result.status:
         raise RuntimeError(default_types_result.error)
 
+    # Authentication depends on these system roles, including the one-time
+    # production-admin command. Seed missing entries explicitly here rather
+    # than hiding data mutation in application startup or read operations.
+    RoleService()._initialize_default_roles()
+
     categories_result = None
     if enable_categories_if_none:
         categories_result = (
@@ -76,6 +84,7 @@ def bootstrap_required_data(*, enable_categories_if_none: bool = False) -> dict:
     return {
         "unclassified_type_verified": True,
         "default_product_types": default_types_result.data,
+        "system_roles_verified": True,
         "categories": categories_result.data if categories_result else None,
         "pricing_policy_created": pricing_policy_created,
     }
