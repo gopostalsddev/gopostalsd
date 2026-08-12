@@ -1,0 +1,77 @@
+name: GP-15 Caddy and immutable frontend
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  caddy-frontend-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python -m pip install pytest
+      - name: Static proxy and release contract
+        working-directory: backend
+        run: >-
+          python -m pytest
+          --noconftest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp15_caddy_frontend_contract.py
+      - name: Validate production Caddy configuration
+        env:
+          GOPOSTAL_HOST: launch.example.test
+          GOPOSTAL_RELEASE_ROOT: /srv/gopostal/current/frontend-dist
+        run: >-
+          docker run --rm
+          -e GOPOSTAL_HOST
+          -e GOPOSTAL_RELEASE_ROOT
+          -v "$PWD/deploy/gopostal/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2.10.2-alpine
+          caddy validate --config /etc/caddy/Caddyfile
+      - name: Validate temporary-host Caddy configuration
+        env:
+          GOPOSTAL_HOST: temporary.example.test
+          GOPOSTAL_RELEASE_ROOT: /srv/gopostal/current/frontend-dist
+          GOPOSTAL_OWNER_CIDR: 192.0.2.10/32
+        run: >-
+          docker run --rm
+          -e GOPOSTAL_HOST
+          -e GOPOSTAL_RELEASE_ROOT
+          -e GOPOSTAL_OWNER_CIDR
+          -v "$PWD/deploy/gopostal/Caddyfile.temporary:/etc/caddy/Caddyfile:ro"
+          caddy:2.10.2-alpine
+          caddy validate --config /etc/caddy/Caddyfile
+      - name: Install exact frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend configuration tests
+        working-directory: frontend
+        run: npm run test:api-base-url && npm run test:square-config
+      - name: Build production frontend
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: /api
+          VITE_SQUARE_ENVIRONMENT: sandbox
+          VITE_SQUARE_APPLICATION_ID: sandbox-ci-application
+          VITE_SQUARE_LOCATION_ID: sandbox-ci-location
+        run: npm run build
+      - name: Exercise immutable publisher without host mutation
+        run: |
+          chmod +x deploy/gopostal/publish-frontend-release.sh
+          root="$RUNNER_TEMP/releases"
+          current="$RUNNER_TEMP/current"
+          GOPOSTAL_RELEASES_DIR="$root" GOPOSTAL_CURRENT_LINK="$current" \
+            deploy/gopostal/publish-frontend-release.sh deadbee frontend/dist
+          test -f "$current/frontend-dist/index.html"
+          test "$(readlink "$current")" = "$root/deadbee"

@@ -62,10 +62,16 @@ const ProductManagementPage = () => {
   };
 
   const handleSync = async () => {
-    setLoading(true);
-    await syncPrintProductCategories();
-    await loadProductCategories();
-    setLoading(false);
+    try {
+      setLoading(true);
+      await syncPrintProductCategories();
+      await loadProductCategories();
+    } catch (error) {
+      console.error("Failed to synchronize product categories:", error);
+      alert(error.response?.data?.error || "Failed to synchronize product categories.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCategoryAction = (category) => {

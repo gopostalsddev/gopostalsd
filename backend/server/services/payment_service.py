@@ -20,13 +20,20 @@ class PaymentService:
     supporting multiple payment providers through adapters.
     """
     
-    def __init__(self, provider: str = "square"):
+    def __init__(self, provider: str | SquareAdapter = "square"):
         """
         Initialize payment service with specified provider.
         
         Args:
             provider: Payment provider ('square', 'stripe', 'paypal', etc.)
         """
+        # Keep adapter injection available for deterministic tests and future
+        # provider factories without weakening the production default.
+        if not isinstance(provider, str):
+            self.provider = "square"
+            self.client = provider
+            return
+
         self.provider = provider.lower()
         self.client = None
         
@@ -57,6 +64,7 @@ class PaymentService:
                        shipping_address: Dict[str, Any] = None,
                        billing_address: Dict[str, Any] = None,
                        order_id: str = None,
+                       reference_id: str = None,
                        note: str = None) -> Dict[str, Any]:
         """
         Process a payment using the configured provider.
@@ -92,6 +100,7 @@ class PaymentService:
             shipping_address=shipping_address,
             billing_address=billing_address,
             order_id=order_id,
+            reference_id=reference_id,
             note=note
         )
     
@@ -113,7 +122,10 @@ class PaymentService:
         
         return self.client.get_payment(payment_id)
     
-    def refund_payment(self, payment_id: str, amount: int, reason: str = None) -> Dict[str, Any]:
+    def refund_payment(
+        self, payment_id: str, amount: int, reason: str = None,
+        idempotency_key: str = None,
+    ) -> Dict[str, Any]:
         """
         Refund a payment.
         
@@ -131,7 +143,9 @@ class PaymentService:
                 'error': f'Payment service not configured. Set {self.provider.upper()}_ACCESS_TOKEN environment variable.'
             }
         
-        return self.client.refund_payment(payment_id, amount, reason)
+        return self.client.refund_payment(
+            payment_id, amount, reason, idempotency_key=idempotency_key
+        )
     
     @property
     def is_configured(self) -> bool:
@@ -155,7 +169,7 @@ class PaymentService:
         
         return info
     
-    def validate_webhook(self, payload: str, signature: str, webhook_url: str) -> bool:
+    def validate_webhook(self, payload: bytes | str, signature: str, webhook_url: str) -> bool:
         """
         Validate payment webhook signature.
         

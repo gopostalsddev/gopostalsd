@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "requirements": [
+    {
+      "id": "fresh_database_migration",
+      "description": "Empty PostgreSQL reaches the sole Alembic head and explicit bootstrap is idempotent.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 24
+    },
+    {
+      "id": "database_integrity",
+      "description": "Post-bootstrap row, sequence, foreign-key, uniqueness, and revision checks pass.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 24
+    },
+    {
+      "id": "bootstrap_credentials_removed",
+      "description": "Initial administrator exists and one-time bootstrap credentials are absent from runtime.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 24
+    },
+    {
+      "id": "authentication_journey",
+      "description": "Registration, verification, login, refresh/revocation, reset, lockout, authorization, and logout pass.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 24
+    },
+    {
+      "id": "catalog_order_journey",
+      "description": "Catalog sync fixtures, pricing, cart, shipping, upload boundaries, and order persistence pass.",
+      "evidence_environment": "provider-sandbox",
+      "max_age_hours": 24
+    },
+    {
+      "id": "square_payment_journey",
+      "description": "Sandbox checkout, retries, signed/duplicate webhooks, refund, and reconciliation pass.",
+      "evidence_environment": "provider-sandbox",
+      "max_age_hours": 24
+    },
+    {
+      "id": "mailersend_delivery",
+      "description": "Verified sender delivers transactional mail to controlled recipients without secret disclosure.",
+      "evidence_environment": "provider-sandbox",
+      "max_age_hours": 24
+    },
+    {
+      "id": "storage_round_trip",
+      "description": "Configured object storage upload, authorized retrieval, rejection, and cleanup pass.",
+      "evidence_environment": "provider-sandbox",
+      "max_age_hours": 24
+    },
+    {
+      "id": "backup_restore",
+      "description": "Verified local and off-host backup restores twice and restored application boot meets approved RTO.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 36
+    },
+    {
+      "id": "runtime_isolation",
+      "description": "Effective container user, read-only root, capabilities, limits, networks, mounts, and secret separation pass.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 24
+    },
+    {
+      "id": "edge_security",
+      "description": "Confirmed canonical URL passes TLS, proxy, CORS, CSRF, upload limits, redaction, and browser checks.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 24
+    },
+    {
+      "id": "monitoring_alerts",
+      "description": "Availability, DB, container, capacity, backup, HTTP, and certificate alerts are exercised and routed.",
+      "evidence_environment": "fresh-vps-rehearsal",
+      "max_age_hours": 24
+    },
+    {
+      "id": "fresh_launch_user_interfaces",
+      "description": "Customer and administrator empty states and newly-created records render correctly.",
+      "evidence_environment": "owner-controlled-test",
+      "max_age_hours": 24
+    }
+  ]
+}

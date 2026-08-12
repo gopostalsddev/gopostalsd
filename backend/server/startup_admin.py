@@ -14,13 +14,13 @@ DEFAULT_CITY = "San Diego"
 DEFAULT_STATE = "CA"
 
 
-def ensure_production_admin(app: Flask) -> None:
-    """Create John Doe as Admin in production when ADMIN_EMAIL and ADMIN_PASSWORD are set."""
+def ensure_production_admin(app: Flask) -> bool:
+    """Create the configured Admin when explicitly invoked after migrations."""
     admin_email = os.getenv("ADMIN_EMAIL")
     admin_password = os.getenv("ADMIN_PASSWORD")
 
     if not admin_email or not admin_password:
-        return
+        return False
 
     try:
         admin_role = Role.query.filter_by(name="Admin").first()
@@ -29,7 +29,7 @@ def ensure_production_admin(app: Flask) -> None:
                 "Admin role not found; skipping production admin bootstrap. "
                 "Run database migrations first."
             )
-            return
+            return False
 
         default_address = Address.query.filter_by(
             street=DEFAULT_STREET,
@@ -53,7 +53,7 @@ def ensure_production_admin(app: Flask) -> None:
         existing = User.query.filter(User.email == admin_email).first()
         if existing:
             logger.info("Production admin already exists: %s", admin_email)
-            return
+            return True
 
         password_service = PasswordService()
         admin_user = User(
@@ -71,6 +71,8 @@ def ensure_production_admin(app: Flask) -> None:
         database.session.add(admin_user)
         database.session.commit()
         logger.info("Production admin created: %s", admin_email)
+        return True
     except Exception:
         database.session.rollback()
         logger.exception("Failed to create production admin user")
+        return False

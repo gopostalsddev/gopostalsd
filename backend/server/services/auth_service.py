@@ -22,6 +22,15 @@ from server.services.password_service import PasswordService
 
 logger = logging.getLogger(__name__)
 
+# A syntactically valid PBKDF2 hash makes an unknown-account login perform the
+# same password work as a known local account. The associated plaintext is not
+# a credential and a missing-password/OAuth account is rejected independently
+# even if a caller happens to submit it.
+_DUMMY_LOGIN_PASSWORD_HASH = (
+    "0000000000000000000000000000000000000000000000000000000000000000:"
+    "0dcda64df8fa5232e9bb654ab284e5a0195bff388fff479e6db14cd15908a64b"
+)
+
 
 class AuthService:
     """
@@ -333,15 +342,37 @@ class AuthService:
         """
         try:
             user = User.query.filter_by(email=email).first()
+            verification_hash = (
+                user.password_hash
+                if user is not None and user.password_hash
+                else _DUMMY_LOGIN_PASSWORD_HASH
+            )
+            password_matches = self.password_service.verify_password(
+                password, verification_hash
+            )
 
-            if not user:
+            if user is None or not user.password_hash or not password_matches:
+                logger.warning("Password verification failed")
+                # Increment failed login attempts
+                if user is not None and not user.is_locked():
+                    user.failed_login_attempts += 1
+
+                    max_failed_attempts = self._config_int('MAX_FAILED_LOGIN_ATTEMPTS', 5)
+                    lockout_minutes = self._config_int('ACCOUNT_LOCKOUT_MINUTES', 30)
+                    if user.failed_login_attempts >= max_failed_attempts:
+                        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
+
+                    db.session.commit()
+
                 return {
                     'success': False,
                     'error': 'Invalid email or password',
                     'code': 'INVALID_CREDENTIALS'
                 }
 
-            # Check if account is locked
+            # Account state is disclosed only after the caller proves knowledge
+            # of the account password. Wrong-password responses remain uniform
+            # for unknown, locked, unverified, suspended, and inactive users.
             if user.is_locked():
                 return {
                     'success': False,
@@ -349,26 +380,23 @@ class AuthService:
                     'code': 'ACCOUNT_LOCKED'
                 }
 
-            # Check if account is suspended or deactivated (but not pending verification)
             if user.status.value == 'suspended':
                 return {
                     'success': False,
                     'error': 'Your account has been suspended',
                     'code': 'ACCOUNT_SUSPENDED'
                 }
-            elif user.status.value == 'deactivated':
+            if user.status.value == 'deactivated':
                 return {
                     'success': False,
                     'error': 'Your account has been deactivated',
                     'code': 'ACCOUNT_DEACTIVATED'
                 }
 
-            # Check if email is verified (applies to pending_verification status)
             if not user.email_verified:
-                # Invalidate any existing sessions for this user
                 UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
                 db.session.commit()
-                
+
                 return {
                     'success': False,
                     'error': 'Please verify your email before logging in',
@@ -377,34 +405,12 @@ class AuthService:
                     'user_id': user.id,
                     'requires_verification': True
                 }
-            
-            # If we get here and status is not ACTIVE, there's a problem
+
             if user.status != UserStatus.ACTIVE:
                 return {
                     'success': False,
                     'error': 'Account is not active',
                     'code': 'ACCOUNT_INACTIVE'
-                }
-
-            # Verify password
-            password_matches = self.password_service.verify_password(password, user.password_hash)
-            
-            if not password_matches:
-                logger.warning(f"Password verification failed for user: {user.email}")
-                # Increment failed login attempts
-                user.failed_login_attempts += 1
-                
-                max_failed_attempts = self._config_int('MAX_FAILED_LOGIN_ATTEMPTS', 5)
-                lockout_minutes = self._config_int('ACCOUNT_LOCKOUT_MINUTES', 30)
-                if user.failed_login_attempts >= max_failed_attempts:
-                    user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
-                
-                db.session.commit()
-                
-                return {
-                    'success': False,
-                    'error': 'Invalid email or password',
-                    'code': 'INVALID_CREDENTIALS'
                 }
 
             # Reset failed login attempts and update last login
@@ -442,9 +448,9 @@ class AuthService:
                 }
             }
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            logger.error(f"Error during login: {str(e)}")
+            logger.exception("Login operation failed")
             return {
                 'success': False,
                 'error': 'Login failed',

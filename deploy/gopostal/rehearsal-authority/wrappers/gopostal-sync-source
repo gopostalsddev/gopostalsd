@@ -1,0 +1,33 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+require_root
+
+parent=${GOP_SOURCE%/*}
+install -d -m 0755 -o root -g root "$parent"
+
+if [ ! -e "$GOP_SOURCE" ]; then
+  tmp="$parent/.rehearsal-app.clone.$$"
+  trap 'rm -rf -- "$tmp"' EXIT
+  git clone --no-checkout --origin origin "$GOP_REPOSITORY" "$tmp"
+  git -C "$tmp" fetch --no-tags origin "$GOP_BRANCH"
+  git -C "$tmp" cat-file -e "$GOP_SHA^{commit}"
+  git -C "$tmp" checkout --detach "$GOP_SHA"
+  [ "$(git -C "$tmp" rev-parse HEAD)" = "$GOP_SHA" ]
+  [ "$(git -C "$tmp" remote get-url origin)" = "$GOP_REPOSITORY" ]
+  chown -R root:root "$tmp"
+  chmod -R go-w "$tmp"
+  mv "$tmp" "$GOP_SOURCE"
+  trap - EXIT
+else
+  # A reviewed repin must be able to advance a clean, correctly-owned checkout
+  # from the previously approved SHA.  Validate identity and cleanliness before
+  # fetching, then detach at the new immutable SHA and apply the full assertion.
+  assert_source_checkout
+  git -C "$GOP_SOURCE" fetch --no-tags origin "$GOP_BRANCH"
+  git -C "$GOP_SOURCE" cat-file -e "$GOP_SHA^{commit}"
+  git -C "$GOP_SOURCE" checkout --detach "$GOP_SHA"
+fi
+
+assert_source
+printf 'GoPostal source SHA: %s\n' "$GOP_SHA"

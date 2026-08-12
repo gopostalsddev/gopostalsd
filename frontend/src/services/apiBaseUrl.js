@@ -5,25 +5,18 @@ const normalizeBase = (value) => {
   return value.endsWith('/') ? value.slice(0, -1) : value;
 };
 
-export const getApiBaseUrl = () => {
-  const envBaseUrl = normalizeBase(import.meta.env.VITE_API_BASE_URL);
+export const getApiBaseUrl = (environment = import.meta.env) => {
+  const envBaseUrl = normalizeBase(environment.VITE_API_BASE_URL);
   if (envBaseUrl) {
     return envBaseUrl;
   }
 
-  if (import.meta.env.DEV) {
+  if (environment.DEV) {
     return '/api';
   }
 
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-
-    // Render production frontend is served on gopostalsd-website.onrender.com
-    // while backend API is served on gopostalsd.onrender.com.
-    if (host === 'gopostalsd-website.onrender.com') {
-      return 'https://gopostalsd.onrender.com/api';
-    }
-  }
-
+  // Production launches behind one public origin with /api reverse-proxied to
+  // Flask. A deliberately configured VITE_API_BASE_URL may override this for a
+  // split-origin rehearsal; no historical provider hostname is inferred.
   return '/api';
 };

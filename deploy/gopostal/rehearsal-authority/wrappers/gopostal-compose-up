@@ -1,0 +1,6 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+assert_boundary
+compose up -d --remove-orphans db web frontend
+assert_project_resources

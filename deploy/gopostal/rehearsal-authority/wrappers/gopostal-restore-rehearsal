@@ -1,0 +1,44 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+assert_boundary
+
+archive=$(find "$GOP_BACKUPS" -maxdepth 1 -type f -name 'gopostal-rehearsal-*.dump' -printf '%T@ %p\n' \
+  | sort -rn | head -1 | cut -d ' ' -f 2-)
+[ -n "$archive" ] && [ -f "$archive.sha256" ] || { printf 'no verified rehearsal backup found\n' >&2; exit 66; }
+(cd "$GOP_BACKUPS" && sha256sum --check --status "${archive##*/}.sha256")
+compose exec -T db pg_restore --list <"$archive" >/dev/null
+
+restore_db="gopostal_rehearsal_restore_$(date -u +%Y%m%dT%H%M%SZ)_$$"
+case "$restore_db" in
+  gopostal_rehearsal_restore_[0-9T]*_[0-9]*) ;;
+  *) exit 70 ;;
+esac
+cleanup() {
+  compose exec -T db sh -eu -c 'dropdb --if-exists -U "$POSTGRES_USER" "$1"' sh "$restore_db" >/dev/null
+}
+trap cleanup EXIT
+
+compose exec -T db sh -eu -c 'createdb -U "$POSTGRES_USER" --template=template0 "$1"' sh "$restore_db"
+compose exec -T db sh -eu -c \
+  'pg_restore --exit-on-error --single-transaction --no-owner --no-acl -U "$POSTGRES_USER" -d "$1"' \
+  sh "$restore_db" <"$archive"
+version_rows=$(compose exec -T db sh -eu -c \
+  'psql -XAt -U "$POSTGRES_USER" -d "$1" -c "SELECT count(*) FROM alembic_version"' sh "$restore_db")
+table_count=$(compose exec -T db sh -eu -c \
+  'psql -XAt -U "$POSTGRES_USER" -d "$1" -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='"'"'public'"'"'"' \
+  sh "$restore_db")
+[ "$version_rows" = 1 ] && [ "$table_count" -gt 0 ] || { printf 'restored database validation failed\n' >&2; exit 1; }
+
+db_password=$(sed -n 's/^POSTGRES_PASSWORD=//p' "$GOP_STACK/database.env")
+case "$db_password" in *[!0-9a-f]*|'') printf 'invalid rehearsal database credential format\n' >&2; exit 78 ;; esac
+restore_url="postgresql://gopostal_rehearsal:${db_password}@db:5432/${restore_db}"
+restored_revision=$(compose run --rm --no-deps -e DATABASE_URL="$restore_url" web flask db current 2>&1 | tail -1)
+[ -n "$restored_revision" ] || { printf 'application could not inspect restored database\n' >&2; exit 1; }
+
+install -d -m 0700 -o root -g root "$GOP_EVIDENCE"
+evidence="$GOP_EVIDENCE/restore-$(date -u +%Y%m%dT%H%M%SZ).txt"
+printf 'backup=%s\nalembic_rows=%s\npublic_tables=%s\napplication_revision=%s\nresult=PASS\n' \
+  "${archive##*/}" "$version_rows" "$table_count" "$restored_revision" >"$evidence"
+chmod 0600 "$evidence"
+printf 'GoPostal disposable restore rehearsal passed: %s tables\n' "$table_count"

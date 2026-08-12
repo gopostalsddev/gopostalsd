@@ -1,0 +1,97 @@
+{
+	admin localhost:2019
+	metrics {
+		per_host
+	}
+}
+
+{$GOPOSTAL_HOST} {
+	# HTTP Basic Auth and the application's Bearer session both use the
+	# Authorization header, so they cannot protect the same origin without
+	# repeatedly challenging authenticated application requests.  A temporary
+	# rehearsal is instead restricted to the owner-controlled source CIDR.
+	@outside_owner not remote_ip {$GOPOSTAL_OWNER_CIDR}
+	respond @outside_owner "Forbidden" 403
+
+	encode zstd gzip
+
+	log {
+		output file /var/log/caddy/gopostal-access.json {
+			roll_size 10MiB
+			roll_keep 10
+			roll_keep_for 336h
+		}
+		format filter {
+			request>headers>Authorization delete
+			request>headers>Cookie delete
+			request>uri query {
+				replace token REDACTED
+				replace code REDACTED
+				replace key REDACTED
+			}
+		}
+	}
+
+	header {
+		Strict-Transport-Security "{$GOPOSTAL_HSTS:max-age=0}"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://pci-connect.squareup.com https://*.squareup.com; frame-src https://*.squareup.com; upgrade-insecure-requests"
+		-Server
+	}
+
+	@webhook path /api/payments/webhook
+	handle @webhook {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8500 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	@json_api {
+		path /api/*
+		header Content-Type application/json*
+	}
+	handle @json_api {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8500 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	@backend path /api/* /health/live /health/ready
+	handle @backend {
+		request_body {
+			max_size 6MB
+		}
+		reverse_proxy 127.0.0.1:8500 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	@immutable path /assets/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+	@html path / /index.html
+	header @html Cache-Control "no-cache, no-store, must-revalidate"
+
+	handle {
+		root * {$GOPOSTAL_RELEASE_ROOT:/srv/gopostal/current/frontend-dist}
+		try_files {path} /index.html
+		file_server
+	}
+}

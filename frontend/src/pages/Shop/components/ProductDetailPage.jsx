@@ -197,7 +197,7 @@ const ProductDetailPage = ({ product, onBack }) => {
     {
       value: 'none',
       label: 'Print-ready artwork',
-      description: 'You upload finished artwork and we print exactly what you provide.',
+      description: 'Prepare finished artwork for staff review. Online artwork transfer is not yet enabled.',
       surcharge: 0,
     },
     {
@@ -1145,9 +1145,12 @@ const ProductDetailPage = ({ product, onBack }) => {
             </Typography>
             <Stepper activeStep={activeStep} orientation="vertical">
               <Step>
-                <StepLabel>Upload your artwork</StepLabel>
+                <StepLabel>Review artwork instructions</StepLabel>
                 <StepContent>
                   <Box sx={{ mb: 2 }}>
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      Artwork selected below is previewed only in this browser. It is not uploaded or attached to your order. Contact Go Postal SD to arrange secure artwork transfer before production.
+                    </Alert>
                     <input
                       accept="image/*,.pdf"
                       style={{ display: 'none' }}

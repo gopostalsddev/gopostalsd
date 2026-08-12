@@ -1,0 +1,5 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+assert_boundary
+compose logs --no-color --tail 300 db web frontend

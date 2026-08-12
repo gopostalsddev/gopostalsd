@@ -17,12 +17,10 @@ logger = logging.getLogger(__name__)
 # Allowed image extensions and their expected magic byte signatures.
 # SVG is intentionally excluded: it can contain <script> tags and execute JS
 # in the admin browser when served from the same origin.
-_ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+_ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 _IMAGE_MAGIC_BYTES = [
     (b'\xff\xd8\xff', 'image/jpeg'),           # JPEG
     (b'\x89PNG\r\n\x1a\n', 'image/png'),       # PNG
-    (b'GIF87a', 'image/gif'),                  # GIF 87a
-    (b'GIF89a', 'image/gif'),                  # GIF 89a
     (b'RIFF', 'image/webp'),                   # WebP (RIFF....WEBP)
 ]
 
@@ -36,7 +34,7 @@ def _validate_image_upload(image: FileStorage):
     original_filename = secure_filename(image.filename or '')
     ext = os.path.splitext(original_filename)[1].lower()
     if ext not in _ALLOWED_IMAGE_EXTENSIONS:
-        return f"File type '{ext or 'unknown'}' is not allowed. Accepted: jpg, jpeg, png, gif, webp."
+        return f"File type '{ext or 'unknown'}' is not allowed. Accepted: jpg, jpeg, png, webp."
 
     header = image.stream.read(16)
     image.stream.seek(0)  # rewind so callers can read the full file
@@ -365,6 +363,8 @@ class PrintProductController:
                 raise ValueError("No categories returned from Sinalite API")
         except Exception as e:
             logger.error("Failed to fetch categories from Sinalite API: %s", e)
+            result.status = False
+            result.error = "Failed to fetch product categories from Sinalite"
             result.data = {"message": "Failed to sync product categories"}
             return result
 
@@ -375,6 +375,8 @@ class PrintProductController:
             }
         except Exception as e:
             logger.error("Failed to fetch existing product categories: %s", e)
+            result.status = False
+            result.error = "Failed to read existing product categories"
             result.data = {"message": "Failed to sync product categories"}
             return result
 
@@ -397,6 +399,8 @@ class PrintProductController:
             except Exception as e:
                 logger.error("Failed to sync new product categories: %s", e)
                 db.session.rollback()  # ✅ Rollback in case of failure
+                result.status = False
+                result.error = "Failed to save synchronized product categories"
                 result.data = {"message": "Failed to sync product categories"}
                 return result
 

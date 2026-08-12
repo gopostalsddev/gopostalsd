@@ -69,7 +69,16 @@ class User(db.Model):
     last_name = db.Column(db.String(60), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=True)  # Nullable for OAuth users
-    status = db.Column(db.Enum(UserStatus), default=UserStatus.PENDING_VERIFICATION, nullable=False)
+    status = db.Column(
+        db.Enum(
+            UserStatus,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+            native_enum=False,
+            length=32,
+        ),
+        default=UserStatus.PENDING_VERIFICATION,
+        nullable=False,
+    )
     email_verified = db.Column(db.Boolean, default=False, nullable=False)
     email_verified_at = db.Column(db.DateTime, nullable=True)
     last_login = db.Column(db.DateTime, nullable=True)
@@ -99,9 +108,18 @@ class User(db.Model):
 
     def is_locked(self):
         """Check if user account is locked due to failed login attempts."""
-        if self.locked_until and self.locked_until > datetime.now(timezone.utc):
-            return True
-        return False
+        if not self.locked_until:
+            return False
+
+        # The historical column is timezone-naive. PostgreSQL and SQLite may
+        # therefore return a naive value even when an aware UTC datetime was
+        # originally assigned. Compare within the value's own convention.
+        now = (
+            datetime.now(timezone.utc)
+            if self.locked_until.tzinfo is not None
+            else datetime.now(timezone.utc).replace(tzinfo=None)
+        )
+        return self.locked_until > now
 
     def is_active(self):
         """Check if user account is active."""

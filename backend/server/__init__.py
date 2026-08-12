@@ -5,6 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from server.config import DevelopmentConfig, TestingConfig, ProductionConfig, validate_production_security_settings
 from server.config import database, migrate, sinalite, swagger, filestorage
 from server.models import * # So that they can be detected by migrations
+from server.email_config import public_base_url, trusted_proxy_hops
 import logging
 import os
 import sys
@@ -18,7 +19,49 @@ def _is_running_db_migrate() -> bool:
     return "db" in sys.argv
 
 
-def create_server(config="development"):
+def _configure_proxy_boundary(server, config: str, migration_mode: bool) -> int:
+    """Apply the explicit ingress trust boundary and return its hop count."""
+    proxy_hops = trusted_proxy_hops(
+        required=config == "production" and not migration_mode
+    )
+    if proxy_hops:
+        server.wsgi_app = ProxyFix(
+            server.wsgi_app,
+            x_for=proxy_hops,
+            x_proto=proxy_hops,
+            x_host=proxy_hops,
+        )
+    return proxy_hops
+
+
+def _resolve_cors_origins(config: str, migration_mode: bool) -> list[str]:
+    """Resolve credentialed browser origins without provider-host fallbacks."""
+    if config == "production" and not migration_mode:
+        return [public_base_url(required=True)]
+    if config == "production":
+        return []
+
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
+    render_external_url = os.getenv('RENDER_EXTERNAL_URL')
+    env_origins = [
+        origin
+        for origin in (frontend_url, render_frontend_url, render_external_url)
+        if origin
+    ]
+    origins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'https://localhost:5173',
+    ]
+    for origin in env_origins:
+        if origin not in origins:
+            origins.append(origin)
+    return origins
+
+
+def create_server(config="development", *, migration_mode=None):
     """
     Factory function to create and configure the Flask application.
     
@@ -28,33 +71,22 @@ def create_server(config="development"):
     Returns:
         Flask: Configured Flask application instance
     """
+    if migration_mode is None:
+        migration_mode = _is_running_db_migrate()
+
     # Create Flask application instance
     server = Flask(__name__)
+    server.config['MIGRATION_MODE'] = migration_mode
 
-    # Trust exactly one upstream proxy (Render/Gunicorn) for X-Forwarded-For.
-    # This makes request.remote_addr the real client IP rather than the proxy's address.
-    server.wsgi_app = ProxyFix(server.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    # Runtime production is reachable through exactly one ingress proxy. Tests,
+    # development, and one-shot migrations trust no forwarded headers by default.
+    _configure_proxy_boundary(server, config, migration_mode)
 
     # Configure CORS with allowed origins
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-    render_frontend_url = os.getenv('RENDER_FRONTEND_URL')
-    render_external_url = os.getenv('RENDER_EXTERNAL_URL')
+    cors_origins = _resolve_cors_origins(config, migration_mode)
 
-    env_origins = [origin for origin in [frontend_url, render_frontend_url, render_external_url] if origin]
-    if config == "production":
-        cors_origins = list(dict.fromkeys(env_origins))
-    else:
-        cors_origins = [
-            'http://localhost:5173',
-            'http://localhost:3000',
-            'http://localhost:8080',
-            'https://localhost:5173',
-        ]
-        for origin in env_origins:
-            if origin not in cors_origins:
-                cors_origins.append(origin)
-
-    if not cors_origins:
+    if not cors_origins and not migration_mode:
         raise ValueError("No CORS origins configured for this environment")
     
     # Extract base domain for Codespaces (e.g., curly-spoon-jj57pprxw5q93qjwq)
@@ -78,6 +110,7 @@ def create_server(config="development"):
     }
     # Match all API endpoints (e.g., /api/auth/me), not just repeated slash paths.
     CORS(server, resources={r"/api/.*": cors_config})
+    server.config['_CORS_ORIGINS'] = cors_origins
 
     # Enforce CSRF validation for authenticated state-changing requests.
     from server.middleware.auth_middleware import enforce_csrf_protection
@@ -102,10 +135,17 @@ def create_server(config="development"):
     if config == "testing":
         server.config.from_object(TestingConfig)
     elif config == "production":
-        validate_production_security_settings()
+        # A one-shot migration never serves traffic and should not require
+        # payment/webhook secrets merely to initialize Alembic. Runtime boot
+        # still validates the complete production security contract.
+        if not migration_mode:
+            validate_production_security_settings()
         server.config.from_object(ProductionConfig)
     else:  # Default to development configuration
         server.config.from_object(DevelopmentConfig)
+
+    from server.request_limits import configure_request_limits
+    configure_request_limits(server)
 
     # Log the loaded environment and Sinalite URL
     logger.info(f"Loaded Environment: {config}")
@@ -114,19 +154,22 @@ def create_server(config="development"):
     # Initialize database support
     database.init_app(server)
 
-    if config == "production" and not _is_running_db_migrate():
-        with server.app_context():
-            from server.startup_admin import ensure_production_admin
-            ensure_production_admin(server)
-
-    # Initialize database support
+    # Initialize migration support. Models are imported at module load so
+    # Alembic metadata is available without initializing routes/integrations.
     migrate.init_app(server, database)
+
+    from server.cli import register_commands
+    register_commands(server)
+
+    if migration_mode:
+        return server
 
     # Initialize sinalite api support
     sinalite.init_app(server)
 
-    # Initialize swagger documentation
-    swagger.init_app(server)
+    # Production exposes neither the Swagger UI nor its machine-readable spec.
+    # Route namespaces remain active; only documentation endpoints are omitted.
+    swagger.init_app(server, add_specs=config != 'production')
 
     # Initialize file storage for image storing
     filestorage.init_app(server)
@@ -178,10 +221,5 @@ def create_server(config="development"):
         ErrorHandler(server)
     except ImportError:
         logger.warning("Advanced error handler dependencies are unavailable; continuing with default handlers")
-
-    if config == "production":
-        with server.app_context():
-            from server.startup import ensure_database_structures
-            ensure_database_structures()
 
     return server

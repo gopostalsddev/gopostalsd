@@ -1,0 +1,46 @@
+name: GP-23 constrained rehearsal authority
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  authority-contract:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: testing
+      DATABASE_URL: "sqlite:///:memory:"
+      SINALITE_CLIENT_ID: gp23-test
+      SINALITE_CLIENT_SECRET: gp23-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend test dependencies
+        working-directory: backend
+        run: python -m pip install --requirement requirements.txt
+      - name: Verify shell syntax and sudoers grammar
+        run: |
+          set -euo pipefail
+          bundle=deploy/gopostal/rehearsal-authority
+          test -x "$bundle/provision.sh"
+          test -x "$bundle/verify-installed.sh"
+          test -x "$bundle/acceptance.sh"
+          test -z "$(find "$bundle/wrappers" -maxdepth 1 -type f ! -perm -0100 -print -quit)"
+          bash -n "$bundle/provision.sh"
+          bash -n "$bundle/verify-installed.sh"
+          bash -n "$bundle/acceptance.sh"
+          find "$bundle/wrappers" -maxdepth 1 -type f -print0 | xargs -0 -n1 bash -n
+          sudo visudo -cf "$bundle/sudoers.ops-gopostal"
+      - name: Verify bundle manifest
+        working-directory: deploy/gopostal/rehearsal-authority
+        run: sha256sum --check --strict MANIFEST.sha256
+      - name: Run authority contract tests
+        working-directory: backend
+        run: python -m pytest -q --no-cov tests/test_gp23_rehearsal_authority.py

@@ -13,30 +13,11 @@ import {
   Payment as PaymentIcon,
   CreditCard as CreditCardIcon
 } from '@mui/icons-material';
+import { getSquareConfig } from '../services/squareConfig';
 
-const PLACEHOLDER_APP_ID = 'sandbox-sq0idb-your-app-id';
-const PLACEHOLDER_LOCATION_ID = 'your-location-id';
-
-const getSquareConfig = () => {
-  const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID;
-  const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
-  return { applicationId, locationId };
-};
-
-const isConfigured = ({ applicationId, locationId }) => {
-  return Boolean(
-    applicationId &&
-      locationId &&
-      applicationId !== PLACEHOLDER_APP_ID &&
-      locationId !== PLACEHOLDER_LOCATION_ID
-  );
-};
-
-const getSquareSdkUrl = (applicationId) => {
-  return applicationId?.startsWith('sandbox-')
-    ? 'https://sandbox.web.squarecdn.com/v1/square.js'
-    : 'https://web.squarecdn.com/v1/square.js';
-};
+// Validate at module/build initialization so an incoherent production build
+// fails before any customer reaches checkout.
+const SQUARE_CONFIG = getSquareConfig(import.meta.env);
 
 // Square Web Payments SDK integration
 export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false }) {
@@ -72,19 +53,12 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
       setIsLoading(true);
       setError(null);
 
-      const config = getSquareConfig();
-      if (!isConfigured(config)) {
-        setError(
-          'Square payments are not configured for this environment. Set VITE_SQUARE_APPLICATION_ID and VITE_SQUARE_LOCATION_ID in frontend environment variables.'
-        );
-        setIsLoading(false);
-        return;
-      }
+      const config = SQUARE_CONFIG;
 
       // Load Square Web Payments SDK
       if (!window.Square) {
         const script = document.createElement('script');
-        script.src = getSquareSdkUrl(config.applicationId);
+        script.src = config.sdkUrl;
         script.onload = () => {
           initializeSquarePayments();
         };
@@ -112,10 +86,7 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
       
       // Initialize Square payments
       // Get credentials from environment variables (VITE_ prefix required for Vite)
-      const config = getSquareConfig();
-      if (!isConfigured(config)) {
-        throw new Error('Square credentials are not configured.');
-      }
+      const config = SQUARE_CONFIG;
 
       paymentsRef.current = window.Square.payments(config.applicationId, config.locationId);
 
@@ -273,18 +244,20 @@ export function SquarePaymentForm({ amount, onPaymentSuccess, processing = false
         {isProcessing ? 'Processing Payment...' : `Pay ${formatAmount(amount)}`}
       </Button>
 
-      {/* Test Card Information */}
-      <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-        <Typography variant="subtitle2" gutterBottom>
-          Test Card Information (Sandbox)
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          <strong>Successful Payment:</strong> 4111 1111 1111 1111<br />
-          <strong>Declined Payment:</strong> 4000 0000 0000 0002<br />
-          <strong>Expiry:</strong> Any future date<br />
-          <strong>CVV:</strong> Any 3 digits
-        </Typography>
-      </Box>
+      {/* Test card guidance must never appear in a production build. */}
+      {SQUARE_CONFIG.sandbox && (
+        <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Test Card Information (Sandbox)
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            <strong>Successful Payment:</strong> 4111 1111 1111 1111<br />
+            <strong>Declined Payment:</strong> 4000 0000 0000 0002<br />
+            <strong>Expiry:</strong> Any future date<br />
+            <strong>CVV:</strong> Any 3 digits
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 }

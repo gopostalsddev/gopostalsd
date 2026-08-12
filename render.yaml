@@ -19,7 +19,7 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: bash deploy.sh
-    healthCheckPath: /
+    healthCheckPath: /health/ready
     buildFilter:
       paths:
         - backend/**
@@ -31,6 +31,10 @@ services:
         value: production
       - key: DEBUG
         value: "false"
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: ENABLE_SWAGGER_UI
+        value: "false"
       - key: FLASK_APP
         value: app.py
       - key: LOG_LEVEL
@@ -39,6 +43,8 @@ services:
         value: "true"
       - key: SESSION_COOKIE_SECURE
         value: "true"
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
       - key: DATABASE_URL
         fromDatabase:
           name: gopostalsd-db
@@ -53,6 +59,10 @@ services:
           name: gopostalsd-website
           type: web
           envVarKey: RENDER_EXTERNAL_URL
+      # Owner-controlled launch variable. Set only after the client confirms
+      # the canonical public origin; account-action links fail closed without it.
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY
@@ -65,25 +75,37 @@ services:
         value: https://apiconnect.sinalite.com
       - key: MAILERSEND_API_KEY
         sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        sync: false
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
+      - key: EMAIL_PROVIDER
+        value: mailersend
+      - key: EMAIL_FROM_ADDRESS
+        value: support@gopostalsd.com
+      - key: EMAIL_FROM_NAME
+        value: Go Postal SD
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: gopostalsd-uploads
+      - key: FILE_STORAGE_BACKEND
+        value: supabase
+      - key: MAX_REQUEST_BYTES
+        value: "6291456"
+      - key: MAX_JSON_REQUEST_BYTES
+        value: "1048576"
       - key: SQUARE_ACCESS_TOKEN
         sync: false
+      - key: SQUARE_ENVIRONMENT
+        value: production
       - key: SQUARE_APPLICATION_ID
         sync: false
       - key: SQUARE_LOCATION_ID
         sync: false
       - key: SQUARE_WEBHOOK_SIGNATURE_KEY
+        sync: false
+      - key: SQUARE_WEBHOOK_URL
         sync: false
       # Required: Fernet key for encrypting OAuth tokens at rest.
       # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
@@ -113,5 +135,7 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
       - key: VITE_SQUARE_APPLICATION_ID
         sync: false
+      - key: VITE_SQUARE_ENVIRONMENT
+        value: production
       - key: VITE_SQUARE_LOCATION_ID
         sync: false

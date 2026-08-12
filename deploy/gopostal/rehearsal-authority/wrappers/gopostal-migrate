@@ -1,0 +1,12 @@
+#!/bin/bash
+. /usr/local/lib/gopostal-rehearsal/gopostal-common.inc
+no_args "$@"
+assert_boundary
+compose up -d db
+compose run --rm --no-deps web flask db current
+started=$(date +%s)
+compose run --rm --no-deps web flask db upgrade
+duration=$(( $(date +%s) - started ))
+revision=$(compose run --rm --no-deps web flask db current 2>&1 | tail -1)
+printf 'GoPostal migration duration: %ss\n' "$duration"
+printf 'GoPostal database revision: %s\n' "$revision"

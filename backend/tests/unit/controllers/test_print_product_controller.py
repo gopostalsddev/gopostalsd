@@ -375,6 +375,27 @@ def test_sync_print_product_categories(client, clean_categories):
         assert result.data == {"message": PrintProductSuccessMessages.PRINT_PRODUCT_CATEGORY_IN_SYNC.value}
         assert PrintProductCategory.query.count() == 2
 
+
+def test_sync_print_product_categories_reports_provider_failure(client, clean_categories):
+    with patch(
+        'server.config.sinalite.get_product_categories',
+        side_effect=RuntimeError('provider unavailable'),
+    ):
+        result = PrintProductController.sync_print_product_categories()
+
+    assert result.status is False
+    assert result.error == "Failed to fetch product categories from Sinalite"
+    assert PrintProductCategory.query.count() == 0
+
+
+def test_sync_print_product_categories_reports_empty_provider_result(client, clean_categories):
+    with patch('server.config.sinalite.get_product_categories', return_value=[]):
+        result = PrintProductController.sync_print_product_categories()
+
+    assert result.status is False
+    assert result.error == "Failed to fetch product categories from Sinalite"
+    assert PrintProductCategory.query.count() == 0
+
 # ========== SINALITE PRODUCTS ==========
 
 def test_get_all_products(client):

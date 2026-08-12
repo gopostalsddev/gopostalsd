@@ -11,7 +11,7 @@ import ProductListHeader from "./components/ProductListHeader";
 import ProductTypeList from "./components/ProductTypeList";
 import ProductDetailPage from "./components/ProductDetailPage";
 
-import { fetchEnabledPrintProductCategories, fetchPrintProductCategories, syncPrintProductCategories } from '../../services/product_service';
+import { fetchEnabledPrintProductCategories } from '../../services/product_service';
 
 const ShopPage = () => {
 
@@ -21,7 +21,6 @@ const ShopPage = () => {
     const  [productTypeCount, setProductTypeCount] = useState(0)
     const  [loading, setLoading] = useState(true)
     const [categoryNotice, setCategoryNotice] = useState('')
-    const [syncAttempted, setSyncAttempted] = useState(false)
   
     useEffect(() => {
       const loadProductCategories = async () => {
@@ -31,30 +30,8 @@ const ShopPage = () => {
             setProductCategories(enabledProductCategories)
             setCategoryNotice('')
           } else {
-            // Fallback: show all categories when none are enabled yet.
-            const allProductCategories = await fetchPrintProductCategories();
-            setProductCategories(allProductCategories)
-
-            if (allProductCategories.length > 0) {
-              setCategoryNotice('No categories are currently marked as enabled, so all available categories are being shown.')
-            } else {
-              if (!syncAttempted) {
-                setSyncAttempted(true)
-                setCategoryNotice('No categories found. Attempting an automatic catalog sync...')
-
-                await syncPrintProductCategories();
-                const categoriesAfterSync = await fetchPrintProductCategories();
-
-                if (categoriesAfterSync.length > 0) {
-                  setProductCategories(categoriesAfterSync)
-                  setCategoryNotice('Categories were synced successfully. Showing all available categories.')
-                } else {
-                  setCategoryNotice('No product categories are available yet. Sync did not return categories. Please verify backend credentials and try sync from admin.')
-                }
-              } else {
-                setCategoryNotice('No product categories are available yet. Please verify backend credentials and sync categories from admin.')
-              }
-            }
+            setProductCategories([])
+            setCategoryNotice('No product categories are currently available. An administrator must sync, classify, and enable catalog categories.')
           }
         } catch (error) {
           console.error("Error fetching product categories: ", error)
@@ -138,4 +115,3 @@ export default ShopPage;
   
   
 
-  

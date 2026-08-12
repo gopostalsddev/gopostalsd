@@ -58,6 +58,8 @@ Optional integrations:
   - `SQUARE_APPLICATION_ID`
   - `SQUARE_LOCATION_ID`
   - `SQUARE_ENVIRONMENT=sandbox`
+  - `SQUARE_WEBHOOK_URL=https://your-host.example/api/payments/webhook`
+  - `SQUARE_WEBHOOK_SIGNATURE_KEY`
 
 ### Frontend (`frontend/.env`)
 
@@ -72,6 +74,7 @@ For Square checkout UI:
 ```env
 VITE_SQUARE_APPLICATION_ID=your_square_application_id
 VITE_SQUARE_LOCATION_ID=your_square_location_id
+VITE_SQUARE_ENVIRONMENT=sandbox
 ```
 
 ## 3. Backend Setup and Run

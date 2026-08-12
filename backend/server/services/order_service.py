@@ -6,7 +6,7 @@ for completed cart checkouts.
 """
 
 import logging
-import secrets
+import hashlib
 import uuid
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
@@ -16,7 +16,9 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.exc import SQLAlchemyError
 from server.config import database as db
 from server.models.pricing import Cart, CartItem, ShippingOption
-from server.models.order import Order, OrderItem, Payment, OrderStatus, PaymentStatus
+from server.models.order import (
+    Order, OrderItem, Payment, PaymentAttempt, OrderStatus, PaymentStatus,
+)
 from server.services.payment_service import PaymentService
 from server.services.email_service import EmailService
 
@@ -171,9 +173,13 @@ class OrderService:
         Returns:
             Dict containing payment result
         """
+        attempt_id = None
         try:
-            # Lock the row so concurrent payment attempts serialize here,
-            # preventing double-charges when two requests race to pay the same order.
+            source_id = payment_data['source_id']
+            source_fingerprint = hashlib.sha256(source_id.encode()).hexdigest()
+
+            # Reserve a stable provider identity while holding the order lock,
+            # then commit it before any network call is made.
             order = Order.query.with_for_update().filter_by(id=order_id).first()
             if not order:
                 return {
@@ -181,39 +187,124 @@ class OrderService:
                     'error': 'Order not found'
                 }
 
-            if order.payment_status != PaymentStatus.PENDING:
+            if order.payment_status == PaymentStatus.COMPLETED:
+                payment = Payment.query.filter_by(order_id=order.id).order_by(Payment.id.desc()).first()
+                if payment:
+                    return {
+                        'success': True,
+                        'payment': payment.to_dict(),
+                        'order': order.to_dict(),
+                        'message': 'Payment already completed',
+                    }
                 return {
                     'success': False,
                     'error': 'Order payment already processed'
                 }
-            
-            # Process payment
-            payment_result = self.payment_service.process_payment(
-                amount=int(self._to_money_decimal(order.total_amount) * 100),  # Convert to cents
-                currency=order.currency,
-                source_id=payment_data['source_id'],
-                idempotency_key=secrets.token_urlsafe(32),
-                buyer_email=order.customer_email,
-                buyer_phone=order.customer_phone,
-                shipping_address=order.shipping_address,
-                billing_address=order.billing_address,
-                note=f"Order {order.order_number} payment"
+
+            amount_cents = int(self._to_money_decimal(order.total_amount) * 100)
+            active = (
+                PaymentAttempt.query.with_for_update()
+                .filter(
+                    PaymentAttempt.order_id == order.id,
+                    PaymentAttempt.status.in_(('reserved', 'processing', 'unknown')),
+                )
+                .order_by(PaymentAttempt.id.desc())
+                .first()
             )
-            
+
+            if active:
+                if (
+                    active.amount_cents != amount_cents
+                    or active.currency != order.currency
+                    or active.source_fingerprint != source_fingerprint
+                ):
+                    return {
+                        'success': False,
+                        'error': 'A payment is already being reconciled for this order',
+                    }
+                if active.status == 'processing':
+                    return {
+                        'success': False,
+                        'error': 'Payment processing is already in progress',
+                    }
+                attempt = active
+                attempt.status = 'processing'
+                attempt.last_error_code = None
+            else:
+                key = str(uuid.uuid4())
+                attempt = PaymentAttempt(
+                    order_id=order.id,
+                    provider=self.payment_service.provider,
+                    idempotency_key=key,
+                    provider_reference=f"gp-{order.id}-{uuid.uuid4().hex[:20]}",
+                    source_fingerprint=source_fingerprint,
+                    amount_cents=amount_cents,
+                    currency=order.currency,
+                    status='processing',
+                )
+                db.session.add(attempt)
+
+            order.payment_status = PaymentStatus.PROCESSING
+            db.session.commit()
+            attempt_id = attempt.id
+
+            try:
+                payment_result = self.payment_service.process_payment(
+                    amount=attempt.amount_cents,
+                    currency=order.currency,
+                    source_id=source_id,
+                    idempotency_key=attempt.idempotency_key,
+                    buyer_email=order.customer_email,
+                    buyer_phone=order.customer_phone,
+                    shipping_address=order.shipping_address,
+                    billing_address=order.billing_address,
+                    reference_id=attempt.provider_reference,
+                    note=f"Order {order.order_number} payment"
+                )
+            except Exception:
+                logger.error("Payment provider outcome is unknown", exc_info=True)
+                payment_result = {
+                    'success': False,
+                    'outcome_known': False,
+                    'error': 'Payment provider outcome is unknown',
+                }
+
+            attempt = PaymentAttempt.query.with_for_update().filter_by(id=attempt_id).one()
+            order = Order.query.with_for_update().filter_by(id=order_id).one()
+
+            # A webhook may have completed reconciliation while the provider
+            # response was in flight.
+            if attempt.status == 'succeeded':
+                payment = Payment.query.filter_by(
+                    payment_provider=attempt.provider,
+                    external_payment_id=attempt.external_payment_id,
+                ).one()
+                return {
+                    'success': True,
+                    'payment': payment.to_dict(),
+                    'order': order.to_dict(),
+                    'message': 'Payment processed successfully',
+                }
+
             if payment_result['success']:
-                # Update order status
+                external_id = payment_result.get('payment_id')
+                if not external_id:
+                    raise RuntimeError('provider success lacked payment identity')
+
                 order.payment_status = PaymentStatus.COMPLETED
                 order.status = OrderStatus.PROCESSING
-                
-                # Create payment record (only if we have a payment_id)
-                payment = None
-                if payment_result.get('payment_id'):
-                    order.payment_id = payment_result['payment_id']  # denormalise onto Order for easy lookup
-                    order.payment_provider = self.payment_service.provider
+                order.payment_id = external_id
+                order.payment_provider = self.payment_service.provider
+
+                payment = Payment.query.filter_by(
+                    payment_provider=self.payment_service.provider,
+                    external_payment_id=external_id,
+                ).first()
+                if not payment:
                     payment = Payment(
                         order_id=order.id,
                         payment_provider=self.payment_service.provider,
-                        external_payment_id=payment_result['payment_id'],
+                        external_payment_id=external_id,
                         amount=order.total_amount,
                         currency=order.currency,
                         status=PaymentStatus.COMPLETED,
@@ -221,35 +312,61 @@ class OrderService:
                         provider_response=payment_result
                     )
                     db.session.add(payment)
-                
+
+                attempt.status = 'succeeded'
+                attempt.external_payment_id = external_id
+                attempt.provider_response = payment_result
+                attempt.completed_at = datetime.now(timezone.utc)
                 db.session.commit()
-                
+
                 logger.info(f"Payment processed successfully for order {order.order_number}")
-                
                 return {
                     'success': True,
-                    'payment': payment.to_dict() if payment else {'status': 'completed'},
+                    'payment': payment.to_dict(),
                     'order': order.to_dict(),
                     'message': 'Payment processed successfully'
                 }
-            else:
-                # Payment failed - don't create a payment record if external_payment_id would be None
-                order.payment_status = PaymentStatus.FAILED
+
+            if payment_result.get('outcome_known', True):
+                attempt.status = 'failed'
+                attempt.last_error_code = 'provider_declined'
+                attempt.provider_response = {'success': False, 'outcome_known': True}
+                order.payment_status = PaymentStatus.PENDING
                 db.session.commit()
-                
-                logger.error(f"Payment failed for order {order.order_number}: {payment_result['error']}")
-                
+                logger.warning("Payment attempt was declined for order %s", order.order_number)
                 return {
                     'success': False,
                     'error': payment_result['error']
                 }
-                
-        except (SQLAlchemyError, KeyError, ValueError, TypeError, InvalidOperation):
-            logger.error("Error processing payment", exc_info=True)
-            db.session.rollback()
+
+            attempt.status = 'unknown'
+            attempt.last_error_code = 'provider_outcome_unknown'
+            attempt.provider_response = {'success': False, 'outcome_known': False}
+            order.payment_status = PaymentStatus.PROCESSING
+            db.session.commit()
             return {
                 'success': False,
-                'error': 'Failed to process payment'
+                'error': 'Payment status is being reconciled; do not submit another card',
+            }
+
+        except (SQLAlchemyError, KeyError, ValueError, TypeError, InvalidOperation, RuntimeError):
+            logger.error("Error processing payment", exc_info=True)
+            db.session.rollback()
+            if attempt_id is not None:
+                try:
+                    attempt = PaymentAttempt.query.filter_by(id=attempt_id).first()
+                    order = Order.query.filter_by(id=order_id).first()
+                    if attempt and attempt.status != 'succeeded':
+                        attempt.status = 'unknown'
+                        attempt.last_error_code = 'local_reconciliation_failed'
+                    if order and order.payment_status != PaymentStatus.COMPLETED:
+                        order.payment_status = PaymentStatus.PROCESSING
+                    db.session.commit()
+                except SQLAlchemyError:
+                    db.session.rollback()
+            return {
+                'success': False,
+                'error': 'Payment status is being reconciled; do not submit another card'
             }
     
     def get_order(self, order_id: int, user_id: Optional[int] = None) -> Dict[str, Any]:

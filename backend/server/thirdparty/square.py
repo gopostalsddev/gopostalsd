@@ -14,6 +14,8 @@ import secrets
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
+from server.square_config import validate_square_configuration
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -61,18 +63,26 @@ class SquareAdapter:
     handling authentication, payment processing, and error management.
     """
     
-    def __init__(self, access_token: Optional[str] = None, environment: str = "sandbox"):
+    def __init__(self, access_token: Optional[str] = None, environment: str | None = None):
         """
         Initialize Square Payment adapter.
         
         Args:
             access_token: Square access token (defaults to SQUARE_ACCESS_TOKEN env var)
-            environment: Square environment ('sandbox' or 'production')
+            environment: Optional explicit environment. It must agree with
+                SQUARE_ENVIRONMENT when both are supplied.
         """
         self.access_token = access_token or os.getenv('SQUARE_ACCESS_TOKEN')
-        self.environment = environment.lower()
         self.application_id = os.getenv('SQUARE_APPLICATION_ID')
         self.location_id = os.getenv('SQUARE_LOCATION_ID')
+        configuration = dict(os.environ)
+        if access_token:
+            configuration['SQUARE_ACCESS_TOKEN'] = access_token
+        self.environment = validate_square_configuration(
+            explicit_environment=environment,
+            environ=configuration,
+            require_credentials=True,
+        )
         self.client = None
         self._is_configured = False
         
@@ -118,6 +128,7 @@ class SquareAdapter:
                        shipping_address: Dict[str, Any] = None,
                        billing_address: Dict[str, Any] = None,
                        order_id: str = None,
+                       reference_id: str = None,
                        note: str = None) -> Dict[str, Any]:
         """
         Process a payment through Square.
@@ -199,6 +210,8 @@ class SquareAdapter:
             # Add order and note information
             if order_id:
                 payment_request['order_id'] = order_id
+            if reference_id:
+                payment_request['reference_id'] = reference_id
             if note:
                 payment_request['note'] = note
 
@@ -230,7 +243,8 @@ class SquareAdapter:
                     # (CVV_FAILURE, ADDRESS_VERIFICATION_FAILURE, etc.) are logged
                     # server-side only to prevent card-probing oracles.
                     'error': 'Payment was declined. Please check your card details and try again.',
-                    'payment_id': None
+                    'payment_id': None,
+                    'outcome_known': True,
                 }
 
         except Exception as e:
@@ -238,7 +252,8 @@ class SquareAdapter:
             return {
                 'success': False,
                 'error': 'An error occurred while processing your payment. Please try again.',
-                'payment_id': None
+                'payment_id': None,
+                'outcome_known': False,
             }
     
     def get_payment(self, payment_id: str) -> Dict[str, Any]:
@@ -291,7 +306,10 @@ class SquareAdapter:
                 'payment': None
             }
     
-    def refund_payment(self, payment_id: str, amount: int, reason: str = None) -> Dict[str, Any]:
+    def refund_payment(
+        self, payment_id: str, amount: int, reason: str = None,
+        idempotency_key: str = None,
+    ) -> Dict[str, Any]:
         """
         Refund a payment.
         
@@ -311,7 +329,8 @@ class SquareAdapter:
                     'refund_id': None
                 }
             
-            idempotency_key = secrets.token_urlsafe(32)
+            if not idempotency_key:
+                idempotency_key = secrets.token_urlsafe(32)
             refund_request = {
                 'idempotency_key': idempotency_key,
                 'amount_money': {'amount': amount, 'currency': 'USD'},
@@ -345,7 +364,8 @@ class SquareAdapter:
                     'success': False,
                     'error': f'Square refund failed: {", ".join(error_messages)}',
                     'errors': errors,
-                    'refund_id': None
+                    'refund_id': None,
+                    'outcome_known': True,
                 }
                 
         except Exception as e:
@@ -353,7 +373,8 @@ class SquareAdapter:
             return {
                 'success': False,
                 'error': f'Square refund error: {str(e)}',
-                'refund_id': None
+                'refund_id': None,
+                'outcome_known': False,
             }
     
     def _create_square_address(self, address_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -405,7 +426,7 @@ class SquareAdapter:
             'sdk_available': SQUARE_AVAILABLE
         }
     
-    def validate_webhook_signature(self, payload: str, signature: str, webhook_url: str) -> bool:
+    def validate_webhook_signature(self, payload: bytes | str, signature: str, webhook_url: str) -> bool:
         """
         Validate Square webhook signature.
         
@@ -424,7 +445,8 @@ class SquareAdapter:
                 return False
 
             # Square HMAC-SHA256: base64(HMAC(key, notification_url + body))
-            message = (webhook_url + payload).encode('utf-8')
+            payload_bytes = payload.encode('utf-8') if isinstance(payload, str) else payload
+            message = webhook_url.encode('utf-8') + payload_bytes
             expected = base64.b64encode(
                 hmac.new(signature_key.encode('utf-8'), message, hashlib.sha256).digest()
             ).decode('utf-8')

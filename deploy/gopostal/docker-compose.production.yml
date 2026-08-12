@@ -1,0 +1,83 @@
+name: gopostal-production
+
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:17.6-bookworm
+    container_name: gopostal_db
+    restart: unless-stopped
+    env_file:
+      - /etc/gopostal/database.env
+    volumes:
+      - gopostal_production_postgres:/var/lib/postgresql/data
+    networks:
+      - gopostal_data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 256
+    logging: *bounded-logging
+
+  web:
+    image: gopostal-web:${GOPOSTAL_IMAGE_TAG:?GOPOSTAL_IMAGE_TAG must be an immutable release SHA}
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    container_name: gopostal_web
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    env_file:
+      - /etc/gopostal/production.env
+    environment:
+      DEBUG: "false"
+      FLASK_DEBUG: "0"
+      ENABLE_SWAGGER_UI: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${GOPOSTAL_HOST_PORT:-8500}:5000"
+    networks:
+      - gopostal_edge
+      - gopostal_data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health/ready', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    logging: *bounded-logging
+
+volumes:
+  gopostal_production_postgres:
+    name: gopostal_production_postgres
+
+networks:
+  gopostal_edge:
+    name: gopostal_edge
+  gopostal_data:
+    name: gopostal_data
+    internal: true

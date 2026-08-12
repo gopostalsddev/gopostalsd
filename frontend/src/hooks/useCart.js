@@ -14,6 +14,7 @@ export function useCartOperations() {
     updateQuantity,
     removeItem,
     clearCart,
+    clearLocalCart,
     calculateShipping,
     setSelectedShipping,
     getCartSummary
@@ -81,6 +82,11 @@ export function useCartOperations() {
     } catch (error) {
       return { success: false, error: 'Failed to clear cart' };
     }
+  };
+
+  const clearCartAfterCheckout = () => {
+    clearLocalCart();
+    return { success: true, message: 'Cart state cleared after checkout' };
   };
 
   // Calculate shipping with validation
@@ -186,6 +192,7 @@ export function useCartOperations() {
     updateItemQuantity,
     removeItemFromCart,
     clearEntireCart,
+    clearCartAfterCheckout,
     calculateShippingOptions,
     setSelectedShipping,
     getCartSummary,

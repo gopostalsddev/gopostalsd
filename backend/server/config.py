@@ -1,4 +1,5 @@
 import os
+import sys
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restx import Api
@@ -6,6 +7,9 @@ from server.services import FileStorage
 from server.thirdparty import SinaliteAdapter as Sinalite
 from dotenv import load_dotenv
 from server.logging_config import configure_logging
+from server.square_config import square_webhook_url, validate_square_configuration
+from server.email_config import trusted_proxy_hops, validate_production_email_settings
+from server.storage_config import validate_production_storage_settings
 
 # Configure third party libraries
 database = SQLAlchemy()
@@ -50,6 +54,27 @@ def validate_production_security_settings() -> None:
     if os.getenv('DEBUG', 'false').lower() == 'true':
         raise ValueError('DEBUG must be false in production')
 
+    if os.getenv('FLASK_DEBUG', '0').lower() in {'1', 'true', 'yes', 'on'}:
+        raise ValueError('FLASK_DEBUG must be disabled in production')
+
+    if os.getenv('ENABLE_SWAGGER_UI', 'false').lower() == 'true':
+        raise ValueError('Swagger UI must be disabled in production')
+
+    bootstrap_keys = ('ADMIN_EMAIL', 'ADMIN_PASSWORD', 'ADMIN_FIRST_NAME', 'ADMIN_LAST_NAME')
+    bootstrap_values_present = any(os.getenv(name) for name in bootstrap_keys)
+    bootstrap_mode = (
+        os.getenv('RUN_ADMIN_BOOTSTRAP', 'false').lower() == 'true'
+        and 'bootstrap-admin' in sys.argv
+    )
+    if bootstrap_values_present and not bootstrap_mode:
+        raise ValueError(
+            'ADMIN_* bootstrap credentials must not remain in the production runtime environment'
+        )
+    if bootstrap_mode and (
+        not os.getenv('ADMIN_EMAIL') or not os.getenv('ADMIN_PASSWORD')
+    ):
+        raise ValueError('One-time admin bootstrap requires ADMIN_EMAIL and ADMIN_PASSWORD')
+
     if os.getenv('SESSION_COOKIE_SECURE', 'true').lower() != 'true':
         raise ValueError('SESSION_COOKIE_SECURE must be true in production')
 
@@ -65,6 +90,12 @@ def validate_production_security_settings() -> None:
 
     if os.getenv('SQUARE_MOCK_PAYMENTS', 'false').lower() == 'true':
         raise ValueError('SQUARE_MOCK_PAYMENTS must not be true in production')
+
+    validate_square_configuration(require_credentials=True)
+    square_webhook_url()
+    validate_production_email_settings()
+    trusted_proxy_hops(required=True)
+    validate_production_storage_settings()
 
     import logging as _log
     _prod_logger = _log.getLogger(__name__)
@@ -84,6 +115,7 @@ def validate_production_security_settings() -> None:
 class Config:
     # Disable SQLAlchemy event system to improve performance
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    READINESS_DB_TIMEOUT_MS = int(os.getenv('READINESS_DB_TIMEOUT_MS', '2000'))
     ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
     # Supabase file storage
@@ -155,8 +187,9 @@ class ProductionConfig(Config):
     SINALITE_CLIENT_ID = os.getenv('SINALITE_CLIENT_ID')
     SINALITE_CLIENT_SECRET = os.getenv('SINALITE_CLIENT_SECRET')
 
-    ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
-    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
+    DEBUG = False
+    TESTING = False
+    PROPAGATE_EXCEPTIONS = False
 
     if not SINALITE_CLIENT_ID or not SINALITE_CLIENT_SECRET:
         raise ValueError("SINALITE_CLIENT_ID and SINALITE_CLIENT_SECRET must be set in production!")

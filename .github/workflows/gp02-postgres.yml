@@ -1,0 +1,48 @@
+name: GP-02 auth migration safety
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gp02-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      SINALITE_CLIENT_ID: gp02-ci-client
+      SINALITE_CLIENT_SECRET: gp02-ci-secret
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      TEST_POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt
+      - name: GP-02 PostgreSQL preflight and auth rehearsal
+        run: >-
+          python -m pytest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp02_auth_migration_preflight.py

@@ -1,0 +1,32 @@
+name: GP-06 Square webhook inbox
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  webhook-inbox:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "sqlite:///:memory:"
+      SINALITE_CLIENT_ID: gp06-ci-client
+      SINALITE_CLIENT_SECRET: gp06-ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt
+        working-directory: backend
+      - name: Durable inbox, replay, and retry verification
+        working-directory: backend
+        run: >-
+          python -m pytest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp06_square_webhook_inbox.py

@@ -1,0 +1,69 @@
+name: GP-18 backup and restore contract
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backup-restore:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-bookworm
+        env:
+          POSTGRES_DB: gopostal_source
+          POSTGRES_USER: gopostal
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gopostal -d gopostal_source"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pytest
+      - name: Parse operational shell scripts
+        run: bash -n deploy/gopostal/backup-database.sh deploy/gopostal/restore-drill.sh
+      - name: Static backup safety contract
+        working-directory: backend
+        run: >-
+          python -m pytest --noconftest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp18_backup_restore_contract.py
+      - name: Seed disposable source database
+        run: |
+          docker run --rm --network host -e PGPASSWORD=ci-password postgres:17.6-bookworm \
+            psql -h 127.0.0.1 -U gopostal -d gopostal_source -v ON_ERROR_STOP=1 \
+            -c 'CREATE TABLE alembic_version(version_num varchar(32) primary key);' \
+            -c "INSERT INTO alembic_version VALUES ('gp18_ci_head');" \
+            -c 'CREATE TABLE gp18_sample(id integer primary key, value text not null);' \
+            -c "INSERT INTO gp18_sample VALUES (1, 'restore-me');"
+      - name: Create and structurally verify custom-format archive
+        run: |
+          docker run --rm --network host -e PGPASSWORD=ci-password \
+            -v "$RUNNER_TEMP:/backup" postgres:17.6-bookworm \
+            pg_dump -h 127.0.0.1 -U gopostal -d gopostal_source -Fc \
+            -f /backup/gopostal-ci.dump
+          test "$(stat -c %s "$RUNNER_TEMP/gopostal-ci.dump")" -gt 1024
+          sha256sum "$RUNNER_TEMP/gopostal-ci.dump" > "$RUNNER_TEMP/gopostal-ci.dump.sha256"
+          docker run --rm -v "$RUNNER_TEMP:/backup" postgres:17.6-bookworm \
+            pg_restore --list /backup/gopostal-ci.dump >/dev/null
+      - name: Restore into isolated database and verify data
+        run: |
+          docker run --rm --network host -e PGPASSWORD=ci-password postgres:17.6-bookworm \
+            createdb -h 127.0.0.1 -U gopostal -T template0 gopostal_restore_drill_ci
+          docker run --rm --network host -e PGPASSWORD=ci-password \
+            -v "$RUNNER_TEMP:/backup" postgres:17.6-bookworm \
+            pg_restore -h 127.0.0.1 -U gopostal -d gopostal_restore_drill_ci \
+            --exit-on-error --single-transaction /backup/gopostal-ci.dump
+          test "$(docker run --rm --network host -e PGPASSWORD=ci-password postgres:17.6-bookworm \
+            psql -XAt -h 127.0.0.1 -U gopostal -d gopostal_restore_drill_ci \
+            -c 'SELECT value FROM gp18_sample WHERE id=1')" = "restore-me"

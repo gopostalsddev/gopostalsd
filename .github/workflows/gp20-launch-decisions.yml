@@ -1,0 +1,32 @@
+name: GP-20 owner launch decisions
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  decision-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pytest
+      - name: Validate decision ledger contract
+        working-directory: backend
+        run: >-
+          python -m pytest --noconftest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp20_launch_decisions.py
+      - name: Prove unresolved owner decisions remain fail-closed
+        run: |
+          set +e
+          python deploy/gopostal/verify-launch-decisions.py \
+            --decisions deploy/gopostal/launch-decisions.json
+          rc=$?
+          set -e
+          test "$rc" -eq 3

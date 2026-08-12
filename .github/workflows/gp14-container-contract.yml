@@ -1,0 +1,86 @@
+name: GP-14 production container contract
+
+on:
+  push:
+    branches:
+      - codex/gp01-migration-startup-separation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  container-contract:
+    runs-on: ubuntu-latest
+    env:
+      GOPOSTAL_IMAGE_TAG: ci
+      ENVIRONMENT: testing
+      DATABASE_URL: "sqlite:///:memory:"
+      SINALITE_CLIENT_ID: gp14-ci-client
+      SINALITE_CLIENT_SECRET: gp14-ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt
+        working-directory: backend
+      - name: Static container contract
+        working-directory: backend
+        run: >-
+          python -m pytest
+          -o "addopts=--verbose --tb=short --strict-markers"
+          tests/test_gp14_container_contract.py
+          tests/test_gp12_logging_readiness.py
+      - name: Create non-secret CI environment fixtures
+        run: |
+          sudo install -d -m 0700 /etc/gopostal
+          sudo tee /etc/gopostal/database.env >/dev/null <<'EOF'
+          POSTGRES_DB=gopostal
+          POSTGRES_USER=gopostal
+          POSTGRES_PASSWORD=ci-database-password
+          EOF
+          sudo tee /etc/gopostal/production.env >/dev/null <<'EOF'
+          ENVIRONMENT=production
+          DEBUG=false
+          SESSION_COOKIE_SECURE=true
+          DATABASE_URL=postgresql://gopostal:ci-database-password@db:5432/gopostal
+          SECRET_KEY=ci-secret-key-not-for-production
+          JWT_SECRET_KEY=ci-jwt-key-not-for-production
+          SINALITE_BASE_URL=https://example.invalid
+          SINALITE_CLIENT_ID=ci-client
+          SINALITE_CLIENT_SECRET=ci-secret
+          SQUARE_ENVIRONMENT=production
+          SQUARE_ACCESS_TOKEN=ci-square-token
+          SQUARE_APPLICATION_ID=sq0idp-ci-application
+          SQUARE_LOCATION_ID=ci-location
+          SQUARE_WEBHOOK_SIGNATURE_KEY=ci-signature
+          SQUARE_WEBHOOK_URL=https://launch.example.test/api/payments/webhook
+          SQUARE_MOCK_PAYMENTS=false
+          OAUTH_TOKEN_ENCRYPTION_KEY=ci-oauth-key
+          EMAIL_PROVIDER=mailersend
+          EMAIL_FROM_ADDRESS=support@gopostalsd.com
+          EMAIL_FROM_NAME=Go Postal SD
+          MAILERSEND_API_KEY=ci-mailersend-key
+          PUBLIC_BASE_URL=https://launch.example.test
+          TRUSTED_PROXY_HOPS=1
+          FILE_STORAGE_BACKEND=supabase
+          SUPABASE_URL=https://example.supabase.co
+          SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+          SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+          SUPABASE_BUCKET=ci-bucket
+          AUTO_ENABLE_CATEGORIES_WHEN_NONE=false
+          LOG_LEVEL=INFO
+          EOF
+          sudo chmod 0600 /etc/gopostal/database.env /etc/gopostal/production.env
+      - name: Validate effective Compose configuration
+        run: >-
+          sudo env GOPOSTAL_IMAGE_TAG="$GOPOSTAL_IMAGE_TAG"
+          docker compose -f deploy/gopostal/docker-compose.production.yml config --quiet
+      - name: Build exact runtime image
+        run: >-
+          sudo env GOPOSTAL_IMAGE_TAG="$GOPOSTAL_IMAGE_TAG"
+          docker compose -f deploy/gopostal/docker-compose.production.yml build web
+      - name: Verify image user
+        run: test "$(docker image inspect gopostal-web:ci --format '{{.Config.User}}')" = "10001:10001"

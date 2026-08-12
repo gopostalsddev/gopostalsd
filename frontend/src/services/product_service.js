@@ -10,7 +10,7 @@ export const fetchPrintProductCategories = async () => {
         return response.data;
     } catch (error) {
         console.error("Error fetching categories: ", error);
-        return []
+        throw error
     }
 };
 
@@ -20,7 +20,7 @@ export const fetchEnabledPrintProductCategories = async () => {
         return response.data;
     } catch (error) {
         console.error("Error fetching enabled categories: ", error);
-        return []
+        throw error
     }
 };
 
@@ -48,6 +48,7 @@ export const syncPrintProductCategories = async () => {
         return response.data;
     }catch (error) {
         console.error("Error syncing categories:", error)
+        throw error
     }
 };
 

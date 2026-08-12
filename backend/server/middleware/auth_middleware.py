@@ -6,6 +6,7 @@ This module provides authentication middleware for protecting routes and managin
 
 import logging
 import os
+from urllib.parse import urlsplit
 from functools import wraps
 from flask import request, g, current_app
 from server.models.auth import User, UserSession
@@ -47,15 +48,15 @@ def _get_allowed_origins() -> list:
 
 
 def _origin_is_allowed(origin: str, allowed: list) -> bool:
-    """Return True if origin matches any allowed origin prefix."""
+    """Return True when Origin/Referer resolves to an exact allowed origin."""
     if not origin:
         return False
-    for allowed_origin in allowed:
-        if origin.rstrip('/') == allowed_origin.rstrip('/'):
-            return True
-        if origin.startswith(allowed_origin.rstrip('/') + '/'):
-            return True
-    return False
+    parsed = urlsplit(origin)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+    candidate = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+    normalized_allowed = {item.rstrip('/').lower() for item in allowed}
+    return candidate in normalized_allowed
 
 
 def enforce_csrf_protection() -> None:

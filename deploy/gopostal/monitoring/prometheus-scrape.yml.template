@@ -1,0 +1,36 @@
+# Merge into the existing VPS Prometheus scrape_configs only after replacing
+# every __GOPOSTAL_*__ token with a target reachable from the existing
+# Prometheus execution context. Do not assume that container loopback reaches
+# host Caddy or a sibling Blackbox exporter.
+- job_name: blackbox-gopostal
+  metrics_path: /probe
+  params:
+    module: [http_2xx]
+  static_configs:
+    - targets: [https://__GOPOSTAL_HOST__/]
+      labels:
+        application: gopostal
+        probe: root
+    - targets: [https://__GOPOSTAL_HOST__/health/ready]
+      labels:
+        application: gopostal
+        probe: readiness
+  relabel_configs:
+    - source_labels: [__address__]
+      target_label: __param_target
+    - source_labels: [__param_target]
+      target_label: instance
+    - target_label: __address__
+      replacement: __GOPOSTAL_BLACKBOX_EXPORTER_TARGET__
+
+- job_name: caddy-gopostal
+  static_configs:
+    - targets: [__GOPOSTAL_CADDY_METRICS_TARGET__]
+      labels:
+        application: gopostal
+
+- job_name: gopostal-postgres
+  static_configs:
+    - targets: [__GOPOSTAL_POSTGRES_EXPORTER_TARGET__]
+      labels:
+        application: gopostal
