@@ -157,6 +157,18 @@ def _legacy_database():
                 ),
                 {"email": SAFE_EMAIL, "hash": SAFE_HASH},
             )
+            # A PostgreSQL dump/restore preserves sequence positions. These
+            # synthetic legacy rows use explicit IDs, so model that state
+            # explicitly instead of leaving the next role insert at ID 1.
+            for table_name in ("addresses", "roles", "users"):
+                connection.execute(
+                    sa.text(
+                        "SELECT setval("
+                        "pg_get_serial_sequence(:table_name, 'id'), "
+                        f"(SELECT max(id) FROM {table_name}), true)"
+                    ),
+                    {"table_name": table_name},
+                )
         yield engine, env, admin_engine, database_name, database_url
     finally:
         if engine is not None:
