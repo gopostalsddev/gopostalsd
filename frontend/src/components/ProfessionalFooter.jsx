@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Box,
   Container,
@@ -6,17 +5,12 @@ import {
   Typography,
   Link,
   Divider,
-  IconButton,
   Stack
 } from '@mui/material';
 import {
   LocationOn,
   Phone,
-  Email,
-  Facebook,
-  Twitter,
-  Instagram,
-  LinkedIn
+  Email
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
@@ -120,7 +114,7 @@ const ProfessionalFooter = () => {
                   }
                 }}
               >
-                Gallery
+                Project Ideas
               </Link>
               <Link
                 component="button"
@@ -218,38 +212,6 @@ const ProfessionalFooter = () => {
             >
               Privacy
             </Link>
-          </Stack>
-          
-          {/* Social Media Links */}
-          <Stack direction="row" spacing={1}>
-            <IconButton 
-              size="small" 
-              sx={{ color: 'white' }}
-              aria-label="Facebook"
-            >
-              <Facebook />
-            </IconButton>
-            <IconButton 
-              size="small" 
-              sx={{ color: 'white' }}
-              aria-label="Twitter"
-            >
-              <Twitter />
-            </IconButton>
-            <IconButton 
-              size="small" 
-              sx={{ color: 'white' }}
-              aria-label="Instagram"
-            >
-              <Instagram />
-            </IconButton>
-            <IconButton 
-              size="small" 
-              sx={{ color: 'white' }}
-              aria-label="LinkedIn"
-            >
-              <LinkedIn />
-            </IconButton>
           </Stack>
         </Box>
       </Container>

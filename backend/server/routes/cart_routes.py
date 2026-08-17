@@ -109,6 +109,15 @@ def _verify_cart_ownership(cart_data: dict) -> bool:
     # Ownerless cart — only an unauthenticated (guest) request may touch it.
     return request_user_id is None
 
+
+def _has_confirmed_artwork_handoff(customization) -> bool:
+    """Accept only the storefront's explicit, non-upload artwork contract."""
+    return (
+        isinstance(customization, dict)
+        and customization.get('artworkHandoff') == 'post_order_secure_transfer'
+    )
+
+
 def get_cart_service():
     """Return the cart service registered in the Flask app context."""
     return current_app.extensions['cart_service']
@@ -185,6 +194,13 @@ class AddToCartResource(Resource):
         customization = data.get('customization')
         if customization is not None and not isinstance(customization, dict):
             return error_response('customization must be an object', 400)
+        if not _has_confirmed_artwork_handoff(customization):
+            return error_response(
+                'Confirm the secure post-order artwork handoff before adding this item to the cart',
+                400,
+                code='ARTWORK_HANDOFF_REQUIRED',
+                category='business_logic',
+            )
 
         sanitized_options = []
         for option in selected_options:

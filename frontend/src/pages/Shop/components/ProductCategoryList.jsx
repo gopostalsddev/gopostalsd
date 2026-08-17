@@ -1,4 +1,4 @@
-import React from "react";
+import { useMemo, useState } from "react";
 import { 
   Box, 
   Typography, 
@@ -8,16 +8,26 @@ import {
   Grid,
   Chip,
   Button,
-  CardActions
+  CardActions,
+  InputAdornment,
+  TextField
 } from '@mui/material';
 import { 
   ArrowForward as ArrowForwardIcon,
-  Store as StoreIcon
+  Store as StoreIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import placeholderImage from '../../../assets/logo.png';
+import { filterCatalogCategories } from '../../../utils/catalogCategories';
 
 // ProductCategoryList Component
 const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) => {
+  const [query, setQuery] = useState('');
+  const visibleCategories = useMemo(
+    () => filterCatalogCategories(productCategories, query),
+    [productCategories, query]
+  );
+
   return (
     <Box sx={{ width: "100%", p: 0 }}>
       {/* Header Section */}
@@ -27,7 +37,26 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
           color="text.secondary" 
           sx={{ maxWidth: 600, mx: 'auto' }}
         >
-          Discover our wide range of high-quality printing products organized by category
+          Browse print products by category. Use search to find the right format quickly.
+        </Typography>
+        <TextField
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          label="Search print categories"
+          placeholder="Business cards, banners, flyers..."
+          sx={{ mt: 3, width: '100%', maxWidth: 560 }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+          Showing {visibleCategories.length} {visibleCategories.length === 1 ? 'category' : 'categories'}
         </Typography>
       </Box>
 
@@ -40,7 +69,7 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
           alignItems: 'stretch', // This ensures all cards stretch to the same height
         }}
       >
-        {productCategories.map((category) => (
+        {visibleCategories.map((category) => (
           <Grid 
             size={{ xs: 12, sm: 6, md: 4, lg: 3, xl: 2 }}
             key={category.id}
@@ -203,7 +232,7 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
       </Grid>
 
       {/* Empty State */}
-      {productCategories.length === 0 && (
+      {visibleCategories.length === 0 && (
         <Box sx={{ 
           textAlign: 'center', 
           py: 8,
@@ -213,10 +242,10 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
         }}>
           <StoreIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h5" color="text.secondary" gutterBottom>
-            No categories available
+            {query ? 'No matching categories' : 'No categories available'}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Check back later for new product categories.
+            {query ? 'Try a broader search or contact us for a custom project.' : 'Check back later for new product categories.'}
           </Typography>
         </Box>
       )}

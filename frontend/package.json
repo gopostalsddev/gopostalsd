@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:square-config": "node --test tests/squareConfig.test.mjs",
     "test:api-base-url": "node --test tests/apiBaseUrl.test.mjs",
+    "test:launch-readiness": "node --test tests/catalogPresentation.test.mjs tests/launchReadiness.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

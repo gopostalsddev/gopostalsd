@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Box,
   Button,
@@ -13,29 +12,29 @@ import NorthEastIcon from '@mui/icons-material/NorthEast';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useNavigate } from 'react-router-dom';
 
-const showcaseProjects = [
+const projectIdeas = [
   {
-    title: 'Little Italy Restaurant Launch Kit',
+    title: 'Restaurant opening package',
     category: 'Menus, postcards, promo inserts',
     color: 'linear-gradient(135deg, #18212A 0%, #073B66 60%, #B64926 120%)',
-    callout: 'Launch package',
-    details: 'A coordinated opening-week print system that gives a neighborhood business a clean first impression across in-store and street-level touchpoints.',
+    callout: 'Project idea',
+    details: 'Combine the pieces a new restaurant commonly needs into one coordinated opening package.',
     deliverables: ['Folded menus', 'Takeout inserts', 'Street postcards'],
   },
   {
-    title: 'Broker Open House Collateral',
+    title: 'Open house package',
     category: 'Flyers, signage, listing leave-behinds',
     color: 'linear-gradient(135deg, #F2E9DE 0%, #FFFFFF 52%, #D36D47 130%)',
-    callout: 'Sales enablement',
-    details: 'Print pieces designed to hold up in fast-moving, last-minute event cycles while still feeling polished enough for premium listings.',
+    callout: 'Project idea',
+    details: 'Prepare a consistent set of property materials for open houses and listing appointments.',
     deliverables: ['Window signage', 'Property handouts', 'Agent cards'],
   },
   {
-    title: 'Boutique Retail Loyalty Campaign',
+    title: 'Retail loyalty package',
     category: 'Card decks, display cards, direct mail',
     color: 'linear-gradient(135deg, #10243A 0%, #28567B 52%, #F4EFE7 145%)',
-    callout: 'Repeat business',
-    details: 'A campaign system that mixes tactile in-store pieces with follow-up mailers for customers likely to return.',
+    callout: 'Project idea',
+    details: 'Pair in-store materials with follow-up mail pieces designed to encourage repeat visits.',
     deliverables: ['Loyalty cards', 'Counter displays', 'Mailer cards'],
   },
 ];
@@ -43,15 +42,15 @@ const showcaseProjects = [
 const gallerySections = [
   {
     title: 'Brand systems for local businesses',
-    body: 'Go Postal SD is strongest when a business needs more than a single item. The portfolio direction here emphasizes packages of work that operate together in the real world.',
+    body: 'A coordinated package keeps menus, cards, signs, and mail pieces visually consistent across customer touchpoints.',
   },
   {
     title: 'Print designed for use, not just display',
-    body: 'The point of this gallery is to show output that survives customer hands, storefront counters, event tables, and shipping journeys without losing clarity or polish.',
+    body: 'Choose formats and finishes for the place they will actually be handled: storefront counters, event tables, mailboxes, or shipping packages.',
   },
   {
-    title: 'A place to prove trust visually',
-    body: 'As real client-approved imagery is added, this page becomes a sales tool: less explanation, more proof of range, finish quality, and business fit.',
+    title: 'Start with a clear production plan',
+    body: 'Contact the store before ordering if you need help choosing quantities, finishes, artwork preparation, or a coordinated set of products.',
   },
 ];
 
@@ -83,12 +82,12 @@ const GalleryPage = () => {
           >
             <Grid container spacing={4} alignItems="end">
               <Grid size={{ xs: 12, md: 8 }}>
-                <Chip label="Portfolio" sx={{ mb: 2, backgroundColor: 'rgba(255,255,255,0.14)', color: 'white' }} />
+                <Chip label="Project ideas" sx={{ mb: 2, backgroundColor: 'rgba(255,255,255,0.14)', color: 'white' }} />
                 <Typography variant="h2" sx={{ fontSize: { xs: '2.4rem', md: '4rem' }, mb: 2 }}>
-                  Work samples that look like the businesses they are made for.
+                  Build a coordinated print package for your next project.
                 </Typography>
                 <Typography variant="body1" sx={{ maxWidth: 760, lineHeight: 1.8, opacity: 0.92 }}>
-                  Instead of a placeholder page talking about what a gallery could become, this version frames real showcase directions and makes the page feel like a visual proof surface for the kind of clients Go Postal SD is built to serve.
+                  These planning examples show products that can work together. They are not client case studies or photographs of completed orders. Contact us to turn an idea into a production-ready order.
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
@@ -105,7 +104,7 @@ const GalleryPage = () => {
           </Paper>
 
           <Grid container spacing={3}>
-            {showcaseProjects.map((project) => (
+            {projectIdeas.map((project) => (
               <Grid size={{ xs: 12, lg: 4 }} key={project.title}>
                 <Paper
                   elevation={0}
@@ -139,7 +138,7 @@ const GalleryPage = () => {
                         }}
                       />
                       <Typography variant="overline" sx={{ opacity: 0.82 }}>
-                        Showcase concept
+                        Planning example
                       </Typography>
                     </Stack>
 

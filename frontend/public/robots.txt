@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+# Add the absolute Sitemap URL after the client confirms the canonical domain.
