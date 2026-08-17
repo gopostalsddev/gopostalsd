@@ -952,7 +952,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                 <StepContent>
                   <Box sx={{ mb: 2 }}>
                     <Alert severity="warning" sx={{ mb: 2 }}>
-                      This website does not upload artwork during product configuration. After your order is reviewed, Go Postal SD will provide secure artwork transfer instructions. Production will not begin until the store confirms receipt and print readiness.
+                      This website does not upload artwork during product configuration. It is not uploaded or attached to your order. After your order is reviewed, Go Postal SD will provide secure artwork transfer instructions. Production will not begin until the store confirms receipt and print readiness.
                     </Alert>
                     <FormControlLabel
                       control={(
