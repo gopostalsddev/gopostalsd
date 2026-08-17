@@ -29,6 +29,42 @@ class DummySinalite:
 
 
 class TestPricingPolicy:
+    def test_customization_uses_only_the_supported_artwork_handoff_contract(self):
+        strategy = SinalitePricingStrategy(DummySinalite(), DummyRepository())
+
+        normalized = strategy._normalize_customization({
+            'serviceLevel': 'file_review',
+            'designNotes': '  Please check the crop marks.  ',
+            'artworkHandoff': 'post_order_secure_transfer',
+            'uploadedFiles': [{'name': 'browser-only.pdf'}],
+        })
+
+        assert normalized == {
+            'serviceLevel': 'file_review',
+            'designNotes': 'Please check the crop marks.',
+            'artworkHandoff': 'post_order_secure_transfer',
+        }
+
+    def test_unknown_artwork_handoff_fails_closed_as_unconfirmed(self):
+        strategy = SinalitePricingStrategy(DummySinalite(), DummyRepository())
+
+        normalized = strategy._normalize_customization({
+            'artworkHandoff': 'pretend_the_browser_uploaded_it',
+        })
+
+        assert normalized['artworkHandoff'] == 'unconfirmed'
+
+    def test_retail_package_metadata_does_not_claim_browser_file_upload(self, app):
+        strategy = SinalitePricingStrategy(DummySinalite(), DummyRepository())
+
+        with app.app_context():
+            result = strategy._apply_retail_pricing(100, [5, 447], customization={
+                'artworkHandoff': 'post_order_secure_transfer',
+            })
+
+        assert result['packageInfo']['Artwork Handoff'] == 'post_order_secure_transfer'
+        assert 'Artwork Files' not in result['packageInfo']
+
     def test_apply_retail_pricing_adds_fx_buffer_and_markup(self, app):
         app.config['PRICING_CAD_TO_USD_RATE'] = 0.75
         app.config['PRICING_EXCHANGE_BUFFER_PERCENT'] = 5

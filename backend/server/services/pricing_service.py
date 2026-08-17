@@ -110,14 +110,14 @@ class SinalitePricingStrategy(PricingStrategy):
         if service_level not in {'none', 'file_review', 'design_assist'}:
             service_level = 'none'
 
-        uploaded_files = customization.get('uploadedFiles', [])
-        if not isinstance(uploaded_files, list):
-            uploaded_files = []
+        artwork_handoff = customization.get('artworkHandoff')
+        if artwork_handoff != 'post_order_secure_transfer':
+            artwork_handoff = 'unconfirmed'
 
         return {
             'serviceLevel': service_level,
             'designNotes': str(customization.get('designNotes', '') or '').strip()[:1000],
-            'uploadedFiles': uploaded_files[:10],
+            'artworkHandoff': artwork_handoff,
         }
 
     def _build_option_key(self, options: List[int], customization: Optional[Dict] = None) -> str:
@@ -268,7 +268,7 @@ class SinalitePricingStrategy(PricingStrategy):
                 **(package_info or {}),
                 'Customization Service': customization['serviceLevel'].replace('_', ' ').title(),
                 'Customization Notes': customization['designNotes'],
-                'Artwork Files': customization['uploadedFiles'],
+                'Artwork Handoff': customization['artworkHandoff'],
             },
             'productOptions': options,
             'customization': customization,

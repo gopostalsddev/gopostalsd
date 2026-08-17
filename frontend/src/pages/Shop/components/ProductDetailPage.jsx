@@ -15,7 +15,6 @@ import {
   Paper,
   Alert,
   CircularProgress,
-  Chip,
   Stepper,
   Step,
   StepLabel,
@@ -34,24 +33,19 @@ import {
   DialogActions,
   Breadcrumbs,
   Snackbar,
-  CardMedia,
   Divider,
   Checkbox,
   FormControlLabel
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
-  CloudUpload as CloudUploadIcon,
   LocalShipping as LocalShippingIcon,
   ShoppingCart as ShoppingCartIcon,
   ArrowBack as ArrowBackIcon,
   Home as HomeIcon,
   Store as StoreIcon,
   Category as CategoryIcon,
-  Close as CloseIcon,
-  Visibility as VisibilityIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon
+  Close as CloseIcon
 } from '@mui/icons-material';
 import {
   getShippingEstimates,
@@ -72,12 +66,7 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [selectedOptions, setSelectedOptions] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [livePreviewUrl, setLivePreviewUrl] = React.useState(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [fileError, setFileError] = useState(null);
-  const [previewFiles, setPreviewFiles] = useState([]);
-  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [artworkHandoffAccepted, setArtworkHandoffAccepted] = useState(false);
   const [designNotes, setDesignNotes] = useState('');
   const [customizationService, setCustomizationService] = useState('none');
   const [validationErrors, setValidationErrors] = useState({});
@@ -197,7 +186,7 @@ const ProductDetailPage = ({ product, onBack }) => {
     {
       value: 'none',
       label: 'Print-ready artwork',
-      description: 'Prepare finished artwork for staff review. Online artwork transfer is not yet enabled.',
+      description: 'You provide finished artwork through the secure transfer instructions sent after the order is reviewed.',
       surcharge: 0,
     },
     {
@@ -219,13 +208,12 @@ const ProductDetailPage = ({ product, onBack }) => {
   const customizationPayload = React.useMemo(() => ({
     serviceLevel: customizationService,
     designNotes,
-    uploadedFiles: uploadedFiles.map((file) => file.name),
-  }), [customizationService, designNotes, uploadedFiles]);
+    artworkHandoff: 'post_order_secure_transfer',
+  }), [customizationService, designNotes]);
 
   const shouldShowDesignPreview =
     customizationService !== 'none' ||
-    designNotes.trim().length > 0 ||
-    uploadedFiles.length > 0;
+    designNotes.trim().length > 0;
 
   // Custom hooks for product options and pricing
   const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
@@ -261,18 +249,6 @@ const ProductDetailPage = ({ product, onBack }) => {
       setSelectedOptions(initialSelections);
     }
   }, [options]);
-
-  // Keep a live object URL for the first uploaded file so the design preview card
-  // shows the actual artwork instead of the product/logo image.
-  React.useEffect(() => {
-    if (uploadedFiles.length === 0) {
-      setLivePreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(uploadedFiles[0]);
-    setLivePreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [uploadedFiles]);
 
   // Combine errors from different sources
   const displayError = error || optionsError || pricingError;
@@ -312,158 +288,6 @@ const ProductDetailPage = ({ product, onBack }) => {
         return newErrors;
       });
     }
-  };
-
-  const validateFile = (file) => {
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    // Temporarily restrict to PDF only - uncomment image types below when ready
-    const allowedTypes = ['application/pdf'];
-    // const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']; // Enable image support later
-    
-    if (file.size > maxSize) {
-      return `File ${file.name} is too large. Maximum size is 10MB.`;
-    }
-    
-    if (!allowedTypes.includes(file.type)) {
-      return `File ${file.name} has an unsupported format. Please use PDF only.`;
-    }
-    
-    return null;
-  };
-
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    setFileError(null);
-    
-    const validFiles = [];
-    const errors = [];
-    
-    files.forEach(file => {
-      const error = validateFile(file);
-      if (error) {
-        errors.push(error);
-      } else {
-        validFiles.push(file);
-      }
-    });
-    
-    if (errors.length > 0) {
-      setFileError(errors.join(' '));
-    }
-    
-    if (validFiles.length > 0) {
-      setUploadedFiles(prev => [...prev, ...validFiles]);
-    }
-  };
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const files = Array.from(e.dataTransfer.files);
-      setFileError(null);
-      
-      const validFiles = [];
-      const errors = [];
-      
-      files.forEach(file => {
-        const error = validateFile(file);
-        if (error) {
-          errors.push(error);
-        } else {
-          validFiles.push(file);
-        }
-      });
-      
-      if (errors.length > 0) {
-        setFileError(errors.join(' '));
-      }
-      
-      if (validFiles.length > 0) {
-        setUploadedFiles(prev => [...prev, ...validFiles]);
-      }
-    }
-  };
-
-  const removeFile = (index) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-    setFileError(null);
-  };
-
-  const getFileIcon = (file) => {
-    if (file.type.startsWith('image/')) {
-      return '🖼️';
-    } else if (file.type === 'application/pdf') {
-      return '📄';
-    }
-    return '📎';
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const handlePreviewFiles = () => {
-    if (uploadedFiles.length === 0) return;
-    
-    // Create preview data for images
-    const previewData = uploadedFiles.map(file => ({
-      file,
-      url: URL.createObjectURL(file),
-      approved: false
-    }));
-    
-    setPreviewFiles(previewData);
-    setShowPreviewDialog(true);
-  };
-
-  const handleApproveFile = (index) => {
-    setPreviewFiles(prev => 
-      prev.map((item, i) => 
-        i === index ? { ...item, approved: !item.approved } : item
-      )
-    );
-  };
-
-  const handleConfirmApproval = () => {
-    // Only keep approved files
-    const approvedFiles = previewFiles
-      .filter(item => item.approved)
-      .map(item => item.file);
-    
-    setUploadedFiles(approvedFiles);
-    setShowPreviewDialog(false);
-    setPreviewFiles([]);
-    
-    // Clean up object URLs
-    previewFiles.forEach(item => {
-      URL.revokeObjectURL(item.url);
-    });
-  };
-
-  const handleCancelPreview = () => {
-    setShowPreviewDialog(false);
-    // Clean up object URLs
-    previewFiles.forEach(item => {
-      URL.revokeObjectURL(item.url);
-    });
-    setPreviewFiles([]);
   };
 
   const handleShippingEstimate = async () => {
@@ -616,6 +440,10 @@ const ProductDetailPage = ({ product, onBack }) => {
     if (!hasQuantityInOptions && quantity < 1) {
       errors.quantity = 'Quantity must be at least 1';
     }
+
+    if (!artworkHandoffAccepted) {
+      errors.artworkHandoff = 'Confirm the artwork handoff requirement before adding this item to your cart.';
+    }
     
     // Validate shipping info for shipping estimates
     if (activeStep >= 1) {
@@ -644,12 +472,6 @@ const ProductDetailPage = ({ product, onBack }) => {
     setValidationErrors(prev => ({ ...prev, ...errors }));
     return Object.keys(errors).length === 0;
   };
-
-  const steps = [
-    'Configure Product',
-    'Upload Artwork',
-    'Shipping & Checkout'
-  ];
 
   // Show loading spinner while initial data is being fetched
   if (initialLoading) {
@@ -1073,20 +895,11 @@ const ProductDetailPage = ({ product, onBack }) => {
                 </Typography>
                 <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
                   <Box sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
-                    {livePreviewUrl ? (
-                      <embed
-                        src={livePreviewUrl}
-                        type="application/pdf"
-                        style={{ width: '100%', height: '180px', border: 'none' }}
-                        title={uploadedFiles[0]?.name}
-                      />
-                    ) : (
-                      <img
-                        src={product.image || productTypeImage || logoImage}
-                        alt={product.name}
-                        style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
-                      />
-                    )}
+                    <img
+                      src={product.image || productTypeImage || logoImage}
+                      alt={product.name}
+                      style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
+                    />
                   </Box>
                   <CardContent>
                     <Typography variant="subtitle1" fontWeight={700} gutterBottom>
@@ -1096,7 +909,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                       Service level: {selectedCustomizationOption.label}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                      This preview shows what the client has selected, uploaded, and requested so they can review the order before checkout.
+                      This summary shows the selected service and product options. Artwork is transferred separately after order review.
                     </Typography>
                     <List dense sx={{ py: 0 }}>
                       {options.map((optionGroup) => {
@@ -1120,21 +933,11 @@ const ProductDetailPage = ({ product, onBack }) => {
                       {designNotes || 'No design notes added yet.'}
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                      Uploaded Artwork
+                      Artwork Handoff
                     </Typography>
-                    {uploadedFiles.length > 0 ? (
-                      <List dense sx={{ py: 0 }}>
-                        {uploadedFiles.map((file) => (
-                          <ListItem key={file.name} disableGutters sx={{ py: 0.25 }}>
-                            <ListItemText primary={file.name} secondary={formatFileSize(file.size)} />
-                          </ListItem>
-                        ))}
-                      </List>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No artwork uploaded yet.
-                      </Typography>
-                    )}
+                    <Typography variant="body2" color="text.secondary">
+                      Secure transfer instructions are provided after the order is reviewed.
+                    </Typography>
                   </CardContent>
                 </Card>
               </>
@@ -1145,122 +948,49 @@ const ProductDetailPage = ({ product, onBack }) => {
             </Typography>
             <Stepper activeStep={activeStep} orientation="vertical">
               <Step>
-                <StepLabel>Review artwork instructions</StepLabel>
+                <StepLabel>Confirm artwork handoff</StepLabel>
                 <StepContent>
                   <Box sx={{ mb: 2 }}>
                     <Alert severity="warning" sx={{ mb: 2 }}>
-                      Artwork selected below is previewed only in this browser. It is not uploaded or attached to your order. Contact Go Postal SD to arrange secure artwork transfer before production.
+                      This website does not upload artwork during product configuration. It is not uploaded or attached to your order. After your order is reviewed, Go Postal SD will provide secure artwork transfer instructions. Production will not begin until the store confirms receipt and print readiness.
                     </Alert>
-                    <input
-                      accept="image/*,.pdf"
-                      style={{ display: 'none' }}
-                      id="file-upload"
-                      multiple
-                      type="file"
-                      onChange={handleFileUpload}
+                    <FormControlLabel
+                      control={(
+                        <Checkbox
+                          checked={artworkHandoffAccepted}
+                          onChange={(event) => {
+                            setArtworkHandoffAccepted(event.target.checked);
+                            if (event.target.checked && validationErrors.artworkHandoff) {
+                              setValidationErrors((previous) => {
+                                const next = { ...previous };
+                                delete next.artworkHandoff;
+                                return next;
+                              });
+                            }
+                          }}
+                        />
+                      )}
+                      label="I understand that artwork is transferred separately and production starts only after Go Postal SD confirms the file."
                     />
-                    
-                    {/* Drag and Drop Area */}
-                    <Box
-                      onDragEnter={handleDrag}
-                      onDragLeave={handleDrag}
-                      onDragOver={handleDrag}
-                      onDrop={handleDrop}
-                      sx={{
-                        border: `2px dashed ${dragActive ? 'primary.main' : 'grey.300'}`,
-                        borderRadius: 2,
-                        p: 3,
-                        textAlign: 'center',
-                        bgcolor: dragActive ? 'primary.50' : 'grey.50',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: 'primary.50',
-                          borderColor: 'primary.main'
-                        }
-                      }}
-                      onClick={() => document.getElementById('file-upload').click()}
-                    >
-                      <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-                      <Typography variant="h6" gutterBottom>
-                        {dragActive ? 'Drop files here' : 'Drag & drop files here'}
+                    {validationErrors.artworkHandoff && (
+                      <Typography variant="caption" color="error" display="block" sx={{ mt: 1 }}>
+                        {validationErrors.artworkHandoff}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        or click to browse files
-                      </Typography>
-                      <Button
-                        variant="outlined"
-                        component="span"
-                        startIcon={<CloudUploadIcon />}
-                      >
-                        Choose Files
-                      </Button>
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        Supported format: PDF only (Max 10MB each). Use Preview & Approve to check exactly what you are sending.
-                      </Typography>
-                    </Box>
-                    
-                    {/* File Error Display */}
-                    {fileError && (
-                      <Alert severity="error" sx={{ mt: 2 }}>
-                        {fileError}
-                      </Alert>
-                    )}
-                    
-                    {/* Uploaded Files Display */}
-                    {uploadedFiles.length > 0 && (
-                      <Box sx={{ mt: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="subtitle2">
-                            Uploaded Files ({uploadedFiles.length}):
-                          </Typography>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<VisibilityIcon />}
-                            onClick={handlePreviewFiles}
-                            sx={{ textTransform: 'none' }}
-                          >
-                            Preview & Approve
-                          </Button>
-                        </Box>
-                        <List dense>
-                          {uploadedFiles.map((file, index) => (
-                            <ListItem
-                              key={index}
-                              sx={{
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 1,
-                                mb: 1,
-                                bgcolor: 'background.paper'
-                              }}
-                            >
-                              <ListItemIcon>
-                                <Typography sx={{ fontSize: 20 }}>
-                                  {getFileIcon(file)}
-                                </Typography>
-                              </ListItemIcon>
-                              <ListItemText
-                                primary={file.name}
-                                secondary={formatFileSize(file.size)}
-                              />
-                              <IconButton
-                                edge="end"
-                                onClick={() => removeFile(index)}
-                                size="small"
-                              >
-                                <CloseIcon />
-                              </IconButton>
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
                     )}
                   </Box>
                   <Button
                     variant="contained"
-                    onClick={() => setActiveStep(1)}
+                    onClick={() => {
+                      if (!artworkHandoffAccepted) {
+                        setValidationErrors((previous) => ({
+                          ...previous,
+                          artworkHandoff: 'Confirm the artwork handoff requirement to continue.',
+                        }));
+                        return;
+                      }
+                      setActiveStep(1);
+                    }}
+                    disabled={!artworkHandoffAccepted}
                     sx={{ mt: 1, mr: 1 }}
                   >
                     Continue
@@ -1419,7 +1149,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                 Shipping estimates not available
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                We're unable to calculate shipping costs for this item at the moment.
+                We&apos;re unable to calculate shipping costs for this item at the moment.
                 Please contact us for shipping information.
               </Typography>
             </Box>
@@ -1441,151 +1171,6 @@ const ProductDetailPage = ({ product, onBack }) => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
 
-      {/* File Preview Dialog */}
-      <Dialog
-        open={showPreviewDialog}
-        onClose={handleCancelPreview}
-        maxWidth="lg"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            Preview & Approve Artwork
-            <IconButton onClick={handleCancelPreview}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Review your uploaded files and select which ones to approve for your order.
-          </Typography>
-          
-          <Grid container spacing={2}>
-            {previewFiles.map((item, index) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
-                <Card sx={{ height: '100%', position: 'relative' }}>
-                  {/* Image preview - commented out for PDF-only restriction */}
-                  {/* {item.file.type.startsWith('image/') ? (
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={item.url}
-                      alt={item.file.name}
-                      sx={{ objectFit: 'cover' }}
-                    />
-                  ) : item.file.type === 'application/pdf' ? (
-                    <Box sx={{ 
-                      height: 400, 
-                      overflow: 'auto',
-                      bgcolor: 'grey.100'
-                    }}>
-                      <iframe
-                        src={item.url}
-                        title={item.file.name}
-                        width="100%"
-                        height="400px"
-                        style={{ border: 'none' }}
-                      />
-                    </Box>
-                  ) : (
-                    <Box sx={{ 
-                      height: 200, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      bgcolor: 'grey.100'
-                    }}>
-                      <Typography sx={{ fontSize: 48 }}>
-                        {getFileIcon(item.file)}
-                      </Typography>
-                    </Box>
-                  )} */}
-                  
-                  {/* PDF-only preview */}
-                  {item.file.type === 'application/pdf' ? (
-                    <Box sx={{ 
-                      height: 400, 
-                      overflow: 'auto',
-                      bgcolor: 'grey.100'
-                    }}>
-                      <iframe
-                        src={item.url}
-                        title={item.file.name}
-                        width="100%"
-                        height="400px"
-                        style={{ border: 'none' }}
-                      />
-                    </Box>
-                  ) : (
-                    <Box sx={{ 
-                      height: 200, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      bgcolor: 'grey.100'
-                    }}>
-                      <Typography sx={{ fontSize: 48 }}>
-                        {getFileIcon(item.file)}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  <CardContent>
-                    <Typography variant="subtitle2" noWrap>
-                      {item.file.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {formatFileSize(item.file.size)}
-                    </Typography>
-                    
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={item.approved}
-                          onChange={() => handleApproveFile(index)}
-                          color="primary"
-                        />
-                      }
-                      label="Approve"
-                      sx={{ mt: 1 }}
-                    />
-                  </CardContent>
-                  
-                  {item.approved && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        bgcolor: 'success.main',
-                        color: 'white',
-                        borderRadius: '50%',
-                        p: 0.5
-                      }}
-                    >
-                      <CheckCircleIcon fontSize="small" />
-                    </Box>
-                  )}
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelPreview} startIcon={<CancelIcon />}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleConfirmApproval} 
-            variant="contained" 
-            startIcon={<CheckCircleIcon />}
-            disabled={previewFiles.filter(item => item.approved).length === 0}
-          >
-            Confirm Approval ({previewFiles.filter(item => item.approved).length})
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 };
