@@ -19,7 +19,7 @@ that do not carry the `gopostal-rehearsal` Compose project label.
 - Backups: `/var/backups/gopostal-rehearsal`
 - Restore evidence: `/var/lib/gopostal-rehearsal/evidence`
 - Operator: `ops-gopostal`
-- Application source: `6f7c9e8ea4b5d4fac4d5cc05c36f3d249d91acac`
+- Application source: `b3eb15cd3e47c6962d994a241838ad12e3d0b60e`
 - Local application endpoint: `127.0.0.1:8510`
 - Local frontend endpoint: `127.0.0.1:8511`
 
