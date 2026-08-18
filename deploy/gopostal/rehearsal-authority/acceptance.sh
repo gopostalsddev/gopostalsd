@@ -6,7 +6,7 @@ readonly IDENTITY='ops-gopostal'
 readonly VERIFY='/usr/local/share/gopostal-rehearsal-authority/verify-installed.sh'
 readonly SOURCE='/srv/gopostal/rehearsal-app'
 readonly STACK='/srv/docker/stacks/gopostal-rehearsal'
-readonly EXPECTED_SHA='13999ba43d687c73b5a8e2217878b4c3b98d98cd'
+readonly EXPECTED_SHA='6f7c9e8ea4b5d4fac4d5cc05c36f3d249d91acac'
 readonly -a WRAPPERS=(gopostal-backup gopostal-bootstrap gopostal-compose-build gopostal-compose-down gopostal-compose-restart gopostal-compose-up gopostal-logs gopostal-migrate gopostal-restore-rehearsal gopostal-status gopostal-sync-source gopostal-test)
 
 passes=0
