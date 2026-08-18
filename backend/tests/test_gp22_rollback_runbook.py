@@ -64,7 +64,7 @@ def test_reopen_requires_new_release_bound_acceptance():
     assert "reconciled all writes/provider events" in RUNBOOK
 
 
-def test_canonical_url_is_unresolved_and_no_live_operation_is_authorized():
-    assert "unresolved `CANONICAL_URL`" in RUNBOOK
+def test_canonical_url_is_confirmed_and_no_live_operation_is_authorized():
+    assert "client-confirmed `CANONICAL_URL=https://uzimaprints.com`" in RUNBOOK
     assert "https://gopostalsd.com" not in RUNBOOK
     assert "authorizes no host, DNS, provider, or database\nmutation" in RUNBOOK

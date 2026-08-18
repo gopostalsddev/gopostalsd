@@ -2,7 +2,7 @@
 2d44d1117b3ec367ee296e5b3bc70456f2e9cecf0d6509ff3c8ba5b4203f9add *./docker-compose.rehearsal.yml
 607d97f8155b876c208ad446502c13ee68b3e789de7ffce6048e3856e5d7d1e5 *./frontend.Dockerfile
 f6baa4d4e08de3c614e10e6d4d2f06b205d3fb61b173b4453bc612dd58ceb425 *./lib/gopostal-common.inc
-fa7553c6f35a994a3dd1f3fb24449629b07548db0ab6cd063195ceeaf92a1fa6 *./provision.sh
+d2557c28b8266555a2622094e7d07aa055e2d11947ca90eda3830acfaee0d219 *./provision.sh
 1f61dbf4db68764b59922e8a7c8031e08c346783a14d6f7c5280d178114986d0 *./sudoers.ops-gopostal
 3edd33692d5e08fca30627723c76d8c0da5813bc64b9dcc6f4e71e778122b41d *./verify-installed.sh
 5c5dfa9d5b356ca51e7b1e6424f9d25edc909403fc087d30bf66998f17ceaa2b *./wrappers/gopostal-backup

@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import {
   Print,
-  LocationOn,
+  ContactMail,
   LocalShipping,
   Inventory2,
   ArrowForward
@@ -46,7 +46,7 @@ const HomePage = () => {
                 mb: 1.8
               }}
             >
-              Welcome To Go Postal SD
+              Bring Your Ideas to Life with Uzima Prints
             </Typography>
 
             <Typography
@@ -57,7 +57,7 @@ const HomePage = () => {
                 mb: 3.5
               }}
             >
-              Your Premier Online Shipping And Printing Destination
+              Professional printing, simple online ordering, and dependable support.
             </Typography>
 
             <Stack
@@ -86,10 +86,8 @@ const HomePage = () => {
               <Button
                 variant="outlined"
                 size="large"
-                startIcon={<LocationOn />}
-                href="https://www.gopostalsd.com/"
-                target="_blank"
-                rel="noopener noreferrer"
+                startIcon={<ContactMail />}
+                onClick={() => navigate('/contact')}
                 sx={{
                   borderRadius: 1,
                   px: 4.5,
@@ -102,7 +100,7 @@ const HomePage = () => {
                   }
                 }}
               >
-                Visit In Person
+                Talk to Our Team
               </Button>
             </Stack>
           </Box>
@@ -150,10 +148,10 @@ const HomePage = () => {
               <CardContent sx={{ p: 3.2 }}>
                 <Inventory2 color="primary" sx={{ mb: 1.2 }} />
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 1.1 }}>
-                  Local Accountability
+                  Responsive Support
                 </Typography>
                 <Typography color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                  Family-owned service means responsive support, transparent communication, and real help when your project has deadlines.
+                  Clear communication and hands-on help keep your project moving when quality and deadlines matter.
                 </Typography>
               </CardContent>
             </Card>
@@ -173,13 +171,13 @@ const HomePage = () => {
                   Premier online shipping, printing, and document services.
                 </Typography>
                 <Typography sx={{ lineHeight: 1.85, mb: 1.8 }}>
-                  Go Postal is your premier destination for online shipping and printing services. Our family-owned business is dedicated to providing exceptional customer service and professional printing excellence, backed by fast shipping and competitive pricing.
+                  Uzima Prints makes professional print ordering straightforward. Browse products, configure your order, and get responsive help when a project needs a human touch.
                 </Typography>
                 <Typography sx={{ lineHeight: 1.85, mb: 1.8 }}>
                   We prioritize saving you time and money by offering the right printing services at competitive prices. Whether you need small black-and-white copies or large full-color prints, we handle everything with precision and care.
                 </Typography>
                 <Typography sx={{ lineHeight: 1.85 }}>
-                  As San Diego's premier copy, print, and document services center, we handle everything from small black-and-white copies to large full-color prints. <strong>If it can be printed, Go Postal can do it!</strong>
+                  From everyday business materials to high-impact promotional pieces, Uzima Prints helps turn finished ideas into print-ready results.
                 </Typography>
               </CardContent>
             </Card>
@@ -201,10 +199,10 @@ const HomePage = () => {
                   How To Order
                 </Typography>
                 <Typography variant="h4" fontWeight={700} sx={{ mt: 1, mb: 2.2 }}>
-                  Online convenience with in-person support.
+                  Online convenience with real support.
                 </Typography>
                 <Typography sx={{ lineHeight: 1.9, color: 'text.secondary', mb: 2.4 }}>
-                  Place printing orders online or in person. Our convenient online ordering system allows you to submit your printing jobs from anywhere, while our in-person service provides immediate assistance and consultation for your printing needs. Support local business and experience why shopping small means getting the best printing service around!
+                  Place printing orders online from anywhere, then work with our team when artwork, product choices, or fulfillment details need clarification.
                 </Typography>
 
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.6} sx={{ mt: 'auto' }}>
@@ -218,13 +216,11 @@ const HomePage = () => {
                   </Button>
                   <Button
                     variant="outlined"
-                    startIcon={<LocationOn />}
-                    href="https://maps.google.com/?q=1501+India+St+Suite+103+San+Diego+CA+92101"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    startIcon={<ContactMail />}
+                    onClick={() => navigate('/contact')}
                     sx={{ borderRadius: 1 }}
                   >
-                    Open Directions
+                    Contact Support
                   </Button>
                 </Stack>
               </CardContent>

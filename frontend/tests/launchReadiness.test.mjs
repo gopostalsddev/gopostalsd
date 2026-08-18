@@ -27,13 +27,21 @@ test('footer does not render social controls without approved destinations', () 
   assert.doesNotMatch(footer, /aria-label="LinkedIn"/);
 });
 
-test('storefront has hostname-independent discovery metadata', () => {
+test('storefront discovery metadata uses the confirmed Uzima Prints origin', () => {
   assert.match(index, /name="description"/);
   assert.match(index, /property="og:title"/);
   assert.match(index, /name="twitter:card"/);
   assert.match(robots, /User-agent: \*/);
-  assert.doesNotMatch(index, /rel="canonical"/);
-  assert.doesNotMatch(robots, /^Sitemap:/m);
+  assert.match(index, /rel="canonical" href="https:\/\/uzimaprints\.com\/"/);
+  assert.match(index, /property="og:site_name" content="Uzima Prints"/);
+  assert.match(robots, /^Sitemap: https:\/\/uzimaprints\.com\/sitemap\.xml$/m);
+});
+
+test('customer-facing launch identity is Uzima Prints with restrained platform attribution', () => {
+  assert.match(footer, /© \{currentYear\} Uzima Prints/);
+  assert.match(footer, /Powered by Go Postal/);
+  assert.match(footer, /support@uzimaprints\.com/);
+  assert.doesNotMatch(footer, /gopostalsd@gmail\.com|1501 India St|619-237-0374/);
 });
 
 test('artwork flow never claims a browser-selected file was uploaded', () => {

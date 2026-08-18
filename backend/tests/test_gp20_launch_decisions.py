@@ -23,13 +23,14 @@ def test_approved_owner_decisions_are_recorded_exactly():
     assert decisions["database_launch_path"]["value"] == "fresh_postgresql"
     assert decisions["historical_data_recovery"]["status"] == "NOT_APPLICABLE"
     assert decisions["email_provider"]["value"] == "mailersend"
-    assert decisions["default_sender"]["value"] == "support@gopostalsd.com"
+    assert decisions["default_sender"]["value"] == "support@uzimaprints.com"
+    assert decisions["canonical_url"]["status"] == "APPROVED"
+    assert decisions["canonical_url"]["value"] == "https://uzimaprints.com"
 
 
-def test_canonical_url_and_live_provider_decisions_remain_pending():
+def test_remaining_live_provider_decisions_remain_pending():
     decisions = {item["id"]: item for item in _document()["decisions"]}
     for decision_id in (
-        "canonical_url",
         "dns_change_authority",
         "mailersend_domain_verification",
         "square_production_configuration",
@@ -48,9 +49,9 @@ def test_current_ledger_fails_closed_with_only_ids_in_report():
     report, exit_code = MODULE.verify(DECISIONS)
     assert exit_code == 3
     assert report["verdict"] == "OPEN"
-    assert "canonical_url" in report["pending"]
+    assert "dns_change_authority" in report["pending"]
     rendered = json.dumps(report)
-    assert "support@gopostalsd.com" not in rendered
+    assert "support@uzimaprints.com" not in rendered
 
 
 def test_ledger_contains_no_credential_fields_or_canonical_url_guess():
@@ -74,8 +75,8 @@ def test_duplicate_or_value_bearing_pending_decisions_are_rejected(tmp_path):
         raise AssertionError("duplicate decision was accepted")
 
     document = _document()
-    canonical = next(item for item in document["decisions"] if item["id"] == "canonical_url")
-    canonical["value"] = "https://guessed.invalid"
+    canonical = next(item for item in document["decisions"] if item["id"] == "dns_change_authority")
+    canonical["value"] = "unapproved-reference"
     invalid = tmp_path / "invalid.json"
     invalid.write_text(json.dumps(document), encoding="utf-8")
     try:

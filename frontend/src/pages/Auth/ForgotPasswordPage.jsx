@@ -24,7 +24,7 @@ import {
     ArrowBack
 } from '@mui/icons-material'
 import { useAuth } from '../../contexts/AuthContext'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/uzima-mark.svg'
 
 const ForgotPasswordPage = () => {
     const [email, setEmail] = useState('')
@@ -149,7 +149,7 @@ const ForgotPasswordPage = () => {
                     <Box sx={{ mb: 3 }}>
                         <img 
                             src={logo} 
-                            alt="Go Postal SD Logo" 
+                            alt="Uzima Prints logo"
                             style={{ height: '80px', width: 'auto' }}
                         />
                     </Box>

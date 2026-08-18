@@ -1,7 +1,8 @@
 # GP-21: fresh-launch cutover runbook
 
 This runbook is prepared only. It authorizes no VPS, DNS, Render, MailerSend, or
-Square mutation. `CANONICAL_URL`, `CANONICAL_HOST`, `RELEASE_SHA`, and
+Square mutation. The client-confirmed `CANONICAL_URL=https://uzimaprints.com`
+and `CANONICAL_HOST=uzimaprints.com` remain explicit runbook inputs. `RELEASE_SHA` and
 `IMAGE_DIGEST` are launch variables, not values to infer from the approved
 sender address.
 
@@ -20,7 +21,7 @@ record is pending, invalid, stale, or bound to another SHA, stop.
 
 The owner-controlled launch variables must also be closed: canonical URL;
 approved DNS change; MailerSend domain verification for
-`support@gopostalsd.com`; safely installed production provider credentials;
+`support@uzimaprints.com`; safely installed production provider credentials;
 encrypted off-host backup destination; alert recipient; and approved retention,
 RPO, RTO, and rollback decision authority.
 

@@ -19,8 +19,8 @@ from server.thirdparty.smtp import SMTPAdapter
 BASE = {
     "ENVIRONMENT": "production",
     "EMAIL_PROVIDER": "mailersend",
-    "EMAIL_FROM_ADDRESS": "support@gopostalsd.com",
-    "EMAIL_FROM_NAME": "Go Postal SD",
+    "EMAIL_FROM_ADDRESS": "support@uzimaprints.com",
+    "EMAIL_FROM_NAME": "Uzima Prints",
     "MAILERSEND_API_KEY": "mock-mailersend-key",
     "PUBLIC_BASE_URL": "https://launch.example.test",
 }
@@ -32,7 +32,7 @@ def test_approved_mailersend_configuration_is_explicit_and_complete():
         validate_production_email_settings()
 
     assert settings.provider == "mailersend"
-    assert settings.from_address == "support@gopostalsd.com"
+    assert settings.from_address == "support@uzimaprints.com"
     assert settings.public_base_url == "https://launch.example.test"
 
 
@@ -40,8 +40,8 @@ def test_smtp_can_be_selected_with_the_same_canonical_sender_vocabulary():
     smtp = {
         "ENVIRONMENT": "production",
         "EMAIL_PROVIDER": "smtp",
-        "EMAIL_FROM_ADDRESS": "support@gopostalsd.com",
-        "EMAIL_FROM_NAME": "Go Postal SD",
+        "EMAIL_FROM_ADDRESS": "support@uzimaprints.com",
+        "EMAIL_FROM_NAME": "Uzima Prints",
         "PUBLIC_BASE_URL": "https://launch.example.test",
         "SMTP_HOST": "smtp.example.test",
         "SMTP_PORT": "587",
@@ -68,6 +68,20 @@ def test_missing_production_email_configuration_fails_closed(removed, message):
     environment.pop(removed)
     with patch.dict("os.environ", environment, clear=True):
         with pytest.raises(EmailConfigurationError, match=message):
+            load_email_settings(required=True)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("EMAIL_FROM_ADDRESS", "support@another-brand.example"),
+        ("EMAIL_FROM_NAME", "Another Brand"),
+    ),
+)
+def test_production_rejects_non_uzima_sender_identity(field, value):
+    environment = dict(BASE, **{field: value})
+    with patch.dict("os.environ", environment, clear=True):
+        with pytest.raises(EmailConfigurationError, match=field):
             load_email_settings(required=True)
 
 
@@ -118,8 +132,8 @@ def test_mailersend_adapter_uses_the_approved_sender_identity():
         patch("server.thirdparty.mailersend.MailerSendClient"),
     ):
         adapter = MailerSendAdapter()
-    assert adapter.get_from_email() == "support@gopostalsd.com"
-    assert adapter.get_from_name() == "Go Postal SD"
+    assert adapter.get_from_email() == "support@uzimaprints.com"
+    assert adapter.get_from_name() == "Uzima Prints"
 
 
 @pytest.mark.parametrize(
@@ -147,6 +161,21 @@ def test_account_action_links_use_confirmed_same_origin_hash_routes(
     assert f"https://launch.example.test{expected_path}" in positional[3]
 
 
+def test_account_email_content_uses_uzima_brand_and_platform_attribution():
+    with patch.dict("os.environ", BASE, clear=True):
+        service = EmailService()
+    service.client = Mock()
+    service.client.send_email.return_value = {"success": True}
+
+    service.send_verification_email("customer@example.test", "Customer", "token")
+
+    subject, text_content, html_content = service.client.send_email.call_args.args[1:4]
+    combined = "\n".join((subject, text_content, html_content))
+    assert "Uzima Prints" in combined
+    assert "Powered by Go Postal" in combined
+    assert "Go Postal SD" not in combined
+
+
 def test_mailersend_failure_does_not_log_or_return_provider_secret(caplog):
     secret = "super-secret-provider-detail"
     with (
@@ -172,8 +201,8 @@ def test_smtp_failure_does_not_log_or_return_provider_secret(caplog):
         "SMTP_HOST": "smtp.example.test",
         "SMTP_USERNAME": "mock-user",
         "SMTP_PASSWORD": "mock-password",
-        "EMAIL_FROM_ADDRESS": "support@gopostalsd.com",
-        "EMAIL_FROM_NAME": "Go Postal SD",
+        "EMAIL_FROM_ADDRESS": "support@uzimaprints.com",
+        "EMAIL_FROM_NAME": "Uzima Prints",
     }
     with (
         patch.dict("os.environ", smtp_environment, clear=True),

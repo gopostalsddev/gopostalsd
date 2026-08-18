@@ -1,7 +1,7 @@
 # GP-22: fresh-launch rollback and recovery
 
 This runbook is prepared only and authorizes no host, DNS, provider, or database
-mutation. It applies to the GP-03B fresh launch at unresolved `CANONICAL_URL`
+mutation. It applies to the GP-03B fresh launch at client-confirmed `CANONICAL_URL=https://uzimaprints.com`
 and exact `RELEASE_SHA`.
 
 The historical Render database is unavailable and is not a rollback target.

@@ -4,7 +4,12 @@ from flask import Flask
 from markupsafe import escape as html_escape
 from server.thirdparty.mailersend import MailerSendAdapter
 from server.thirdparty.smtp import SMTPAdapter
-from server.email_config import load_email_settings
+from server.email_config import (
+    BRAND_NAME,
+    INTENDED_SENDER_ADDRESS,
+    PLATFORM_ATTRIBUTION,
+    load_email_settings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,14 +110,14 @@ class EmailService:
     
     def send_verification_email(self, email: str, first_name: str, token: str, reply_to: str = None) -> Dict[str, Any]:
         """Send email verification email."""
-        subject = "Verify Your Email - Go Postal SD"
+        subject = f"Verify Your Email - {BRAND_NAME}"
 
         verification_url = f"{self.base_url}/#/verify-email?token={token}"
         
         text_content = f"""
                 Hello {first_name},
 
-                Welcome to Go Postal SD! Please verify your email address to complete your registration.
+                Welcome to {BRAND_NAME}! Please verify your email address to complete your registration.
 
                 Click the link below to verify your email:
                 {verification_url}
@@ -120,7 +125,9 @@ class EmailService:
                 If you didn't create an account with us, please ignore this email.
 
                 Best regards,
-                Go Postal SD Team
+                {BRAND_NAME} Team
+
+                {PLATFORM_ATTRIBUTION}
                         """.strip()
                         
         html_content = f"""
@@ -141,11 +148,11 @@ class EmailService:
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h1>Welcome to Go Postal SD!</h1>
+                            <h1>Welcome to {BRAND_NAME}!</h1>
                         </div>
                         <div class="content">
                             <p>Hello {first_name},</p>
-                            <p>Thank you for registering with Go Postal SD! To complete your registration, please verify your email address.</p>
+                            <p>Thank you for registering with {BRAND_NAME}! To complete your registration, please verify your email address.</p>
                             <p style="text-align: center;">
                                 <a href="{verification_url}" class="button">Verify Email Address</a>
                             </p>
@@ -154,7 +161,8 @@ class EmailService:
                             <p>If you didn't create an account with us, please ignore this email.</p>
                         </div>
                         <div class="footer">
-                            <p>Best regards,<br>Go Postal SD Team</p>
+                            <p>Best regards,<br>{BRAND_NAME} Team</p>
+                            <p>{PLATFORM_ATTRIBUTION}</p>
                         </div>
                     </div>
                 </body>
@@ -165,14 +173,14 @@ class EmailService:
     
     def send_password_reset_email(self, email: str, first_name: str, token: str, reply_to: str = None) -> Dict[str, Any]:
         """Send password reset email."""
-        subject = "Reset Your Password - Go Postal SD"
+        subject = f"Reset Your Password - {BRAND_NAME}"
         
         reset_url = f"{self.base_url}/#/reset-password?token={token}"
         
         text_content = f"""
             Hello {first_name},
 
-            You requested to reset your password for your Go Postal SD account.
+            You requested to reset your password for your {BRAND_NAME} account.
 
             Click the link below to reset your password:
             {reset_url}
@@ -182,7 +190,9 @@ class EmailService:
             If you didn't request a password reset, please ignore this email.
 
             Best regards,
-            Go Postal SD Team
+            {BRAND_NAME} Team
+
+            {PLATFORM_ATTRIBUTION}
                     """.strip()
                     
         html_content = f"""
@@ -208,7 +218,7 @@ class EmailService:
                     </div>
                     <div class="content">
                         <p>Hello {first_name},</p>
-                        <p>You requested to reset your password for your Go Postal SD account.</p>
+                        <p>You requested to reset your password for your {BRAND_NAME} account.</p>
                         <p style="text-align: center;">
                             <a href="{reset_url}" class="button">Reset Password</a>
                         </p>
@@ -220,7 +230,8 @@ class EmailService:
                         <p>If you didn't request a password reset, please ignore this email.</p>
                     </div>
                     <div class="footer">
-                        <p>Best regards,<br>Go Postal SD Team</p>
+                        <p>Best regards,<br>{BRAND_NAME} Team</p>
+                        <p>{PLATFORM_ATTRIBUTION}</p>
                     </div>
                 </div>
             </body>
@@ -230,7 +241,7 @@ class EmailService:
         return self.send_email(email, subject, text_content, html_content, reply_to)
     
     def send_contact_email(self, name: str, email: str, phone: str, subject: str, message: str, reply_to: str = None) -> bool:
-        """Send contact form email to Go Postal."""
+        """Send contact form email to the Uzima Prints support address."""
         email_subject = f"Contact Form: {subject}"
 
         # Escape user-supplied values before inserting into HTML to prevent XSS.
@@ -241,7 +252,7 @@ class EmailService:
         safe_message = html_escape(message)
 
         text_content = f"""
-            New contact form submission from Go Postal SD website:
+            New contact form submission from the {BRAND_NAME} website:
 
             Name: {name}
             Email: {email}
@@ -252,7 +263,7 @@ class EmailService:
             {message}
 
             ---
-            This message was sent from the Go Postal SD contact form.
+            This message was sent from the {BRAND_NAME} contact form.
                     """.strip()
 
         html_content = f"""
@@ -296,7 +307,7 @@ class EmailService:
                         </div>
                     </div>
                     <div class="footer">
-                        <p>This message was sent from the Go Postal SD contact form.</p>
+                        <p>This message was sent from the {BRAND_NAME} contact form.</p>
                     </div>
                 </div>
             </body>
@@ -304,7 +315,7 @@ class EmailService:
             """.strip()
         
         result = self.send_email(
-            to_email=self.client.get_from_email(),  # Send to Go Postal email
+            to_email=self.client.get_from_email(),
             subject=email_subject,
             text_content=text_content,
             html_content=html_content,
@@ -321,25 +332,20 @@ class EmailService:
     
     def _send_contact_confirmation(self, name: str, email: str, subject: str, reply_to: str = None):
         """Send confirmation email to customer."""
-        confirmation_subject = "Message Received - Go Postal SD"
+        confirmation_subject = f"Message Received - {BRAND_NAME}"
         
         text_content = f"""
             Hello {name},
 
-            Thank you for contacting Go Postal SD! We have received your message regarding "{subject}".
+            Thank you for contacting {BRAND_NAME}! We have received your message regarding "{subject}".
 
             Our team will review your message and get back to you as soon as possible.
 
-            If you have any urgent questions, please call us at (619) 237-0374.
-
             Best regards,
-            Go Postal SD Team
+            {BRAND_NAME} Team
 
-            Go Postal
-            1501 India St Suite 103
-            San Diego, CA 92101
-            Phone: (619) 237-0374
-            Email: gopostalsd@gmail.com
+            Email: {INTENDED_SENDER_ADDRESS}
+            {PLATFORM_ATTRIBUTION}
                     """.strip()
                     
         html_content = f"""
@@ -364,20 +370,16 @@ class EmailService:
                     </div>
                     <div class="content">
                         <p>Hello {name},</p>
-                        <p>Thank you for contacting Go Postal SD! We have received your message regarding <strong>"{subject}"</strong>.</p>
+                        <p>Thank you for contacting {BRAND_NAME}! We have received your message regarding <strong>"{subject}"</strong>.</p>
                         <p>Our team will review your message and get back to you as soon as possible.</p>
-                        <p>If you have any urgent questions, please call us at <strong>(619) 237-0374</strong>.</p>
-                        
                         <div class="contact-info">
-                            <h3>Go Postal SD</h3>
-                            <p>1501 India St Suite 103<br>
-                            San Diego, CA 92101<br>
-                            Phone: (619) 237-0374<br>
-                            Email: gopostalsd@gmail.com</p>
+                            <h3>{BRAND_NAME}</h3>
+                            <p>Email: {INTENDED_SENDER_ADDRESS}</p>
                         </div>
                     </div>
                     <div class="footer">
-                        <p>Best regards,<br>Go Postal SD Team</p>
+                        <p>Best regards,<br>{BRAND_NAME} Team</p>
+                        <p>{PLATFORM_ATTRIBUTION}</p>
                     </div>
                 </div>
             </body>

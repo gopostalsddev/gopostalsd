@@ -66,7 +66,7 @@ const AdminPage = () => {
       >
         <Box sx={{ textAlign: "center", mb: 6 }}>
         <Typography variant="h3" fontWeight={700} gutterBottom>
-          Welcome to the Go Postal SD Admin Console
+          Welcome to the Uzima Prints Admin Console
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 720, mx: "auto" }}>
           Select a management workspace to get started. Each module is optimized for deep operational work with the

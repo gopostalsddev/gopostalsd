@@ -12,8 +12,10 @@ from urllib.parse import urlsplit
 
 
 SUPPORTED_EMAIL_PROVIDERS = {"mailersend", "smtp"}
-INTENDED_SENDER_ADDRESS = "support@gopostalsd.com"
-DEFAULT_SENDER_NAME = "Go Postal SD"
+BRAND_NAME = "Uzima Prints"
+PLATFORM_ATTRIBUTION = "Powered by Go Postal"
+INTENDED_SENDER_ADDRESS = "support@uzimaprints.com"
+DEFAULT_SENDER_NAME = BRAND_NAME
 
 
 class EmailConfigurationError(ValueError):
@@ -79,6 +81,14 @@ def load_email_settings(*, required: bool | None = None) -> EmailSettings | None
         raise EmailConfigurationError("EMAIL_FROM_NAME must be set in production")
     from_address = from_address or INTENDED_SENDER_ADDRESS
     from_name = from_name or DEFAULT_SENDER_NAME
+    if required and from_address.casefold() != INTENDED_SENDER_ADDRESS.casefold():
+        raise EmailConfigurationError(
+            f"EMAIL_FROM_ADDRESS must be {INTENDED_SENDER_ADDRESS} in production"
+        )
+    if required and from_name != DEFAULT_SENDER_NAME:
+        raise EmailConfigurationError(
+            f"EMAIL_FROM_NAME must be {DEFAULT_SENDER_NAME} in production"
+        )
 
     mailersend_configured = bool(os.getenv("MAILERSEND_API_KEY", "").strip())
     smtp_configured = bool(

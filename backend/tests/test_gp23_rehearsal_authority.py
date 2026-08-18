@@ -161,7 +161,7 @@ def test_provisioning_keeps_operator_away_from_docker_and_secrets():
     assert "SQUARE_ENVIRONMENT=sandbox" in PROVISION
     assert "SQUARE_MOCK_PAYMENTS=false" in PROVISION
     assert "PUBLIC_BASE_URL=https://rehearsal.invalid" in PROVISION
-    assert "support@gopostalsd.com" in PROVISION
+    assert "support@uzimaprints.com" in PROVISION
     assert "no supplemental groups" in ACCEPTANCE
     assert "raw Docker socket" in ACCEPTANCE
 

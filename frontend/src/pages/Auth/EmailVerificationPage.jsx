@@ -22,7 +22,7 @@ import {
     Refresh
 } from '@mui/icons-material'
 import { useAuth } from '../../contexts/AuthContext'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/uzima-mark.svg'
 
 const EmailVerificationPage = () => {
     const [email, setEmail] = useState('')
@@ -70,7 +70,7 @@ const EmailVerificationPage = () => {
                     <Box sx={{ mb: 3 }}>
                         <img 
                             src={logo} 
-                            alt="Go Postal SD Logo" 
+                            alt="Uzima Prints logo"
                             style={{ height: '80px', width: 'auto' }}
                         />
                     </Box>
@@ -104,7 +104,7 @@ const EmailVerificationPage = () => {
                     <Box component="ol" sx={{ pl: 3, textAlign: 'left' }}>
                         <Box component="li" sx={{ mb: 1 }}>
                             <Typography variant="body2">
-                                Check your email inbox for a message from Go Postal SD
+                                Check your email inbox for a message from Uzima Prints
                             </Typography>
                         </Box>
                         <Box component="li" sx={{ mb: 1 }}>

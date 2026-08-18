@@ -13,8 +13,8 @@ The `MailerSendAdapter` is a third-party integration adapter that provides email
 MAILERSEND_API_KEY=your_mailersend_api_key_here
 
 # Optional - Email Configuration (defaults provided)
-FROM_EMAIL=noreply@gopostalsd.com
-FROM_NAME=Go Postal SD
+FROM_EMAIL=support@uzimaprints.com
+FROM_NAME=Uzima Prints
 ```
 
 ### Getting MailerSend API Key
@@ -46,10 +46,10 @@ mailer_adapter = MailerSendAdapter()
 # Send simple email
 result = mailer_adapter.send_email(
     to_email="user@example.com",
-    subject="Welcome to Go Postal SD",
+    subject="Welcome to Uzima Prints",
     text_content="Welcome! Thank you for joining us.",
     html_content="<h1>Welcome!</h1><p>Thank you for joining us.</p>",
-    reply_to="support@gopostalsd.com"  # Optional reply-to address
+    reply_to="support@uzimaprints.com"  # Optional reply-to address
 )
 
 if result['success']:

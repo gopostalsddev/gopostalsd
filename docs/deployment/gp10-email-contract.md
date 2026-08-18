@@ -3,8 +3,8 @@
 ## Owner decisions recorded
 
 - Provider: **MailerSend**.
-- Intended sender: **support@gopostalsd.com**.
-- Canonical launch URL: **unresolved** pending client confirmation.
+- Intended sender: **support@uzimaprints.com**.
+- Canonical launch URL: **https://uzimaprints.com** (client-confirmed).
 
 No live MailerSend credential, DNS record, or provider call is part of GP-10.
 Sender-domain verification remains an owner-controlled launch prerequisite.
@@ -14,8 +14,8 @@ Sender-domain verification remains an owner-controlled launch prerequisite.
 Production requires all of the following:
 
 - `EMAIL_PROVIDER=mailersend`
-- `EMAIL_FROM_ADDRESS=support@gopostalsd.com`
-- `EMAIL_FROM_NAME=Go Postal SD`
+- `EMAIL_FROM_ADDRESS=support@uzimaprints.com`
+- `EMAIL_FROM_NAME=Uzima Prints`
 - `MAILERSEND_API_KEY` set through the deployment secret store
 - `PUBLIC_BASE_URL` set to the client-confirmed HTTPS origin, with no path
 

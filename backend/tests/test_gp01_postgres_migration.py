@@ -66,8 +66,8 @@ def _production_env(database_url):
             "PUBLIC_BASE_URL": "https://launch.example.test",
             "TRUSTED_PROXY_HOPS": "1",
             "EMAIL_PROVIDER": "mailersend",
-            "EMAIL_FROM_ADDRESS": "support@gopostalsd.com",
-            "EMAIL_FROM_NAME": "Go Postal SD",
+            "EMAIL_FROM_ADDRESS": "support@uzimaprints.com",
+            "EMAIL_FROM_NAME": "Uzima Prints",
             "MAILERSEND_API_KEY": "gp01-test-mailersend-key",
             "SUPABASE_URL": "https://example.supabase.co",
             "SUPABASE_SERVICE_KEY": (

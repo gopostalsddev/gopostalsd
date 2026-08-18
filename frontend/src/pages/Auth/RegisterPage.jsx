@@ -35,7 +35,7 @@ import {
     PersonAdd
 } from '@mui/icons-material'
 import { useAuth } from '../../contexts/AuthContext'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/uzima-mark.svg'
 
 const steps = ['Account Information', 'Address Information', 'Review & Submit']
 
@@ -639,7 +639,7 @@ const RegisterPage = () => {
                     <Box sx={{ mb: 3 }}>
                         <img 
                             src={logo} 
-                            alt="Go Postal SD Logo" 
+                            alt="Uzima Prints logo"
                             style={{ height: '80px', width: 'auto' }}
                         />
                     </Box>
@@ -647,7 +647,7 @@ const RegisterPage = () => {
                         Create Account
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                        Join Go Postal SD and start your printing journey
+                        Join Uzima Prints and start your printing journey
                     </Typography>
                 </Box>
 

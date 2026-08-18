@@ -7,13 +7,9 @@ import {
   Divider,
   Stack
 } from '@mui/material';
-import {
-  LocationOn,
-  Phone,
-  Email
-} from '@mui/icons-material';
+import { Email } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import logo from '../assets/uzima-mark.svg';
 
 const ProfessionalFooter = () => {
   const navigate = useNavigate();
@@ -41,12 +37,12 @@ const ProfessionalFooter = () => {
             <Box sx={{ mb: 3 }}>
               <img 
                 src={logo} 
-                alt="Go Postal SD Logo" 
-                style={{ height: '60px', width: 'auto', filter: 'brightness(0) invert(1)' }}
+                alt="Uzima Prints logo"
+                style={{ height: '60px', width: 'auto' }}
               />
             </Box>
             <Typography variant="h6" gutterBottom fontWeight="bold">
-              Go Postal SD
+              Uzima Prints
             </Typography>
           </Grid>
 
@@ -141,28 +137,12 @@ const ProfessionalFooter = () => {
             </Typography>
             <Stack spacing={1}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <LocationOn sx={{ mr: 1, fontSize: 20 }} />
-                <Typography variant="body2">
-                  1501 India St Suite 103<br />
-                  San Diego, CA 92101
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Phone sx={{ mr: 1, fontSize: 20 }} />
-                <Link 
-                  href="tel:619-237-0374" 
-                  sx={{ color: 'white', textDecoration: 'none' }}
-                >
-                  (619) 237-0374
-                </Link>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Email sx={{ mr: 1, fontSize: 20 }} />
                 <Link 
-                  href="mailto:gopostalsd@gmail.com" 
+                  href="mailto:support@uzimaprints.com"
                   sx={{ color: 'white', textDecoration: 'none' }}
                 >
-                  gopostalsd@gmail.com
+                  support@uzimaprints.com
                 </Link>
               </Box>
             </Stack>
@@ -191,9 +171,14 @@ const ProfessionalFooter = () => {
           alignItems: 'center',
           gap: 2
         }}>
-          <Typography variant="body2" color="rgba(255,255,255,0.8)">
-            © {currentYear} Go Postal SD. All rights reserved.
-          </Typography>
+          <Box>
+            <Typography variant="body2" color="rgba(255,255,255,0.8)">
+              © {currentYear} Uzima Prints. All rights reserved.
+            </Typography>
+            <Typography variant="caption" color="rgba(255,255,255,0.58)">
+              Powered by Go Postal
+            </Typography>
+          </Box>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
             <Link
