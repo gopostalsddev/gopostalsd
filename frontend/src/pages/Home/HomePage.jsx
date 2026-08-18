@@ -7,8 +7,7 @@ import {
   Grid,
   Card,
   CardContent,
-  Stack,
-  Chip
+  Stack
 } from '@mui/material';
 import {
   Print,
@@ -64,19 +63,6 @@ const HomePage = () => {
               Professional printing, simple online ordering, and dependable support.
             </Typography>
 
-            <Stack
-              direction="row"
-              spacing={1.2}
-              justifyContent="center"
-              flexWrap="wrap"
-              useFlexGap
-              sx={{ mb: 4.5 }}
-            >
-              <Chip label="We Pick" sx={{ borderRadius: 1, fontWeight: 700, color: 'white', backgroundColor: 'rgba(9,20,33,0.5)' }} />
-              <Chip label="We Pack" sx={{ borderRadius: 1, fontWeight: 700, color: 'white', backgroundColor: 'rgba(9,20,33,0.5)' }} />
-              <Chip label="We Ship" sx={{ borderRadius: 1, fontWeight: 700, color: 'white', backgroundColor: 'rgba(9,20,33,0.5)' }} />
-            </Stack>
-
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.8} justifyContent="center">
               <Button
                 variant="contained"
@@ -131,10 +117,10 @@ const HomePage = () => {
               <CardContent sx={{ p: 3.2 }}>
                 <LocalShipping color="primary" sx={{ mb: 1.2 }} />
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 1.1 }}>
-                  Shipping Confidence
+                  Delivery Across the U.S. &amp; Canada
                 </Typography>
                 <Typography color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                  Get practical help with packing, pickup strategy, and shipping execution so your items move safely and predictably.
+                  Uzima Prints ships finished print orders throughout the United States and Canada, with available delivery options and costs shown during checkout.
                 </Typography>
               </CardContent>
             </Card>
