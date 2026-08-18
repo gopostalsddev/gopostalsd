@@ -2,7 +2,7 @@
 
 The tracked JSON ledger records non-secret decisions and nothing else. It is
 currently `OPEN`, which is expected: MailerSend, the sender identity, and the
-fresh database path are approved, while the canonical hostname and live launch
+fresh database path, canonical hostname, and sender identity are approved, while live launch
 controls still require owner/client authority or provider access.
 
 `PENDING` decisions must retain `value: null`; nobody may insert an inferred

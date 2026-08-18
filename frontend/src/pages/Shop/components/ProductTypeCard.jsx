@@ -17,7 +17,7 @@ import {
   Category as CategoryIcon
 } from '@mui/icons-material';
 import { fetchProductsByType } from '../../../services/product_service';
-import logoImage from '../../../assets/logo.png';
+import logoImage from '../../../assets/uzima-mark.svg';
 
 /**
  * ProductTypeCard Component

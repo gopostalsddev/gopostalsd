@@ -4,6 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, Optional
+from server.email_config import DEFAULT_SENDER_NAME, INTENDED_SENDER_ADDRESS
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,8 @@ class SMTPAdapter:
         self.username = username or os.getenv('SMTP_USERNAME')
         self.password = password or os.getenv('SMTP_PASSWORD')
         self.use_tls = use_tls if use_tls is not None else os.getenv('SMTP_USE_TLS', 'true').lower() == 'true'
-        self.from_email = from_email or os.getenv('EMAIL_FROM_ADDRESS', 'support@gopostalsd.com')
-        self.from_name = from_name or os.getenv('EMAIL_FROM_NAME', 'Go Postal SD')
+        self.from_email = from_email or os.getenv('EMAIL_FROM_ADDRESS', INTENDED_SENDER_ADDRESS)
+        self.from_name = from_name or os.getenv('EMAIL_FROM_NAME', DEFAULT_SENDER_NAME)
         
         # Validate configuration
         self._is_configured = bool(self.username and self.password)

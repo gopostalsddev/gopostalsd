@@ -22,14 +22,14 @@
     {
       "id": "default_sender",
       "status": "APPROVED",
-      "value": "support@gopostalsd.com",
+      "value": "support@uzimaprints.com",
       "note": "Sender use remains conditional on MailerSend domain verification."
     },
     {
       "id": "canonical_url",
-      "status": "PENDING",
-      "value": null,
-      "note": "Awaiting client confirmation; never infer it from the sender domain."
+      "status": "APPROVED",
+      "value": "https://uzimaprints.com",
+      "note": "Canonical launch origin confirmed by the client on August 17, 2026."
     },
     {
       "id": "dns_change_authority",

@@ -38,7 +38,7 @@ import {
 import { useCartOperations } from '../../../hooks/useCart';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import logoImage from '../../../assets/logo.png';
+import logoImage from '../../../assets/uzima-mark.svg';
 
 const ProductCard = ({ product, onAddToCart, onToggleFavorite, isFavorite, onViewProduct }) => {
   const { isAuthenticated } = useAuth();

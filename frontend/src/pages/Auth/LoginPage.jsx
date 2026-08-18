@@ -28,7 +28,7 @@ import {
     Login as LoginIcon
 } from '@mui/icons-material'
 import { useAuth } from '../../contexts/AuthContext'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/uzima-mark.svg'
 
 const LoginPage = () => {
     const [formData, setFormData] = useState({
@@ -129,7 +129,7 @@ const LoginPage = () => {
                     <Box sx={{ mb: 3 }}>
                         <img 
                             src={logo} 
-                            alt="Go Postal SD Logo" 
+                            alt="Uzima Prints logo"
                             style={{ height: '80px', width: 'auto' }}
                         />
                     </Box>
@@ -137,7 +137,7 @@ const LoginPage = () => {
                         Welcome
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                        Sign in to your Go Postal SD account
+                        Sign in to your Uzima Prints account
                     </Typography>
                 </Box>
 

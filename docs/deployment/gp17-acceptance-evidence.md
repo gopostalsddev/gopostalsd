@@ -35,7 +35,7 @@ an identified backup.
 
 The following remain live evidence, not CI substitutes: canonical-host TLS and
 browser checks; MailerSend verified-domain delivery from
-`support@gopostalsd.com`; Square sandbox payment/refund/webhook reconciliation;
+`support@uzimaprints.com`; Square sandbox payment/refund/webhook reconciliation;
 object-storage round trip; restored-database application boot and RTO; effective
 VPS isolation; and routed monitoring-alert exercises. Until those records exist
 for the candidate release, the correct verdict is `NOT_READY`.

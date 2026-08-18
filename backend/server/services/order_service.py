@@ -21,6 +21,7 @@ from server.models.order import (
 )
 from server.services.payment_service import PaymentService
 from server.services.email_service import EmailService
+from server.email_config import BRAND_NAME, INTENDED_SENDER_ADDRESS, PLATFORM_ATTRIBUTION
 
 logger = logging.getLogger(__name__)
 
@@ -620,11 +621,11 @@ class OrderService:
                 items_lines.append(f"- {item.quantity} x {item.product_name} (SKU: {item.product_sku or 'N/A'}) - ${float(item.total_price):.2f}")
             items_text = "\n".join(items_lines) if items_lines else "No items found."
 
-            subject = f"Go Postal SD Order Confirmation - {order.order_number}"
+            subject = f"{BRAND_NAME} Order Confirmation - {order.order_number}"
             text_content = f"""
 Hello {order.customer_first_name},
 
-Thank you for your order with Go Postal SD! Your order has been received and is now being processed.
+Thank you for your order with {BRAND_NAME}! Your order has been received and is now being processed.
 
 Order Number: {order.order_number}
 Tracking Number: {tracking_number}
@@ -641,10 +642,11 @@ Billing Address:
 
 We will send you another update once your package is on the way.
 
-If you have any questions, simply reply to this email or call us at (619) 237-0374.
+If you have any questions, simply reply to this email or contact {INTENDED_SENDER_ADDRESS}.
 
 Thank you,
-Go Postal SD Team
+{BRAND_NAME} Team
+{PLATFORM_ATTRIBUTION}
             """.strip()
 
             items_html = "".join([
@@ -715,10 +717,8 @@ Go Postal SD Team
         </div>
       </div>
       <div class="footer">
-        <p>We'll send another update once your package ships. If you have any questions, simply reply to this email or call us at (619) 237-0374.</p>
-        <p>Go Postal SD<br>
-           1501 India St Suite 103<br>
-           San Diego, CA 92101</p>
+        <p>We'll send another update once your package ships. If you have any questions, simply reply to this email or contact {INTENDED_SENDER_ADDRESS}.</p>
+        <p>{BRAND_NAME}<br>{PLATFORM_ATTRIBUTION}</p>
       </div>
     </div>
   </body>

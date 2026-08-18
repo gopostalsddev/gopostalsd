@@ -17,7 +17,7 @@ import {
   Store as StoreIcon,
   Search as SearchIcon
 } from '@mui/icons-material';
-import placeholderImage from '../../../assets/logo.png';
+import placeholderImage from '../../../assets/uzima-mark.svg';
 import { filterCatalogCategories } from '../../../utils/catalogCategories';
 
 // ProductCategoryList Component

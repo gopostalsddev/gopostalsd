@@ -30,9 +30,9 @@ configure_logging(ENVIRONMENT)
 # Configure Swagger UI documentation
 _swagger_enabled = ENVIRONMENT != 'production' and os.getenv('ENABLE_SWAGGER_UI', 'true').lower() == 'true'
 swagger = Api(
-    title="Go Postal SD API",
+    title="Uzima Prints API",
     version="1.0",
-    description="API documentation for Go Postal SD",
+    description="API documentation for Uzima Prints",
     doc="/docs" if _swagger_enabled else False,
     validate=True
 )

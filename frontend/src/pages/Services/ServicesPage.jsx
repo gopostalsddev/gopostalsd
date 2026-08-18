@@ -6,7 +6,7 @@ const ServicesPage = () => {
     <InformationalPageLayout
       eyebrow="What we offer"
       title="Printing, packing, and shipping built around local businesses"
-      subtitle="Go Postal SD combines storefront service with online ordering so customers can move from quote to fulfillment without losing the human support that complex print jobs often need."
+      subtitle="Uzima Prints combines convenient online ordering with responsive support so customers can move from product selection to fulfillment with confidence."
       primaryAction={{ label: 'Start shopping', to: '/shop' }}
       secondaryAction={{ label: 'Talk to our team', to: '/contact' }}
       metrics={[

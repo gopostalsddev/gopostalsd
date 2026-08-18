@@ -9,17 +9,25 @@ from server.services.password_service import PasswordService
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_STREET = "1501 India St Suite 103"
-DEFAULT_CITY = "San Diego"
-DEFAULT_STATE = "CA"
-
-
 def ensure_production_admin(app: Flask) -> bool:
     """Create the configured Admin when explicitly invoked after migrations."""
     admin_email = os.getenv("ADMIN_EMAIL")
     admin_password = os.getenv("ADMIN_PASSWORD")
 
     if not admin_email or not admin_password:
+        return False
+
+    address = {
+        "street": os.getenv("ADMIN_STREET", "").strip(),
+        "city": os.getenv("ADMIN_CITY", "").strip(),
+        "state": os.getenv("ADMIN_STATE", "").strip(),
+        "zip_code": os.getenv("ADMIN_ZIP_CODE", "").strip(),
+        "country": os.getenv("ADMIN_COUNTRY", "USA").strip(),
+        "apt": os.getenv("ADMIN_APT", "").strip() or None,
+    }
+    missing = [key for key in ("street", "city", "state", "zip_code") if not address[key]]
+    if missing:
+        logger.error("Production admin address configuration is incomplete: %s", ", ".join(missing))
         return False
 
     try:
@@ -32,19 +40,14 @@ def ensure_production_admin(app: Flask) -> bool:
             return False
 
         default_address = Address.query.filter_by(
-            street=DEFAULT_STREET,
-            city=DEFAULT_CITY,
-            state=DEFAULT_STATE,
+            street=address["street"],
+            city=address["city"],
+            state=address["state"],
         ).first()
 
         if not default_address:
             default_address = Address(
-                street=DEFAULT_STREET,
-                city=DEFAULT_CITY,
-                state=DEFAULT_STATE,
-                zip_code="92101",
-                country="USA",
-                apt="Suite 103",
+                **address,
                 is_default=True,
             )
             database.session.add(default_address)

@@ -40,11 +40,11 @@ def test_fresh_launch_does_not_invent_a_historical_transfer():
     assert "final DB dump" not in RUNBOOK
 
 
-def test_canonical_hostname_remains_an_unresolved_launch_variable():
+def test_canonical_hostname_uses_the_client_confirmed_launch_identity():
     assert "`CANONICAL_URL`" in RUNBOOK
     assert "`CANONICAL_HOST`" in RUNBOOK
-    assert "https://gopostalsd.com" not in RUNBOOK
-    assert "support@gopostalsd.com" in RUNBOOK
+    assert "https://uzimaprints.com" in RUNBOOK
+    assert "support@uzimaprints.com" in RUNBOOK
 
 
 def test_migrations_bootstrap_and_backup_precede_public_cutover():

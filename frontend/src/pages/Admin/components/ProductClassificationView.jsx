@@ -51,7 +51,7 @@ import {
   createManualVendorProduct,
 } from "../../../services/product_service";
 import SpinnerOverlay from "../../../components/SpinnerOverlay";
-import logoImage from "../../../assets/logo.png";
+import logoImage from "../../../assets/uzima-mark.svg";
 import { CircularProgress } from "@mui/material";
 
 const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
@@ -1624,4 +1624,4 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
   );
 };
 
-export default ProductClassificationView; 
+export default ProductClassificationView;

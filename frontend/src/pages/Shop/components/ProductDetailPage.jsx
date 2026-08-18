@@ -57,7 +57,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProductOptions } from '../../../hooks/useProductOptions';
 import { useProductPricing } from '../../../hooks/useProductPricing';
 import { formatPrice, calculateTotalPrice, getEstimatedShipDate } from '../../../utils/priceUtils';
-import logoImage from '../../../assets/logo.png';
+import logoImage from '../../../assets/uzima-mark.svg';
 
 const ProductDetailPage = ({ product, onBack }) => {
   const { isAuthenticated } = useAuth();
@@ -952,7 +952,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                 <StepContent>
                   <Box sx={{ mb: 2 }}>
                     <Alert severity="warning" sx={{ mb: 2 }}>
-                      This website does not upload artwork during product configuration. It is not uploaded or attached to your order. After your order is reviewed, Go Postal SD will provide secure artwork transfer instructions. Production will not begin until the store confirms receipt and print readiness.
+                      This website does not upload artwork during product configuration. It is not uploaded or attached to your order. After your order is reviewed, Uzima Prints will provide secure artwork transfer instructions. Production will not begin until the store confirms receipt and print readiness.
                     </Alert>
                     <FormControlLabel
                       control={(
@@ -970,7 +970,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                           }}
                         />
                       )}
-                      label="I understand that artwork is transferred separately and production starts only after Go Postal SD confirms the file."
+                      label="I understand that artwork is transferred separately and production starts only after Uzima Prints confirms the file."
                     />
                     {validationErrors.artworkHandoff && (
                       <Typography variant="caption" color="error" display="block" sx={{ mt: 1 }}>

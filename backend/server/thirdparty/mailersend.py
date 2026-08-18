@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Dict, Any, Optional
 from mailersend import MailerSendClient, EmailBuilder
+from server.email_config import DEFAULT_SENDER_NAME, INTENDED_SENDER_ADDRESS
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,8 @@ class MailerSendAdapter:
         """
         self.api_key = api_key or os.getenv('MAILERSEND_API_KEY')
         self.client = None
-        self.from_email = os.getenv('EMAIL_FROM_ADDRESS', 'support@gopostalsd.com')
-        self.from_name = os.getenv('EMAIL_FROM_NAME', 'Go Postal SD')
+        self.from_email = os.getenv('EMAIL_FROM_ADDRESS', INTENDED_SENDER_ADDRESS)
+        self.from_name = os.getenv('EMAIL_FROM_NAME', DEFAULT_SENDER_NAME)
 
         if self.api_key:
             try:

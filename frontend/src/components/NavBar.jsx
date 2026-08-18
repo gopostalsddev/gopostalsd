@@ -38,7 +38,7 @@ import {
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { CartIcon } from './CartIcon';
-import logo from '../assets/logo.png';
+import logo from '../assets/uzima-mark.svg';
 
 const Navbar = () => {
   const { isAuthenticated, user: currentUser, logout } = useAuth();
@@ -108,7 +108,7 @@ const Navbar = () => {
             }}
             onClick={() => navigate('/')}
           >
-            <img src={logo} alt="GoPostal SD Logo" style={{ height: '62px', width: 'auto' }} />
+            <img src={logo} alt="Uzima Prints logo" style={{ height: '54px', width: 'auto' }} />
           </Box>
 
           {/* App Name */}
@@ -121,7 +121,7 @@ const Navbar = () => {
             }}
             onClick={() => navigate('/')}
           >
-            GO POSTAL SD
+            UZIMA PRINTS
           </Typography>
 
           {/* Desktop Navigation */}
@@ -313,7 +313,7 @@ const Navbar = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <img 
               src={logo} 
-              alt="Go Postal SD Logo" 
+              alt="Uzima Prints logo"
               style={{ height: '50px', width: 'auto' }}
             />
             <IconButton onClick={handleMobileMenuClose}>

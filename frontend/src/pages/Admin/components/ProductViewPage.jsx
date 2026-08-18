@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 
 import { fetchAllPrintProductsByCategory, updatePrintProductDetails } from "../../../services/product_service";
-import logoImage from "../../../assets/logo.png";
+import logoImage from "../../../assets/uzima-mark.svg";
 import SpinnerOverlay from "../../../components/SpinnerOverlay";
 
 const ProductViewPage = ({ category, onBack }) => {
@@ -259,4 +259,4 @@ const ProductViewPage = ({ category, onBack }) => {
   );
 };
 
-export default ProductViewPage; 
+export default ProductViewPage;

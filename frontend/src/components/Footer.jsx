@@ -14,7 +14,7 @@ const Footer = () => {
       }}
     >
       <Typography variant="body2">
-        © {new Date().getFullYear()} GoPostal SD. All rights reserved.
+        © {new Date().getFullYear()} Uzima Prints. All rights reserved. Powered by Go Postal.
       </Typography>
     </Box>
   );
