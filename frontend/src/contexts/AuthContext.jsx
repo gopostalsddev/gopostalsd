@@ -4,7 +4,7 @@
  * This context provides authentication state and methods throughout the application.
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import authService from '../services/auth_service'
 
 const AuthContext = createContext()
@@ -89,8 +89,13 @@ export const AuthProvider = ({ children }) => {
             
             return { success: true, data: response }
         } catch (error) {
-            setError(error.message)
-            return { success: false, error: error.message }
+            const registrationError = {
+                message: error?.message || 'Registration failed. Please try again.',
+                code: error?.code || 'REGISTRATION_ERROR',
+                status: error?.status || 0
+            }
+            setError(registrationError.message)
+            return { success: false, error: registrationError }
         } finally {
             setLoading(false)
         }
@@ -161,14 +166,14 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
-    const validatePassword = async (password) => {
+    const validatePassword = useCallback(async (password) => {
         try {
             const response = await authService.validatePassword(password)
             return { success: true, data: response }
         } catch (error) {
             return { success: false, error: error.message }
         }
-    }
+    }, [])
 
     const requestEmailVerification = async (email) => {
         try {
@@ -186,9 +191,9 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
-    const clearError = () => {
+    const clearError = useCallback(() => {
         setError(null)
-    }
+    }, [])
 
     const refreshUser = async () => {
         try {
