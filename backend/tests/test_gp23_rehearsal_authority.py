@@ -89,7 +89,7 @@ def test_common_boundary_is_fixed_and_scrubs_redirection_environment():
         "GOP_SOURCE='/srv/gopostal/rehearsal-app'",
         "GOP_STACK='/srv/docker/stacks/gopostal-rehearsal'",
         "GOP_REPOSITORY='https://github.com/gopostalsddev/gopostalsd.git'",
-        "GOP_SHA='bf6f38707c9d39648213d9bd545c86fa7580e82c'",
+        "GOP_SHA='d3041fbd2aa327174c7cc696709ac943ba139d85'",
         "GOP_BRANCH='main'",
         "--project-name \"$GOP_PROJECT\"",
         "-f \"$GOP_COMPOSE\"",
