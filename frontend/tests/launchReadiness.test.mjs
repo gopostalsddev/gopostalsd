@@ -10,6 +10,8 @@ const read = (relativePath) => fs.readFileSync(
 const gallery = read('../src/pages/Gallery/GalleryPage.jsx');
 const footer = read('../src/components/ProfessionalFooter.jsx');
 const productDetail = read('../src/pages/Shop/components/ProductDetailPage.jsx');
+const authContext = read('../src/contexts/AuthContext.jsx');
+const registerPage = read('../src/pages/Auth/RegisterPage.jsx');
 const index = read('../index.html');
 const robots = read('../public/robots.txt');
 
@@ -49,4 +51,18 @@ test('artwork flow never claims a browser-selected file was uploaded', () => {
   assert.doesNotMatch(productDetail, /Uploaded Artwork/);
   assert.match(productDetail, /secure artwork transfer/);
   assert.match(productDetail, /artworkHandoffAccepted/);
+});
+
+test('registration password validation has a stable callback and ignores stale responses', () => {
+  assert.match(authContext, /const validatePassword = useCallback\(async \(password\) =>/);
+  assert.match(authContext, /const clearError = useCallback\(\(\) =>/);
+  assert.match(registerPage, /let cancelled = false/);
+  assert.match(registerPage, /if \(!cancelled && result\.success\)/);
+  assert.match(registerPage, /cancelled = true/);
+});
+
+test('registration failures preserve machine-readable error codes for visible handling', () => {
+  assert.match(authContext, /return \{ success: false, error: registrationError \}/);
+  assert.match(registerPage, /result\.error\?\.code === 'USER_EXISTS'/);
+  assert.doesNotMatch(registerPage, /result\.error && result\.error\.code/);
 });

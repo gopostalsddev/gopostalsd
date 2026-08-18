@@ -84,14 +84,20 @@ const RegisterPage = () => {
 
     // Validate password strength
     useEffect(() => {
+        let cancelled = false
+
         if (formData.password) {
             validatePassword(formData.password).then(result => {
-                if (result.success) {
+                if (!cancelled && result.success) {
                     setPasswordValidation(result.data)
                 }
             })
         } else {
             setPasswordValidation(null)
+        }
+
+        return () => {
+            cancelled = true
         }
     }, [formData.password, validatePassword])
 
@@ -231,7 +237,7 @@ const RegisterPage = () => {
                 })
             } else {
                 // Handle specific error cases
-                if (result.error && result.error.code === 'USER_EXISTS') {
+                if (result.error?.code === 'USER_EXISTS') {
                     // Clear the email field and show specific error
                     setFormData(prev => ({ ...prev, email: '' }))
                     setErrors(prev => ({ ...prev, email: 'An account with this email already exists' }))
