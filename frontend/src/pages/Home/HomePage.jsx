@@ -18,6 +18,7 @@ import {
   ArrowForward
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import heroImage from '../../assets/uzima-hero-bringing-ideas-to-life.png';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -27,8 +28,11 @@ const HomePage = () => {
       <Box
         sx={{
           width: '100%',
-          background:
-            'radial-gradient(circle at 12% 18%, rgba(182,73,38,0.32), transparent 28%), radial-gradient(circle at 88% 70%, rgba(255,255,255,0.12), transparent 24%), linear-gradient(160deg, #091421 0%, #0a2f4a 62%, #143a54 100%)',
+          backgroundColor: '#091421',
+          backgroundImage: `linear-gradient(90deg, rgba(9,20,33,0.94) 0%, rgba(9,20,33,0.8) 48%, rgba(9,20,33,0.5) 100%), url(${heroImage})`,
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
           color: 'white',
           py: { xs: 7, md: 11 },
           borderBottom: '1px solid rgba(255,255,255,0.16)'
@@ -79,7 +83,14 @@ const HomePage = () => {
                 size="large"
                 endIcon={<ArrowForward />}
                 onClick={() => navigate('/shop')}
-                sx={{ borderRadius: 1, px: 4.5, py: 1.35, backgroundColor: 'secondary.main', '&:hover': { backgroundColor: 'secondary.dark' } }}
+                sx={{
+                  borderRadius: 1,
+                  px: 4.5,
+                  py: 1.35,
+                  color: '#18212A',
+                  backgroundColor: '#F5B942',
+                  '&:hover': { backgroundColor: '#DFA52E' }
+                }}
               >
                 Place Order Online
               </Button>
