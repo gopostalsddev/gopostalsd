@@ -141,7 +141,7 @@ EOF
 fi
 
 cat >"$STACK_DIR/.env" <<'EOF'
-GOPOSTAL_IMAGE_TAG=bf6f38707c9d39648213d9bd545c86fa7580e82c
+GOPOSTAL_IMAGE_TAG=d3041fbd2aa327174c7cc696709ac943ba139d85
 EOF
 chmod 0600 "$STACK_DIR/.env" "$STACK_DIR/database.env" "$STACK_DIR/application.env"
 chown root:root "$STACK_DIR/.env" "$STACK_DIR/database.env" "$STACK_DIR/application.env"
