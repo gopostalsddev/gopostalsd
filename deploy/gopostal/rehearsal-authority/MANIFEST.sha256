@@ -1,6 +1,6 @@
 d302b71b8de24f837b9f59595bdfa9c0c7fc24fd9e3bb6901e18af0caf433343 *./acceptance.sh
 2d44d1117b3ec367ee296e5b3bc70456f2e9cecf0d6509ff3c8ba5b4203f9add *./docker-compose.rehearsal.yml
-607d97f8155b876c208ad446502c13ee68b3e789de7ffce6048e3856e5d7d1e5 *./frontend.Dockerfile
+c508ac3333457c260ef496021e048976e9b958a8ad75b9f0cba9cfe08fb5fc45 *./frontend.Dockerfile
 82845d8b3f4f682ab4a8c7ab4a1a5ffce795d5fdd9779876028488c82cb8b66e *./lib/gopostal-common.inc
 37b77ed1139131eac66498fb2c590bfea0101b4c8533a6984b8c6b8f26619b23 *./provision.sh
 1f61dbf4db68764b59922e8a7c8031e08c346783a14d6f7c5280d178114986d0 *./sudoers.ops-gopostal

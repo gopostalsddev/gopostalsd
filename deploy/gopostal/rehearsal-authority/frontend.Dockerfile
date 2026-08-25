@@ -23,6 +23,8 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    client_max_body_size 10m;
+
     location /api/ {
         proxy_pass http://web:5000;
         proxy_set_header Host $host;
