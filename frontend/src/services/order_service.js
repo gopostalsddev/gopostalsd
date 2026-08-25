@@ -68,3 +68,12 @@ export const issueRefund = async ({ paymentId, orderId, amountCents, reason }) =
     throw new Error(normalizeError(error, 'Failed to issue refund'));
   }
 };
+
+export const cancelOrder = async (orderId) => {
+  try {
+    const response = await api.post(`/orders/${orderId}/cancel`);
+    return response.data;
+  } catch (error) {
+    throw new Error(normalizeError(error, 'Failed to cancel order'));
+  }
+};

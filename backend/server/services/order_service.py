@@ -20,6 +20,7 @@ from server.models.order import (
     Order, OrderItem, Payment, PaymentAttempt, OrderStatus, PaymentStatus,
 )
 from server.services.payment_service import PaymentService
+from server.services.refund_service import RefundService
 from server.services.email_service import EmailService
 from server.email_config import BRAND_NAME, INTENDED_SENDER_ADDRESS, PLATFORM_ATTRIBUTION
 
@@ -510,61 +511,127 @@ class OrderService:
                 'error': 'Failed to get all orders'
             }
     
-    def update_order_status(self, 
-                           order_id: int, 
+    def update_order_status(self,
+                           order_id: int,
                            status: OrderStatus,
                            tracking_number: Optional[str] = None,
                            carrier_name: Optional[str] = None) -> Dict[str, Any]:
         """
-        Update order status (admin only).
-        
-        Args:
-            order_id: Order ID
-            status: New order status
-            tracking_number: Optional tracking number
-            carrier_name: Optional carrier name
-            
-        Returns:
-            Dict containing update result
+        Update order status. Automatically refunds Square when CANCELLED
+        and sends a status-change email to the customer.
         """
         try:
             order = Order.query.get(order_id)
             if not order:
-                return {
-                    'success': False,
-                    'error': 'Order not found'
-                }
-            
+                return {'success': False, 'error': 'Order not found'}
+
             order.status = status
-            
+
             if tracking_number:
                 order.tracking_number = tracking_number
             if carrier_name:
                 order.carrier_name = carrier_name
-            
+
             if status == OrderStatus.SHIPPED:
                 order.shipped_at = datetime.now(timezone.utc)
             elif status == OrderStatus.DELIVERED:
                 order.delivered_at = datetime.now(timezone.utc)
-            
+
             db.session.commit()
-            
             logger.info(f"Updated order {order.order_number} status to {status.value}")
-            
+
+            # Auto-refund via Square when cancelling a paid order
+            if status == OrderStatus.CANCELLED and order.payment_status == PaymentStatus.COMPLETED:
+                try:
+                    refund_service = RefundService(self.payment_service)
+                    payment = Payment.query.filter_by(
+                        order_id=order.id,
+                        status=PaymentStatus.COMPLETED,
+                    ).order_by(Payment.id.desc()).first()
+                    if payment:
+                        amount_cents = int(Decimal(str(payment.amount)) * 100)
+                        refund_result = refund_service.process_refund(
+                            order_id=order.id,
+                            amount_cents=amount_cents,
+                            reason="Order cancelled",
+                            external_payment_id=payment.external_payment_id,
+                        )
+                        if not refund_result.get('success'):
+                            logger.error(
+                                "Auto-refund failed for order %s: %s",
+                                order.order_number, refund_result.get('error')
+                            )
+                except Exception:
+                    logger.error("Auto-refund raised unexpectedly for order %s", order.id, exc_info=True)
+
+            # Send status-change email
+            try:
+                self._send_order_status_email(order)
+            except Exception:
+                logger.warning("Status email failed for order %s", order.id, exc_info=True)
+
             return {
                 'success': True,
                 'order': order.to_dict(),
-                'message': 'Order status updated successfully'
+                'message': 'Order status updated successfully',
             }
-            
+
         except SQLAlchemyError:
             logger.error("Error updating order status", exc_info=True)
             db.session.rollback()
-            return {
-                'success': False,
-                'error': 'Failed to update order status'
+            return {'success': False, 'error': 'Failed to update order status'}
+
+    def _send_order_status_email(self, order: Order) -> bool:
+        """Send a status-change notification email to the customer."""
+        try:
+            if not self.email_service or not self.email_service.is_configured:
+                return False
+
+            status_labels = {
+                OrderStatus.PROCESSING: ("Order Confirmed", "is being processed"),
+                OrderStatus.SHIPPED:    ("Order Shipped",   "has shipped"),
+                OrderStatus.DELIVERED:  ("Order Delivered", "has been delivered"),
+                OrderStatus.CANCELLED:  ("Order Cancelled", "has been cancelled"),
+                OrderStatus.REFUNDED:   ("Order Refunded",  "has been refunded"),
             }
-    
+            label, verb = status_labels.get(order.status, ("Order Update", "has been updated"))
+
+            tracking_line = ""
+            if order.tracking_number:
+                carrier = order.carrier_name or "your carrier"
+                tracking_line = f"\nTracking Number: {order.tracking_number} ({carrier})"
+
+            refund_line = ""
+            if order.status in (OrderStatus.CANCELLED, OrderStatus.REFUNDED):
+                refund_line = (
+                    "\n\nIf a refund was applicable, it has been submitted to your original payment method "
+                    "and typically appears within 5-10 business days."
+                )
+
+            subject = f"{BRAND_NAME} - {label} #{order.order_number}"
+            text_content = f"""Hello {order.customer_first_name},
+
+Your order #{order.order_number} {verb}.{tracking_line}{refund_line}
+
+Total: ${float(order.total_amount):.2f} USD
+
+If you have questions, reply to this email or contact {INTENDED_SENDER_ADDRESS}.
+
+Thank you,
+{BRAND_NAME} Team
+{PLATFORM_ATTRIBUTION}""".strip()
+
+            self.email_service.send_email(
+                to_email=order.customer_email,
+                subject=subject,
+                text_content=text_content,
+            )
+            logger.info("Sent %s email for order %s", label, order.order_number)
+            return True
+        except Exception:
+            logger.warning("_send_order_status_email failed for order %s", order.id, exc_info=True)
+            return False
+
     def _generate_order_number(self) -> str:
         """Generate unique order number."""
         timestamp = datetime.now(timezone.utc).strftime('%Y%m%d')

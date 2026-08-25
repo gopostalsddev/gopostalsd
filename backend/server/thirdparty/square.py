@@ -6,6 +6,7 @@ It follows the Adapter pattern to provide a consistent interface for payment pro
 """
 
 import os
+import re
 import hmac
 import hashlib
 import base64
@@ -197,7 +198,7 @@ class SquareAdapter:
             # Add buyer information if provided
             if buyer_email:
                 payment_request['buyer_email_address'] = buyer_email
-            if buyer_phone:
+            if buyer_phone and re.match(r'^\+[1-9]\d{10,14}$', str(buyer_phone).strip()):
                 payment_request['buyer_phone_number'] = buyer_phone
 
             # Add addresses if provided

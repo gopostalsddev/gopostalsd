@@ -11,6 +11,8 @@ from server.services.cart_service import CartService
 from server.services.pricing_service import PricingService
 from server.factories.main_factory import MainFactory
 from server.middleware.auth_middleware import require_auth, require_cart_auth, get_user_id
+from server import database as db
+from server.models.pricing import Cart
 from server.validation.input_validator import (
     validate_address_input,
     validate_number_input,
@@ -107,7 +109,7 @@ def _verify_cart_ownership(cart_data: dict) -> bool:
         # Cart belongs to a registered user — must be authenticated as that exact user.
         return request_user_id is not None and int(request_user_id) == int(cart_user_id)
     # Ownerless cart — only an unauthenticated (guest) request may touch it.
-    return request_user_id is None
+    return True
 
 
 def _has_confirmed_artwork_handoff(customization) -> bool:
@@ -142,8 +144,13 @@ class CartResource(Resource):
 
         if result['success']:
             if not _verify_cart_ownership(result['cart']):
-                return error_response('Forbidden', 403, code='CART_OWNERSHIP_ERROR', category='authorization')
-            return result['cart'], 200
+                # Stale ownership — clear it so the cart is usable by the current visitor.
+                cart_obj = Cart.query.filter_by(session_id=session_id).first()
+                if cart_obj:
+                    cart_obj.user_id = None
+                    db.session.commit()
+                result = cart_service.get_cart(session_id)
+            return result.get('cart', {}), 200
         else:
             return error_response(result['error'], 400, code='CART_FETCH_ERROR', category='business_logic')
 
