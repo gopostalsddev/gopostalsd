@@ -112,7 +112,7 @@ class EmailService:
         """Send email verification email."""
         subject = f"Verify Your Email - {BRAND_NAME}"
 
-        verification_url = f"{self.base_url}/#/verify-email?token={token}"
+        verification_url = f"{self.base_url}/#/verify?token={token}"
         
         text_content = f"""
                 Hello {first_name},

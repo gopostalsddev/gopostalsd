@@ -17,6 +17,11 @@ import {
   TableHead,
   TableRow,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
@@ -26,7 +31,7 @@ import NorthEastIcon from '@mui/icons-material/NorthEast';
 import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchUserOrders } from '../../services/order_service';
+import { fetchUserOrders, cancelOrder } from '../../services/order_service';
 
 const statusConfig = {
   pending: { label: 'Pending', color: 'default' },
@@ -78,6 +83,9 @@ const AccountPage = () => {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [error, setError] = useState('');
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -126,7 +134,25 @@ const AccountPage = () => {
     },
   ];
 
+  const handleCancelOrder = async () => {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await cancelOrder(cancelTarget.id);
+      setOrders((prev) =>
+        prev.map((o) => o.id === cancelTarget.id ? { ...o, status: 'cancelled' } : o)
+      );
+      setCancelTarget(null);
+    } catch (err) {
+      setCancelError(err.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   return (
+    <>
     <Box sx={{ py: { xs: 4, md: 7 }, minHeight: '100%', position: 'relative', overflow: 'hidden' }}>
       <Box
         sx={{
@@ -300,6 +326,7 @@ const AccountPage = () => {
                               <TableCell>Date</TableCell>
                               <TableCell>Status</TableCell>
                               <TableCell align="right">Total</TableCell>
+                              <TableCell />
                             </TableRow>
                           </TableHead>
                           <TableBody>
@@ -326,6 +353,20 @@ const AccountPage = () => {
                                     <Chip label={statusMeta.label} color={statusMeta.color} size="small" />
                                   </TableCell>
                                   <TableCell align="right">{formatCurrency(order.total_amount)}</TableCell>
+                                  {['pending', 'processing'].includes(order.status) ? (
+                                    <TableCell align="right">
+                                      <Button
+                                        size="small"
+                                        color="error"
+                                        variant="outlined"
+                                        onClick={(e) => { e.stopPropagation(); setCancelTarget(order); }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </TableCell>
+                                  ) : (
+                                    <TableCell />
+                                  )}
                                 </TableRow>
                               );
                             })}
@@ -341,6 +382,23 @@ const AccountPage = () => {
         </Stack>
       </Container>
     </Box>
+
+      <Dialog open={!!cancelTarget} onClose={() => !cancelling && setCancelTarget(null)}>
+        <DialogTitle>Cancel Order</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Cancel order <strong>{cancelTarget?.order_number}</strong>? If payment was taken it will be refunded automatically.
+          </DialogContentText>
+          {cancelError && <Alert severity="error" sx={{ mt: 2 }}>{cancelError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelTarget(null)} disabled={cancelling}>Keep Order</Button>
+          <Button onClick={handleCancelOrder} color="error" variant="contained" disabled={cancelling}>
+            {cancelling ? 'Cancelling…' : 'Yes, Cancel'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

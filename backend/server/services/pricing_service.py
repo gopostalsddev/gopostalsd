@@ -8,6 +8,7 @@ The service provides a clean abstraction layer for pricing operations and
 implements caching strategies to optimize API usage and performance.
 """
 
+import re
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
@@ -46,7 +47,27 @@ class SinalitePricingStrategy(PricingStrategy):
     Concrete pricing strategy that uses the Sinalite API for pricing calculations.
     Implements caching to reduce API calls and improve performance.
     """
-    
+
+    @staticmethod
+    def _scale_for_custom_size(base_price: float, custom_dims: dict) -> float:
+        """Scale price proportionally from nearest standard size area to custom dimensions."""
+        try:
+            width = float(custom_dims['width'])
+            height = float(custom_dims['height'])
+            nearest = custom_dims.get('nearestSizeName', '')
+            parts = re.split(r'\s*[xX\xd7]\s*', nearest)
+            if len(parts) < 2:
+                return base_price
+            std_w = float(parts[0].strip())
+            std_h = float(parts[1].strip())
+            std_area = std_w * std_h
+            custom_area = width * height
+            if std_area <= 0 or custom_area <= 0:
+                return base_price
+            return base_price * (custom_area / std_area)
+        except (ValueError, TypeError, KeyError):
+            return base_price
+
     def __init__(self, sinalite_adapter: SinaliteAdapter, repository: PricingRepository):
         self.sinalite = sinalite_adapter
         self.repository = repository
@@ -114,10 +135,24 @@ class SinalitePricingStrategy(PricingStrategy):
         if artwork_handoff != 'post_order_secure_transfer':
             artwork_handoff = 'unconfirmed'
 
+        # Validate and pass through custom dimensions
+        raw_dims = customization.get('customDimensions')
+        custom_dims = None
+        if isinstance(raw_dims, dict):
+            try:
+                w = float(raw_dims.get('width', 0))
+                h = float(raw_dims.get('height', 0))
+                nearest = str(raw_dims.get('nearestSizeName', '')).strip()
+                if w > 0 and h > 0:
+                    custom_dims = {'width': w, 'height': h, 'nearestSizeName': nearest}
+            except (ValueError, TypeError):
+                pass
+
         return {
             'serviceLevel': service_level,
             'designNotes': str(customization.get('designNotes', '') or '').strip()[:1000],
             'artworkHandoff': artwork_handoff,
+            'customDimensions': custom_dims,
         }
 
     def _build_option_key(self, options: List[int], customization: Optional[Dict] = None) -> str:
@@ -315,8 +350,12 @@ class SinalitePricingStrategy(PricingStrategy):
             cached_pricing = self.repository.get_cached_pricing(product_id, store_code, option_key)
             if cached_pricing:
                 logger.info(f"Using cached pricing for product {product_id}")
+                base_price = cached_pricing.get('price', 0)
+                custom_dims = (customization or {}).get('customDimensions')
+                if custom_dims:
+                    base_price = self._scale_for_custom_size(base_price, custom_dims)
                 return self._apply_retail_pricing(
-                    cached_pricing.get('price', 0),
+                    base_price,
                     options,
                     cached_pricing.get('packageInfo'),
                     customization,
@@ -366,7 +405,11 @@ class SinalitePricingStrategy(PricingStrategy):
             
             # Cache the result
             self.repository.cache_pricing(product_id, store_code, option_key, raw_pricing, options)
-            
+
+            # Scale for custom dimensions if requested (do this after caching standard price)
+            custom_dims = (customization or {}).get('customDimensions')
+            if custom_dims:
+                price_value = self._scale_for_custom_size(price_value, custom_dims)
             return self._apply_retail_pricing(price_value, options, package_info=package_info, customization=customization)
             
         except Exception as e:

@@ -375,3 +375,44 @@ class OrderStatusesResource(Resource):
         return {
             'statuses': [status.value for status in OrderStatus]
         }, 200
+
+
+@api.route('/<int:order_id>/cancel')
+class OrderCancelResource(Resource):
+    """Customer-initiated order cancellation."""
+
+    @api.doc('cancel_order')
+    @api.response(200, 'Order cancelled')
+    @api.response(400, 'Order cannot be cancelled')
+    @api.response(403, 'Not authorised')
+    @require_auth
+    def post(self, order_id):
+        """Cancel an order. Customers may cancel their own unpaid or unshipped orders."""
+        from server.models.order import Order, OrderStatus, PaymentStatus
+        from server.middleware.auth_middleware import get_user_id
+
+        user_id = get_user_id()
+        order = Order.query.get(order_id)
+
+        if not order:
+            return error_response('Order not found', 404)
+
+        # Ownership: customer sees only their own orders; admins may cancel any
+        from server.models.auth import User
+        user = User.query.get(user_id)
+        is_admin = getattr(user, 'role', None) and user.role.name == 'Admin'
+        if not is_admin and order.user_id != user_id:
+            return error_response('Not authorised', 403)
+
+        cancellable = {OrderStatus.PENDING, OrderStatus.PROCESSING}
+        if order.status not in cancellable:
+            return error_response(
+                f'Order cannot be cancelled in status {order.status.value}', 400
+            )
+
+        order_service = get_order_service()
+        result = order_service.update_order_status(order_id, OrderStatus.CANCELLED)
+        if not result.get('success'):
+            return error_response(result.get('error', 'Failed to cancel order'), 500)
+
+        return {'success': True, 'message': 'Order cancelled', 'order': result['order']}, 200

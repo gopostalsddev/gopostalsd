@@ -59,6 +59,22 @@ import { useProductPricing } from '../../../hooks/useProductPricing';
 import { formatPrice, calculateTotalPrice, getEstimatedShipDate } from '../../../utils/priceUtils';
 import logoImage from '../../../assets/uzima-mark.svg';
 
+const findNearestSize = (w, h, sizeOptions) => {
+  const customArea = w * h;
+  let nearest = null;
+  let minDiff = Infinity;
+  for (const opt of sizeOptions) {
+    const parts = opt.name.split(/\s*[xX×]\s*/);
+    if (parts.length < 2) continue;
+    const sw = parseFloat(parts[0]);
+    const sh = parseFloat(parts[1]);
+    if (isNaN(sw) || isNaN(sh)) continue;
+    const diff = Math.abs(sw * sh - customArea);
+    if (diff < minDiff) { minDiff = diff; nearest = { ...opt, stdWidth: sw, stdHeight: sh }; }
+  }
+  return nearest;
+};
+
 const ProductDetailPage = ({ product, onBack }) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -69,6 +85,9 @@ const ProductDetailPage = ({ product, onBack }) => {
   const [artworkHandoffAccepted, setArtworkHandoffAccepted] = useState(false);
   const [designNotes, setDesignNotes] = useState('');
   const [customizationService, setCustomizationService] = useState('none');
+  const [useCustomSize, setUseCustomSize] = useState(false);
+  const [customWidth, setCustomWidth] = useState('');
+  const [customHeight, setCustomHeight] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const [shippingInfo, setShippingInfo] = useState({
     country: 'US',
@@ -211,6 +230,24 @@ const ProductDetailPage = ({ product, onBack }) => {
     artworkHandoff: 'post_order_secure_transfer',
   }), [customizationService, designNotes]);
 
+  // pricingCustomization extends customizationPayload with custom dimensions when active.
+  // Defined after useProductOptions so it can reference options.
+  const pricingCustomization = React.useMemo(() => {
+    const payload = { ...customizationPayload };
+    const w = parseFloat(customWidth);
+    const h = parseFloat(customHeight);
+    if (useCustomSize && w > 0 && h > 0) {
+      const sizeGroup = (options || []).find(g => g.group.toLowerCase() === 'size');
+      const nearest = sizeGroup ? findNearestSize(w, h, sizeGroup.options) : null;
+      payload.customDimensions = {
+        width: w,
+        height: h,
+        nearestSizeName: nearest ? nearest.name : '',
+      };
+    }
+    return payload;
+  }, [customizationPayload, useCustomSize, customWidth, customHeight, options]);
+
   const shouldShowDesignPreview =
     customizationService !== 'none' ||
     designNotes.trim().length > 0;
@@ -218,10 +255,10 @@ const ProductDetailPage = ({ product, onBack }) => {
   // Custom hooks for product options and pricing
   const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
   const { pricing, loading: pricingLoading, error: pricingError } = useProductPricing(
-    product.vendor_product_id, 
-    selectedOptions, 
+    product.vendor_product_id,
+    selectedOptions,
     options,
-    customizationPayload
+    pricingCustomization
   );
 
   const hasSelectedValue = (value) =>
@@ -273,6 +310,19 @@ const ProductDetailPage = ({ product, onBack }) => {
 
     fetchProductTypeImage();
   }, [product.type_id]);
+
+  const handleCustomDimensionChange = (dimension, value) => {
+    const num = parseFloat(value) || '';
+    if (dimension === 'width') setCustomWidth(num);
+    else setCustomHeight(num);
+    const w = dimension === 'width' ? (parseFloat(value) || 0) : (parseFloat(customWidth) || 0);
+    const h = dimension === 'height' ? (parseFloat(value) || 0) : (parseFloat(customHeight) || 0);
+    const sizeGroup = options.find(g => g.group.toLowerCase() === 'size');
+    if (sizeGroup && w > 0 && h > 0) {
+      const nearest = findNearestSize(w, h, sizeGroup.options);
+      if (nearest) handleOptionChange(sizeGroup.group, nearest.id);
+    }
+  };
 
   const handleOptionChange = (group, optionId) => {
     setSelectedOptions(prev => ({
@@ -386,7 +436,7 @@ const ProductDetailPage = ({ product, onBack }) => {
         product.vendor_product_id,
         optionIds,
         finalQuantity,
-        customizationPayload
+        pricingCustomization
       );
 
       if (result.success) {
@@ -425,6 +475,13 @@ const ProductDetailPage = ({ product, onBack }) => {
     // Validate required options
     if (options && options.length > 0) {
       options.forEach(optionGroup => {
+        const isSizeGroup = optionGroup.group.toLowerCase() === 'size';
+        if (isSizeGroup && useCustomSize) {
+          if (!customWidth || !customHeight || parseFloat(customWidth) <= 0 || parseFloat(customHeight) <= 0) {
+            errors.customSize = 'Please enter valid width and height for your custom size';
+          }
+          return;
+        }
         if (!hasSelectedValue(selectedOptions[optionGroup.group])) {
           errors[optionGroup.group] = `${optionGroup.group} is required`;
         }
@@ -691,32 +748,89 @@ const ProductDetailPage = ({ product, onBack }) => {
                   <CircularProgress />
                 </Box>
               ) : (
-                options.map((optionGroup, index) => (
-                  <FormControl 
-                    key={index} 
-                    fullWidth 
-                    sx={{ mb: 2 }}
-                    error={!!validationErrors[optionGroup.group]}
-                  >
-                    <InputLabel>{optionGroup.group}</InputLabel>
-                    <Select
-                      value={selectedOptions[optionGroup.group] ?? ''}
-                      onChange={(e) => handleOptionChange(optionGroup.group, e.target.value)}
-                      label={optionGroup.group}
-                    >
-                      {optionGroup.options.map((option) => (
-                        <MenuItem key={option.id} value={option.id}>
-                          {option.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {validationErrors[optionGroup.group] && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                        {validationErrors[optionGroup.group]}
-                      </Typography>
-                    )}
-                  </FormControl>
-                ))
+                options.map((optionGroup, index) => {
+                  const isSizeGroup = optionGroup.group.toLowerCase() === 'size';
+                  if (isSizeGroup && useCustomSize) {
+                    return (
+                      <Box key={index} sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                          Custom Size (inches)
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 0.5 }}>
+                          <TextField
+                            label="Width"
+                            type="number"
+                            value={customWidth}
+                            onChange={(e) => handleCustomDimensionChange('width', e.target.value)}
+                            inputProps={{ min: 0.5, step: 0.25 }}
+                            sx={{ flex: 1 }}
+                            error={!!validationErrors.customSize}
+                          />
+                          <Typography sx={{ fontWeight: 700 }}>×</Typography>
+                          <TextField
+                            label="Height"
+                            type="number"
+                            value={customHeight}
+                            onChange={(e) => handleCustomDimensionChange('height', e.target.value)}
+                            inputProps={{ min: 0.5, step: 0.25 }}
+                            sx={{ flex: 1 }}
+                            error={!!validationErrors.customSize}
+                          />
+                        </Box>
+                        {validationErrors.customSize && (
+                          <Typography variant="caption" color="error" sx={{ ml: 0.5 }}>
+                            {validationErrors.customSize}
+                          </Typography>
+                        )}
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => { setUseCustomSize(false); setCustomWidth(''); setCustomHeight(''); }}
+                          sx={{ textTransform: 'none', p: 0, mt: 0.5, color: 'text.secondary' }}
+                        >
+                          Use standard size
+                        </Button>
+                      </Box>
+                    );
+                  }
+                  return (
+                    <Box key={index}>
+                      <FormControl
+                        fullWidth
+                        sx={{ mb: isSizeGroup ? 0.5 : 2 }}
+                        error={!!validationErrors[optionGroup.group]}
+                      >
+                        <InputLabel>{optionGroup.group}</InputLabel>
+                        <Select
+                          value={selectedOptions[optionGroup.group] ?? ''}
+                          onChange={(e) => handleOptionChange(optionGroup.group, e.target.value)}
+                          label={optionGroup.group}
+                        >
+                          {optionGroup.options.map((option) => (
+                            <MenuItem key={option.id} value={option.id}>
+                              {option.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {validationErrors[optionGroup.group] && (
+                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                            {validationErrors[optionGroup.group]}
+                          </Typography>
+                        )}
+                      </FormControl>
+                      {isSizeGroup && (
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => { setUseCustomSize(true); setCustomWidth(''); setCustomHeight(''); }}
+                          sx={{ textTransform: 'none', p: 0, mb: 1.5, color: 'primary.main', fontSize: '0.75rem' }}
+                        >
+                          Need a custom size? Yes
+                        </Button>
+                      )}
+                    </Box>
+                  );
+                })
               )}
             </Box>
 
