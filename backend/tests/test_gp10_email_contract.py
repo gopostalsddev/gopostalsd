@@ -139,7 +139,7 @@ def test_mailersend_adapter_uses_the_approved_sender_identity():
 @pytest.mark.parametrize(
     ("method", "expected_path"),
     (
-        ("send_verification_email", "/#/verify-email?token=token-value"),
+        ("send_verification_email", "/#/verify?token=token-value"),
         ("send_password_reset_email", "/#/reset-password?token=token-value"),
     ),
 )
