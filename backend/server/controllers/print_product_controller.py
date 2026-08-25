@@ -28,29 +28,33 @@ _IMAGE_MAGIC_BYTES = [
 def _validate_image_upload(image: FileStorage):
     """
     Validate an uploaded image by extension allowlist and magic bytes.
-    Returns an error string on failure, or None on success.
+    Returns (error_string, detected_mime_type) on failure (error is non-None),
+    or (None, detected_mime_type) on success.
+    The detected_mime_type is derived from the magic bytes, not from the
+    browser-supplied Content-Type, so it is reliable even when the browser
+    omits or mis-reports the MIME type.
     Also rewinds the file stream so callers can still read() the data.
     """
     original_filename = secure_filename(image.filename or '')
     ext = os.path.splitext(original_filename)[1].lower()
     if ext not in _ALLOWED_IMAGE_EXTENSIONS:
-        return f"File type '{ext or 'unknown'}' is not allowed. Accepted: jpg, jpeg, png, webp."
+        return f"File type '{ext or 'unknown'}' is not allowed. Accepted: jpg, jpeg, png, webp.", None
 
     header = image.stream.read(16)
     image.stream.seek(0)  # rewind so callers can read the full file
 
-    matched = False
-    for magic, _ in _IMAGE_MAGIC_BYTES:
+    detected_mime = None
+    for magic, mime in _IMAGE_MAGIC_BYTES:
         if header.startswith(magic):
-            matched = True
+            detected_mime = mime
             break
     # WebP: bytes 0-3 == RIFF and bytes 8-12 == WEBP
-    if not matched and header[:4] == b'RIFF' and header[8:12] == b'WEBP':
-        matched = True
-    if not matched:
-        return "File content does not match a supported image format."
+    if detected_mime is None and header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+        detected_mime = 'image/webp'
+    if detected_mime is None:
+        return "File content does not match a supported image format.", None
 
-    return None
+    return None, detected_mime
 
 class PrintProductErrors(Enum):
     FAILED_TO_FETCH_PRINT_PRODUCTS = "Failed to fetch products"
@@ -693,17 +697,19 @@ class PrintProductController:
                         return result
 
                     # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
-                    image_error = _validate_image_upload(image)
+                    # Use the MIME type detected from magic bytes, not the browser-supplied
+                    # Content-Type, so the downstream FileStorage validator always agrees.
+                    image_error, detected_mime = _validate_image_upload(image)
                     if image_error:
                         result.status = False
                         result.error = image_error
                         return result
-                    content_type = image.content_type or 'application/octet-stream'
+                    content_type = detected_mime  # guaranteed non-None when image_error is None
 
                     # Generate unique filename to avoid conflicts
                     original_filename = secure_filename(image.filename)
                     file_extension = os.path.splitext(original_filename)[1].lower()
-                    
+
                     # Generate unique filename with timestamp and UUID
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     unique_id = str(uuid.uuid4())[:8]
@@ -866,12 +872,12 @@ class PrintProductController:
                         return result
 
                     # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
-                    image_error = _validate_image_upload(image)
+                    image_error, detected_mime = _validate_image_upload(image)
                     if image_error:
                         result.status = False
                         result.error = image_error
                         return result
-                    content_type = image.content_type or 'application/octet-stream'
+                    content_type = detected_mime  # guaranteed non-None when image_error is None
 
                     # Generate unique filename to avoid conflicts
                     import uuid
@@ -960,17 +966,17 @@ class PrintProductController:
                         return result
 
                     # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
-                    image_error = _validate_image_upload(image)
+                    image_error, detected_mime = _validate_image_upload(image)
                     if image_error:
                         result.status = False
                         result.error = image_error
                         return result
-                    content_type = image.content_type or 'application/octet-stream'
+                    content_type = detected_mime  # guaranteed non-None when image_error is None
 
                     # Generate unique filename to avoid conflicts
                     original_filename = secure_filename(image.filename)
                     file_extension = os.path.splitext(original_filename)[1].lower()
-                    
+
                     # Generate unique filename with timestamp and UUID
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     unique_id = str(uuid.uuid4())[:8]
@@ -1225,17 +1231,17 @@ class PrintProductController:
                         return result
 
                     # Validate extension and magic bytes (blocks SVG and spoofed Content-Types).
-                    image_error = _validate_image_upload(image)
+                    image_error, detected_mime = _validate_image_upload(image)
                     if image_error:
                         result.status = False
                         result.error = image_error
                         return result
-                    content_type = image.content_type or 'application/octet-stream'
+                    content_type = detected_mime  # guaranteed non-None when image_error is None
 
                     # Generate unique filename to avoid conflicts
                     original_filename = secure_filename(image.filename)
                     file_extension = os.path.splitext(original_filename)[1].lower()
-                    
+
                     # Generate unique filename with timestamp and UUID
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     unique_id = str(uuid.uuid4())[:8]

@@ -39,7 +39,7 @@ const EditCategoryModal = ({ open, category, onClose, onSave }) => {
             onChange={(e) => setDescription(e.target.value)}
             fullWidth
           />
-          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
+          <input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={(e) => setImageFile(e.target.files[0])} />
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
