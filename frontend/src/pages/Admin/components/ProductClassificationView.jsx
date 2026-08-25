@@ -630,7 +630,7 @@ const ProductClassificationView = ({ category, onBack, onCategoryUpdate }) => {
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                   onChange={(e) => setCategoryImageFile(e.target.files[0] || null)}
                   style={{ fontSize: "0.8rem" }}
                 />

@@ -106,8 +106,10 @@ def test_production_file_storage_selects_remote_backend_only():
 def test_gif_and_extension_magic_mismatch_are_rejected():
     gif = WerkzeugFileStorage(stream=BytesIO(b"GIF89a"), filename="image.gif")
     mismatch = WerkzeugFileStorage(stream=BytesIO(b"not-a-png"), filename="image.png")
-    assert "not allowed" in _validate_image_upload(gif)
-    assert "does not match" in _validate_image_upload(mismatch)
+    gif_error, _ = _validate_image_upload(gif)
+    assert "not allowed" in gif_error
+    mismatch_error, _ = _validate_image_upload(mismatch)
+    assert "does not match" in mismatch_error
 
 
 def test_supabase_provider_failure_does_not_log_secret_response(caplog):
