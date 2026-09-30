@@ -230,8 +230,9 @@ const ProductDetailPage = ({ product, onBack }) => {
     artworkHandoff: 'post_order_secure_transfer',
   }), [customizationService, designNotes]);
 
-  // pricingCustomization extends customizationPayload with custom dimensions when active.
-  // Defined after useProductOptions so it can reference options.
+  // Must be declared before pricingCustomization so it can reference options.
+  const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
+
   const pricingCustomization = React.useMemo(() => {
     const payload = { ...customizationPayload };
     const w = parseFloat(customWidth);
@@ -248,18 +249,16 @@ const ProductDetailPage = ({ product, onBack }) => {
     return payload;
   }, [customizationPayload, useCustomSize, customWidth, customHeight, options]);
 
-  const shouldShowDesignPreview =
-    customizationService !== 'none' ||
-    designNotes.trim().length > 0;
-
-  // Custom hooks for product options and pricing
-  const { options, loading: optionsLoading, error: optionsError } = useProductOptions(product.vendor_product_id);
   const { pricing, loading: pricingLoading, error: pricingError } = useProductPricing(
     product.vendor_product_id,
     selectedOptions,
     options,
     pricingCustomization
   );
+
+  const shouldShowDesignPreview =
+    customizationService !== 'none' ||
+    designNotes.trim().length > 0;
 
   const hasSelectedValue = (value) =>
     value !== undefined && value !== null && `${value}` !== '';
