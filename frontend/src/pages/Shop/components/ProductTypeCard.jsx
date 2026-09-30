@@ -28,7 +28,7 @@ import logoImage from '../../../assets/uzima-mark.svg';
  * @param {Object} productType - The product type data
  * @param {Function} onProductClick - Callback when a product is clicked
  */
-const ProductTypeCard = ({ productType, onProductClick }) => {
+const ProductTypeCard = ({ productType, categoryImage, onProductClick }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,7 +65,7 @@ const ProductTypeCard = ({ productType, onProductClick }) => {
   };
 
   // Use product type image or fallback to logo
-  const displayImage = productType?.image || logoImage;
+  const displayImage = productType?.image || categoryImage || logoImage;
 
   return (
     <Card 
