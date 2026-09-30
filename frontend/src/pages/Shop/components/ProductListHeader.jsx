@@ -1,24 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Box, 
-  Typography, 
-  Card, 
-  CardContent, 
-  Button, 
-  Grid, 
-  CircularProgress, 
-  Paper,
+import React from "react";
+import {
+  Box,
+  Typography,
+  Button,
   Breadcrumbs,
   Chip,
   Divider
 } from '@mui/material';
-import { 
+import {
   ArrowBack as ArrowBackIcon,
   Home as HomeIcon,
   Store as StoreIcon
 } from '@mui/icons-material';
+import placeholderImage from '../../../assets/uzima-mark.svg';
 
-const ProductListHeader = ({productCategoryName, numberOfProducts, backToProductCategories}) => {
+const ProductListHeader = ({productCategoryName, productCategoryImage, numberOfProducts, backToProductCategories}) => {
 
     return (
         <Box sx={{ mb: 4 }}>
@@ -48,38 +44,54 @@ const ProductListHeader = ({productCategoryName, numberOfProducts, backToProduct
                     mb: 3,
                 }}
             >
-                <Box sx={{ flex: 1 }}>
-                    <Typography 
-                        variant="h3" 
-                        component="h1"
-                        sx={{ 
-                            fontWeight: 700, 
-                            mb: 1,
-                            background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1, minWidth: 0 }}>
+                    <Box
+                        component="img"
+                        src={productCategoryImage || placeholderImage}
+                        alt={productCategoryName}
+                        sx={{
+                            width: 80,
+                            height: 80,
+                            objectFit: 'cover',
+                            borderRadius: 2,
+                            flexShrink: 0,
+                            border: '1px solid',
+                            borderColor: 'divider',
                         }}
-                    >
-                        {productCategoryName}
-                    </Typography>
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <Chip
-                            label={`${numberOfProducts} product types`}
-                            color="primary"
-                            variant="outlined"
-                            size="small"
-                        />
-                        <Typography variant="body1" color="text.secondary">
-                            Browse our collection of {productCategoryName.toLowerCase()} product types
+                    />
+                    <Box>
+                        <Typography
+                            variant="h3"
+                            component="h1"
+                            sx={{
+                                fontWeight: 700,
+                                mb: 1,
+                                background: 'linear-gradient(45deg,rgb(0, 0, 0),rgb(7, 59, 102))',
+                                backgroundClip: 'text',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent'
+                            }}
+                        >
+                            {productCategoryName}
                         </Typography>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Chip
+                                label={`${numberOfProducts} product types`}
+                                color="primary"
+                                variant="outlined"
+                                size="small"
+                            />
+                            <Typography variant="body1" color="text.secondary">
+                                Browse our collection of {productCategoryName.toLowerCase()} product types
+                            </Typography>
+                        </Box>
                     </Box>
                 </Box>
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Button 
-                        variant="outlined" 
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                    <Button
+                        variant="outlined"
                         startIcon={<ArrowBackIcon />}
                         onClick={backToProductCategories}
                         sx={{

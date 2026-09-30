@@ -95,6 +95,7 @@ const ShopPage = () => {
             <Box sx={{ width: '100%', p: 0 }}>
               <ProductListHeader
                 productCategoryName={selectedProductCategory ? selectedProductCategory.name : 'None'}
+                productCategoryImage={selectedProductCategory?.image}
                 numberOfProducts={productTypeCount}
                 backToProductCategories={handleBackToProductCategories}
               />
