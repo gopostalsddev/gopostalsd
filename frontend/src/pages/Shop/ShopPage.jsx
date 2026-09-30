@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Box, Alert } from '@mui/material';
+import React, { useState, useEffect, lazy, Suspense } from "react";
+import { Box, Alert, CircularProgress } from '@mui/material';
 
 
 // Import global components
@@ -9,7 +9,7 @@ import SpinnerOverlay from "../../components/SpinnerOverlay";
 import ProductCategoryList from "./components/ProductCategoryList";
 import ProductListHeader from "./components/ProductListHeader";
 import ProductTypeList from "./components/ProductTypeList";
-import ProductDetailPage from "./components/ProductDetailPage";
+const ProductDetailPage = lazy(() => import('./components/ProductDetailPage'));
 
 import { fetchEnabledPrintProductCategories } from '../../services/product_service';
 
@@ -84,10 +84,12 @@ const ShopPage = () => {
           )}
           {selectedProduct ? (
             // If a product is selected, display product detail page
-            <ProductDetailPage 
-              product={selectedProduct} 
-              onBack={handleBackToProducts} 
-            />
+            <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>}>
+              <ProductDetailPage
+                product={selectedProduct}
+                onBack={handleBackToProducts}
+              />
+            </Suspense>
           ) : selectedProductCategory ? (
             // If a category is selected, display its product types
             <Box sx={{ width: '100%', p: 0 }}>
