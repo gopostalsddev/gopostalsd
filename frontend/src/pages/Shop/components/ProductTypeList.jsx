@@ -142,6 +142,7 @@ const ProductTypeList = ({ category, onProductClick, onProductTypesLoaded }) => 
           >
             <ProductTypeCard
               productType={productType}
+              categoryImage={category?.image}
               onProductClick={onProductClick}
             />
           </Grid>
