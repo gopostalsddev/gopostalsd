@@ -88,7 +88,7 @@ const ProductViewPage = ({ category, onBack }) => {
   };
 
   const getProductImage = (product) => {
-    return product.image_url || logoImage;
+    return product.image || logoImage;
   };
 
   const getProductDescription = (product) => {
