@@ -37,7 +37,7 @@ const ProductViewPage = ({ category, onBack }) => {
     try {
       setLoading(true);
       const data = await fetchAllPrintProductsByCategory(category.id);
-      setProducts(data);
+      setProducts(data.data || []);
     } catch (error) {
       console.error("Failed to load products:", error);
       alert("Failed to load products!");
