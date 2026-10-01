@@ -16,6 +16,14 @@ from server.models.pricing import (
 logger = logging.getLogger(__name__)
 
 
+def _utc_naive() -> datetime:
+    """Return the current UTC time as a timezone-naive datetime.
+    Pricing model columns use naive DateTime; stripping tzinfo here keeps
+    comparisons correct while making the UTC origin explicit at every call-site.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class PricingRepository:
     """
     Repository for pricing-related database operations.
@@ -31,7 +39,7 @@ class PricingRepository:
                 option_key=option_key
             ).first()
             
-            if cached and cached.updated_at > datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1):
+            if cached and cached.updated_at > _utc_naive() - timedelta(hours=1):
                 return {
                     'price': str(cached.price),
                     'packageInfo': cached.package_info,
@@ -60,7 +68,7 @@ class PricingRepository:
                 existing.price = pricing_data.get('price', 0)
                 existing.package_info = pricing_data.get('packageInfo')
                 existing.product_options = pricing_data.get('productOptions')
-                existing.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                existing.updated_at = _utc_naive()
             else:
                 # Create new record
                 new_pricing = ProductPricing(
@@ -99,7 +107,7 @@ class PricingRepository:
     def cache_options(self, product_id: int, options: List[Dict]) -> None:
         """Cache product options for future use."""
         try:
-            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            now = _utc_naive()
 
             # Deduplicate payload by option id in case upstream sends repeats.
             deduped_options = {}
