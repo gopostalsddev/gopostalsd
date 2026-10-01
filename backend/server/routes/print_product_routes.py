@@ -74,6 +74,7 @@ class PrintProductResource(Resource):
     @api.doc(description="Fetch list of available print products")
     @api.response(200, "Products retrieved successfully", [product_model])
     @api.response(500, "Server error")
+    @require_role("Admin")
     def get(self):
         """Retrieve available print products"""
         result = PrintProductController.get_all_products()
