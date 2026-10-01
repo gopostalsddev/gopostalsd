@@ -205,7 +205,7 @@ def create_server(config="development", *, migration_mode=None):
     if config == 'production':
         rate_store = os.getenv('AUTH_RATE_LIMIT_STORE', 'memory').lower()
         if rate_store == 'memory':
-            logger.warning(
+            raise ValueError(
                 "AUTH_RATE_LIMIT_STORE is 'memory' in production. "
                 "Rate limits are not shared across Gunicorn workers. "
                 "Set AUTH_RATE_LIMIT_STORE=redis and RATE_LIMIT_REDIS_URL."
