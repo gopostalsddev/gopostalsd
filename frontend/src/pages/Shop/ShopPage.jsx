@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Box, Alert, CircularProgress } from '@mui/material';
 
 
@@ -21,7 +22,8 @@ const ShopPage = () => {
     const  [productTypeCount, setProductTypeCount] = useState(0)
     const  [loading, setLoading] = useState(true)
     const [categoryNotice, setCategoryNotice] = useState('')
-  
+    const [searchParams, setSearchParams] = useSearchParams();
+
     useEffect(() => {
       const loadProductCategories = async () => {
         try {
@@ -29,6 +31,21 @@ const ShopPage = () => {
           if (enabledProductCategories.length > 0) {
             setProductCategories(enabledProductCategories)
             setCategoryNotice('')
+
+            // Restore state from URL on load/back-forward navigation
+            const catId = searchParams.get('category');
+            const prodId = searchParams.get('product');
+            if (catId) {
+              const cat = enabledProductCategories.find(c => String(c.id) === catId);
+              if (cat) {
+                setSelectedProductCategrory(cat);
+                if (prodId) {
+                  // product objects are loaded lazily; store a stub so ProductDetailPage
+                  // can fetch full details — or just clear to type list if not found
+                  setSelectedProduct({ id: parseInt(prodId, 10), _stub: true });
+                }
+              }
+            }
           } else {
             setProductCategories([])
             setCategoryNotice('No product categories are currently available. An administrator must sync, classify, and enable catalog categories.')
@@ -39,18 +56,21 @@ const ShopPage = () => {
         }finally{
           setLoading(false)
         }
-      };  
+      };
       loadProductCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
-  
+
     const handleProductCategoryClick = (productCategory) => {
       setSelectedProductCategrory(productCategory)
+      setSearchParams({ category: productCategory.id });
     }
-  
+
     const handleBackToProductCategories = () => {
         setSelectedProductCategrory(null);
         setSelectedProduct(null);
         setProductTypeCount(0);
+        setSearchParams({});
     }
 
     const handleProductTypesLoaded = (count) => {
@@ -59,10 +79,12 @@ const ShopPage = () => {
 
     const handleViewProduct = (product) => {
         setSelectedProduct(product);
+        setSearchParams({ category: selectedProductCategory.id, product: product.id });
     }
 
     const handleBackToProducts = () => {
         setSelectedProduct(null);
+        setSearchParams({ category: selectedProductCategory.id });
     }
   
     return (
