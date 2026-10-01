@@ -185,7 +185,7 @@ class ErrorHandler:
                 environment=app.config.get('ENVIRONMENT', 'development'),
             )
         elif not SENTRY_AVAILABLE and app.config.get('SENTRY_DSN'):
-            logger.warning("sentry-sdk not installed — error tracking disabled. Run: pip install sentry-sdk")
+            self.logger.warning("sentry-sdk not installed — error tracking disabled. Run: pip install sentry-sdk")
         
         # Register error handlers
         app.register_error_handler(ApplicationError, self.handle_application_error)
@@ -256,7 +256,7 @@ class ErrorHandler:
             severity=ErrorSeverity.CRITICAL,
             details={'exception_type': type(error).__name__}
         )
-        logger.critical("Unhandled exception [%s]: %s", app_error.error_id, tb)
+        self.logger.critical("Unhandled exception [%s]: %s", app_error.error_id, tb)
         return self._create_error_response(app_error)
     
     def _create_error_response(self, error: ApplicationError):
@@ -325,16 +325,16 @@ class ErrorHandler:
             self.logger.info(f"Low severity error: {error.message}", extra=log_data)
     
     def _track_error_stats(self, error: ApplicationError):
-        """Track error statistics for monitoring."""
+        """Track error statistics for monitoring. Capped at 10k total to prevent unbounded growth."""
+        total = sum(sum(v.values()) for v in self.error_stats.values())
+        if total >= 10_000:
+            return
         category = error.category.value
         severity = error.severity.value
-        
         if category not in self.error_stats:
             self.error_stats[category] = {}
-        
         if severity not in self.error_stats[category]:
             self.error_stats[category][severity] = 0
-        
         self.error_stats[category][severity] += 1
     
     def _send_to_monitoring(self, error: ApplicationError):

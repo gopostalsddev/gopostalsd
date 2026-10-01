@@ -203,6 +203,7 @@ class EmailVerificationResource(Resource):
     
     @api.doc('verify_email')
     @api.param('token', 'Email verification token', required=True)
+    @rate_limit_by_ip('AUTH_PASSWORD_RESET_RATE_LIMIT_COUNT', 'AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS', 'auth-verify-email')
     def get(self):
         """Verify user email with token."""
         token = request.args.get('token')
@@ -225,6 +226,7 @@ class EmailVerificationResource(Resource):
     @api.expect(api.model('EmailVerificationRequest', {
         'token': fields.String(required=True, description='Email verification token')
     }))
+    @rate_limit_by_ip('AUTH_PASSWORD_RESET_RATE_LIMIT_COUNT', 'AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS', 'auth-verify-email')
     def post(self):
         """Verify user email with token in request body."""
         data = request.get_json(silent=True) or {}
@@ -264,11 +266,8 @@ class ResendVerificationResource(Resource):
             return error_response('Invalid email', 400)
         
         result = AuthController.resend_verification_email(email_result.sanitized_data, auth_service=_get_auth_service())
-        
-        if result.status:
-            return result.data, 200
-        else:
-            return error_response(result.error, 400, code=result.details, category='authentication')
+        # Always return the same response to prevent email enumeration.
+        return {'message': 'If that address is registered and unverified, a verification link has been sent.'}, 200
 
 
 @api.route('/login')
@@ -323,6 +322,7 @@ class LogoutResource(Resource):
     
     @api.doc('logout_user')
     @api.param('session_token', 'Session token', required=True)
+    @rate_limit_by_ip('AUTH_LOGIN_RATE_LIMIT_COUNT', 'AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'auth-logout')
     def post(self):
         """Logout user by invalidating session."""
         # Token must come from the Authorization header so the double-submit CSRF
@@ -389,11 +389,8 @@ class PasswordResetRequestResource(Resource):
             return error_response('Invalid email', 400)
 
         result = AuthController.request_password_reset(email_result.sanitized_data, auth_service=_get_auth_service())
-        
-        if result.status:
-            return result.data, 200
-        else:
-            return error_response(result.error, 400, code=result.details, category='authentication')
+        # Always return the same response to prevent email enumeration.
+        return {'message': 'If that address is registered, a password reset link has been sent.'}, 200
 
 @api.route('/password-reset')
 class PasswordResetResource(Resource):
@@ -458,6 +455,7 @@ class PasswordValidationResource(Resource):
     @api.doc('validate_password')
     @api.expect(password_validation_model)
     @api.response(200, 'Password validated', password_validation_response_model)
+    @rate_limit_by_ip('AUTH_REGISTER_RATE_LIMIT_COUNT', 'AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS', 'auth-validate-password')
     def post(self):
         """Validate password strength."""
         data = request.get_json(silent=True)

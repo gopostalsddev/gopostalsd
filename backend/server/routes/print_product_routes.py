@@ -101,6 +101,7 @@ class PrintProductCategoriesResource(Resource):
 
     @api.doc(description="Fetch all product categories with their classification status")
     @api.response(200, "Categories retrieved successfully", [category_model])
+    @require_role("Admin")
     def get(self):
         """ Retrieve all product categories with classification status"""
         result = PrintProductController.get_all_product_categories_with_status()
@@ -183,6 +184,7 @@ class PrintProductByCategoryAllResource(Resource):
     @api.doc(description="Fetch list of print products listed by category")
     @api.response(200, "Products retrieved successfully")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def get(self, category_id):
         """Retrieve print products by category"""
 
@@ -500,6 +502,7 @@ class PrintProductCategoryClassificationStatusResource(Resource):
     @api.doc(description="Check if all products in a category are classified to product types")
     @api.response(200, "Classification status retrieved successfully")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def get(self, category_id):
         """Check product classification status for a category"""
         result = PrintProductController.are_all_products_classified(category_id)
@@ -516,6 +519,7 @@ class PrintProductVendorsResource(Resource):
     @api.doc(description="Get all vendors")
     @api.response(200, "Vendors retrieved successfully")
     @api.response(500, "Server error")
+    @require_role("Admin")
     def get(self):
         """Get all vendors"""
         result = PrintProductController.get_all_vendors()

@@ -83,10 +83,13 @@ def validate_production_security_settings() -> None:
     if not secret_key or secret_key == 'your_flask_secret_key_here':
         raise ValueError('A strong SECRET_KEY must be set in production')
 
-    # Keep production boot resilient when JWT_SECRET_KEY is accidentally omitted
-    # in the hosting dashboard by falling back to a verified strong SECRET_KEY.
+    # Require an explicit JWT_SECRET_KEY in production; refusing to silently
+    # reuse SECRET_KEY ensures distinct secrets and surfaced misconfigurations.
     if not jwt_secret_key or jwt_secret_key == 'your_jwt_secret_key_here':
-        os.environ['JWT_SECRET_KEY'] = secret_key
+        raise ValueError(
+            'JWT_SECRET_KEY must be set explicitly in production. '
+            'Set it to a distinct strong secret (not the same as SECRET_KEY).'
+        )
 
     if os.getenv('SQUARE_MOCK_PAYMENTS', 'false').lower() == 'true':
         raise ValueError('SQUARE_MOCK_PAYMENTS must not be true in production')
