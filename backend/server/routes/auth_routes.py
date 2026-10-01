@@ -430,6 +430,7 @@ class CurrentUserResource(Resource):
     @api.doc('get_current_user')
     @api.param('session_token', 'Session token', required=True)
     @api.response(200, 'Current user fetched successfully', user_model)
+    @rate_limit_by_ip('AUTH_LOGIN_RATE_LIMIT_COUNT', 'AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'auth-me')
     def get(self):
         """Get current user by session token."""
         session_token = _extract_bearer_token()
