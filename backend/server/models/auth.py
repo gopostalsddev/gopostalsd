@@ -47,8 +47,9 @@ def _decrypt_token(value: str | None) -> str | None:
         return value
     try:
         return _fernet.decrypt(value.encode()).decode()
-    except Exception:
-        # Return raw value for tokens written before encryption was enabled.
+    except InvalidToken:
+        # Migration fallback: return raw value for rows written before encryption was enabled.
+        logger.warning("OAuth token decryption failed (InvalidToken) — returning raw stored value; row may predate encryption")
         return value
 
 

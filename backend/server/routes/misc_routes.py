@@ -59,5 +59,8 @@ def health_compatibility():
 @api.route('/uploads/<path:filename>')
 def serve_uploaded_file(filename):
     # send_from_directory uses safe_join internally, which prevents path traversal.
+    # This endpoint serves catalog images that are intentionally public (product
+    # category and type images). Any private uploads must go to Supabase storage
+    # with its own access policy rather than this folder.
     upload_folder = os.path.join(current_app.root_path, "uploads")
     return send_from_directory(upload_folder, filename)

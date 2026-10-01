@@ -54,7 +54,7 @@ class PricingController:
             logger.error(f"Error getting product options: {str(e)}")
             result.status = False
             result.error = "Failed to retrieve product options"
-            result.details = str(e)
+            result.details = "PRICING_OPTIONS_ERROR"
         
         return result
     
@@ -92,7 +92,7 @@ class PricingController:
             logger.error(f"Error calculating price: {str(e)}")
             result.status = False
             result.error = "Failed to calculate price"
-            result.details = str(e)
+            result.details = "PRICING_CALCULATION_ERROR"
         
         return result
     
@@ -143,6 +143,6 @@ class PricingController:
             logger.error(f"Error getting shipping estimates: {str(e)}")
             result.status = False
             result.error = "Failed to get shipping estimates"
-            result.details = str(e)
+            result.details = "SHIPPING_ESTIMATES_ERROR"
 
         return result
