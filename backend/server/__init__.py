@@ -204,11 +204,17 @@ def create_server(config="development", *, migration_mode=None):
     # In-memory counters are per-worker and won't enforce limits across Gunicorn workers.
     if config == 'production':
         rate_store = os.getenv('AUTH_RATE_LIMIT_STORE', 'memory').lower()
-        if rate_store == 'memory':
+        web_concurrency = int(os.getenv('WEB_CONCURRENCY', '1'))
+        if rate_store == 'memory' and web_concurrency > 1:
             raise ValueError(
-                "AUTH_RATE_LIMIT_STORE is 'memory' in production. "
+                f"AUTH_RATE_LIMIT_STORE is 'memory' with WEB_CONCURRENCY={web_concurrency} in production. "
                 "Rate limits are not shared across Gunicorn workers. "
-                "Set AUTH_RATE_LIMIT_STORE=redis and RATE_LIMIT_REDIS_URL."
+                "Set AUTH_RATE_LIMIT_STORE=redis and RATE_LIMIT_REDIS_URL, or run with WEB_CONCURRENCY=1."
+            )
+        if rate_store == 'memory':
+            logger.warning(
+                "AUTH_RATE_LIMIT_STORE is 'memory' in production with WEB_CONCURRENCY=1. "
+                "Rate limits are enforced but not shared — set AUTH_RATE_LIMIT_STORE=redis before scaling workers."
             )
 
     # Register API routes
