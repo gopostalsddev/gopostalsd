@@ -7,7 +7,7 @@ from markupsafe import escape
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from flask import current_app
@@ -719,7 +719,7 @@ class PrintProductController:
                     file_extension = os.path.splitext(original_filename)[1].lower()
 
                     # Generate unique filename with timestamp and UUID
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                     unique_id = str(uuid.uuid4())[:8]
                     unique_filename = f"category_{timestamp}_{unique_id}{file_extension}"
                     
@@ -890,14 +890,14 @@ class PrintProductController:
                     # Generate unique filename to avoid conflicts
                     import uuid
                     from werkzeug.utils import secure_filename
-                    from datetime import datetime
+                    from datetime import datetime, timezone
                     
                     # Get file extension
                     original_filename = secure_filename(image.filename)
                     file_extension = os.path.splitext(original_filename)[1].lower()
                     
                     # Generate unique filename with timestamp and UUID
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                     unique_id = str(uuid.uuid4())[:8]
                     unique_filename = f"product_type_{timestamp}_{unique_id}{file_extension}"
                     
@@ -986,7 +986,7 @@ class PrintProductController:
                     file_extension = os.path.splitext(original_filename)[1].lower()
 
                     # Generate unique filename with timestamp and UUID
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                     unique_id = str(uuid.uuid4())[:8]
                     unique_filename = f"product_type_{timestamp}_{unique_id}{file_extension}"
                     
@@ -1251,7 +1251,7 @@ class PrintProductController:
                     file_extension = os.path.splitext(original_filename)[1].lower()
 
                     # Generate unique filename with timestamp and UUID
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                     unique_id = str(uuid.uuid4())[:8]
                     unique_filename = f"product_{timestamp}_{unique_id}{file_extension}"
                     
