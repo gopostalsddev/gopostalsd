@@ -446,7 +446,7 @@ class PrintProductController:
             
         except Exception as e:
             result.status = False
-            result.error = f"Failed to fetch vendors: {str(e)}"
+            result.error = "Failed to fetch vendors."
             logger.error("Error fetching vendors: %s", e)
 
         return result
@@ -749,7 +749,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"{PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_CATEGORY.value}: {str(e)}"
+            result.error = PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_CATEGORY.value
 
         return result
 
@@ -778,7 +778,7 @@ class PrintProductController:
             
         except Exception as e:
             result.status = False
-            result.error = f"{PrintProductErrors.FAILED_TO_FETCH_PRINT_PRODUCT_TYPES.value}: {str(e)}"
+            result.error = PrintProductErrors.FAILED_TO_FETCH_PRINT_PRODUCT_TYPES.value
             logger.error("Error fetching print product types: %s", e)
 
         
@@ -807,7 +807,7 @@ class PrintProductController:
                 result.data = []
                 result.status = True
         except Exception as e:
-            result.error = f"{PrintProductErrors.FAILED_TO_FETCH_PRINT_PRODUCT_TYPES.value}: {str(e)}"
+            result.error = PrintProductErrors.FAILED_TO_FETCH_PRINT_PRODUCT_TYPES.value
             logger.error("Error fetching product types for category %s: %s", category_id, e)
 
         return result
@@ -931,7 +931,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"{PrintProductErrors.FAILED_TO_CREATE_PRODUCT_TYPE.value}: {str(e)}"
+            result.error = PrintProductErrors.FAILED_TO_CREATE_PRODUCT_TYPE.value
             logger.error("Error creating product type: %s", e)
 
         return result
@@ -1016,7 +1016,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"{PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_TYPE.value}: {str(e)}"
+            result.error = PrintProductErrors.FAILED_TO_UPDATE_PRODUCT_TYPE.value
 
         return result
 
@@ -1058,7 +1058,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"{PrintProductErrors.FAILED_TO_DELETE_PRODUCT_TYPE.value}: {str(e)}"
+            result.error = PrintProductErrors.FAILED_TO_DELETE_PRODUCT_TYPE.value
             logger.error("Error deleting product type: %s", e)
 
         return result
@@ -1093,7 +1093,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to ensure unclassified type exists: {str(e)}"
+            result.error = "Failed to ensure unclassified type exists."
             logger.error("Error ensuring unclassified type exists: %s", e)
 
         return result
@@ -1167,7 +1167,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to assign product to type: {str(e)}"
+            result.error = "Failed to assign product to type."
             logger.error("Error assigning product to type: %s", e)
 
         return result
@@ -1202,7 +1202,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to unassign product from type: {str(e)}"
+            result.error = "Failed to unassign product from type."
             logger.error("Error unassigning product from type: %s", e)
 
         return result
@@ -1277,7 +1277,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to update product: {str(e)}"
+            result.error = "Failed to update product."
 
         return result
 
@@ -1311,7 +1311,7 @@ class PrintProductController:
 
         except Exception as e:
             result.status = False
-            result.error = f"Failed to check product classification: {str(e)}"
+            result.error = "Failed to check product classification."
             logger.error("Error checking product classification: %s", e)
 
         return result
@@ -1361,7 +1361,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to update classification status: {str(e)}"
+            result.error = "Failed to update classification status."
             logger.error("Error updating classification status: %s", e)
 
         return result
@@ -1389,7 +1389,7 @@ class PrintProductController:
             
         except Exception as e:
             result.status = False
-            result.error = f"{PrintProductErrors.FAILED_TO_FETCH_PRINT_PRODUCT_CATEGORIES.value}: {str(e)}"
+            result.error = PrintProductErrors.FAILED_TO_FETCH_PRINT_PRODUCT_CATEGORIES.value
             logger.error("Error fetching categories with status: %s", e)
 
         return result

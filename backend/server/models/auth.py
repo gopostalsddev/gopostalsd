@@ -18,16 +18,26 @@ logger = logging.getLogger(__name__)
 try:
     from cryptography.fernet import Fernet, InvalidToken
     _FERNET_KEY = os.getenv('OAUTH_TOKEN_ENCRYPTION_KEY', '').encode()
-    _fernet = Fernet(_FERNET_KEY) if _FERNET_KEY else None
+    if _FERNET_KEY:
+        _fernet = Fernet(_FERNET_KEY)
+    else:
+        _fernet = None
+        logger.warning(
+            "OAUTH_TOKEN_ENCRYPTION_KEY is not set. OAuth token encryption is disabled. "
+            "Set this variable to a Fernet key (run: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\")."
+        )
 except Exception:
     _fernet = None
+    logger.warning("Failed to initialize OAuth token encryption — OAUTH_TOKEN_ENCRYPTION_KEY may be malformed.")
 
 def _encrypt_token(value: str | None) -> str | None:
     if value is None:
         return None
     if _fernet is None:
-        logger.warning("OAUTH_TOKEN_ENCRYPTION_KEY not set — storing OAuth token in plaintext")
-        return value
+        raise RuntimeError(
+            "Cannot store OAuth token: OAUTH_TOKEN_ENCRYPTION_KEY is not configured. "
+            "Set this environment variable before enabling OAuth login."
+        )
     return _fernet.encrypt(value.encode()).decode()
 
 def _decrypt_token(value: str | None) -> str | None:
@@ -84,8 +94,8 @@ class User(db.Model):
     last_login = db.Column(db.DateTime, nullable=True)
     failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Foreign key for addresses
     shipping_address_id = db.Column(db.Integer, db.ForeignKey('addresses.id'), nullable=True)
@@ -145,8 +155,8 @@ class Role(db.Model):
     description = db.Column(db.String(255), nullable=True)
     permissions = db.Column(db.JSON, nullable=True)  # Store permissions as JSON
     is_system_role = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
         return f"<Role {self.name}>"
@@ -169,7 +179,7 @@ class Permission(db.Model):
     description = db.Column(db.String(255), nullable=True)
     resource = db.Column(db.String(50), nullable=False)  # e.g., 'users', 'products', 'orders'
     action = db.Column(db.String(50), nullable=False)    # e.g., 'create', 'read', 'update', 'delete'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
         return f"<Permission {self.name}>"
@@ -189,8 +199,8 @@ class UserSession(db.Model):
     user_agent = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    last_accessed = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    last_accessed = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
         return f"<UserSession {self.session_token[:10]}...>"
@@ -221,8 +231,8 @@ class PasswordResetToken(db.Model):
     token = db.Column(db.String(255), unique=True, nullable=False, index=True)
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    used_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     def __repr__(self):
         return f"<PasswordResetToken {self.token[:10]}...>"
@@ -255,8 +265,8 @@ class EmailVerificationToken(db.Model):
     token = db.Column(db.String(255), unique=True, nullable=False, index=True)
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    used_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     def __repr__(self):
         return f"<EmailVerificationToken {self.token[:10]}...>"
@@ -291,9 +301,9 @@ class OAuthAccount(db.Model):
     provider_email = db.Column(db.String(120), nullable=True)
     _access_token = db.Column('access_token', db.Text, nullable=True)
     _refresh_token = db.Column('refresh_token', db.Text, nullable=True)
-    token_expires_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    token_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Unique constraint on provider and provider_user_id
     __table_args__ = (db.UniqueConstraint('provider', 'provider_user_id', name='_provider_user_uc'),)
@@ -341,8 +351,8 @@ class Address(db.Model):
     country = db.Column(db.String(180), nullable=False)
     apt = db.Column(db.String(50), nullable=True)
     is_default = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
         return f"<Address {self.street}, {self.city}, {self.country}>"

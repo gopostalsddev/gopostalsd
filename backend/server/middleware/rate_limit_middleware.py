@@ -84,18 +84,30 @@ def _get_redis_client():
             return None
 
 
+_REDIS_RATE_LIMIT_LUA = """
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local count = redis.call('INCR', key)
+if count == 1 then
+    redis.call('EXPIRE', key, window)
+end
+return count
+"""
+
 def _redis_is_rate_limited(bucket_key: str, limit: int, window_seconds: int) -> bool:
-    """Use Redis atomic counters for distributed rate limiting."""
+    """Use Redis atomic counters for distributed rate limiting.
+    The INCR and EXPIRE are executed atomically via a Lua script to prevent
+    immortal keys if the process dies between the two commands.
+    """
     client = _get_redis_client()
     if not client:
         return False
 
     redis_key = f'rate-limit:{bucket_key}'
     try:
-        request_count = client.incr(redis_key)
-        if request_count == 1:
-            client.expire(redis_key, window_seconds)
-        return request_count > limit
+        request_count = client.eval(_REDIS_RATE_LIMIT_LUA, 1, redis_key, limit, window_seconds)
+        return int(request_count) > limit
     except Exception:
         logger.warning('Redis rate limit operation failed; falling back to in-memory store', exc_info=True)
         return False
