@@ -105,10 +105,18 @@ class PrintProductController:
             sku = (data.get('sku') or '').strip()
             description = (data.get('description') or '').strip() or None
             _raw_image = (data.get('image') or '').strip()
-            if _raw_image and not _raw_image.startswith('https://'):
-                result.status = False
-                result.error = 'Invalid image URL. Must start with https://'
-                return result
+            if _raw_image:
+                from urllib.parse import urlparse
+                _parsed = urlparse(_raw_image)
+                _supabase_host = urlparse(current_app.config.get('SUPABASE_URL', '')).hostname or ''
+                _allowed = _supabase_host and _parsed.scheme == 'https' and (
+                    _parsed.hostname == _supabase_host or
+                    (_parsed.hostname or '').endswith('.' + _supabase_host)
+                )
+                if not _allowed:
+                    result.status = False
+                    result.error = 'Invalid image URL. Must be a URL from the configured storage provider.'
+                    return result
             image = _raw_image or None
             vendor_product_id = (data.get('vendor_product_id') or '').strip() or None
             category_id = data.get('category_id')
@@ -174,7 +182,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f'Failed to create product: {str(e)}'
+            result.error = 'Failed to create product.'
             logger.error('Error creating manual product: %s', e)
             return result
 
@@ -223,7 +231,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to ensure default product types: {str(e)}"
+            result.error = "Failed to ensure default product types."
             logger.error("Error ensuring default product types: %s", e)
 
         return result
@@ -270,7 +278,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to enable categories: {str(e)}"
+            result.error = "Failed to enable categories."
             logger.error("Error enabling categories: %s", e)
 
         return result
@@ -544,7 +552,7 @@ class PrintProductController:
         except Exception as e:
             db.session.rollback()
             result.status = False
-            result.error = f"Failed to sync print products: {str(e)}"
+            result.error = "Failed to sync print products."
             logger.error("Error syncing print products for category %s: %s", category_id, e)
         
         return result
@@ -660,7 +668,7 @@ class PrintProductController:
 
         except Exception as e:
             result.status = False
-            result.error = f"Failed to fetch products by type: {str(e)}"
+            result.error = "Failed to fetch products by type."
             logger.error("Error fetching products by type %s: %s", type_id, e)
 
         return result

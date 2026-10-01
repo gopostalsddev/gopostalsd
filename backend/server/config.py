@@ -144,6 +144,10 @@ class Config:
     EMAIL_VERIFICATION_EXPIRY_HOURS = int(os.getenv('EMAIL_VERIFICATION_EXPIRY_HOURS', '24'))
     PASSWORD_RESET_EXPIRY_HOURS = int(os.getenv('PASSWORD_RESET_EXPIRY_HOURS', '1'))
 
+    # Flask will reject any request body exceeding this size (10 MB) before it
+    # reaches any route handler — prevents upload-based resource exhaustion.
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10 MB
+
     AUTH_RATE_LIMIT_ENABLED = os.getenv('AUTH_RATE_LIMIT_ENABLED', 'true').lower() == 'true'
     AUTH_RATE_LIMIT_STORE = os.getenv('AUTH_RATE_LIMIT_STORE', 'memory')
     RATE_LIMIT_REDIS_URL = os.getenv('RATE_LIMIT_REDIS_URL', '')

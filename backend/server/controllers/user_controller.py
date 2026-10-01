@@ -3,7 +3,10 @@ from enum import Enum
 from server.config import database as db
 from server.models.auth import User, Role, Address
 from server.controllers.helpers import Result
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 class UserErrors(Enum):
     FAILED_TO_GET_ALL_USERS = "Failed to get all users!"
@@ -83,8 +86,10 @@ class UserController:
             result.data = new_user
 
         except Exception as e:
+            db.session.rollback()
+            logger.error("Error creating user: %s", e)
             result.status = False
-            result.error = str(e)
+            result.error = "An error occurred while creating the user."
 
         return result
 
