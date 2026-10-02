@@ -4,9 +4,15 @@ no_args "$@"
 assert_boundary
 compose build --pull web
 assert_project_resources
+square_env=$(sed -n 's/^SQUARE_ENVIRONMENT=//p' "$GOP_STACK/application.env")
+square_app_id=$(sed -n 's/^SQUARE_APPLICATION_ID=//p' "$GOP_STACK/application.env")
+square_location_id=$(sed -n 's/^SQUARE_LOCATION_ID=//p' "$GOP_STACK/application.env")
 docker build --pull \
   --file "$GOP_SHARE/frontend.Dockerfile" \
   --tag "gopostal-rehearsal-frontend:$GOP_IMAGE_TAG" \
   --label "com.docker.compose.project=$GOP_PROJECT" \
+  --build-arg "VITE_SQUARE_ENVIRONMENT=${square_env}" \
+  --build-arg "VITE_SQUARE_APPLICATION_ID=${square_app_id}" \
+  --build-arg "VITE_SQUARE_LOCATION_ID=${square_location_id}" \
   "$GOP_SOURCE/frontend"
 assert_project_resources
