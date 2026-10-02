@@ -75,7 +75,7 @@ const findNearestSize = (w, h, sizeOptions) => {
   return nearest;
 };
 
-const ProductDetailPage = ({ product, onBack }) => {
+const ProductDetailPage = ({ product, onBack, categoryImage }) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { addItemToCart } = useCartOperations();
@@ -700,7 +700,7 @@ const ProductDetailPage = ({ product, onBack }) => {
             <CardContent>
               <Box sx={{ textAlign: 'center' }}>
                 <img
-                  src={product.image || productTypeImage || logoImage}
+                  src={product.image || productTypeImage || categoryImage || logoImage}
                   alt={product.name}
                   style={{
                     width: '100%',
@@ -1009,7 +1009,7 @@ const ProductDetailPage = ({ product, onBack }) => {
                 <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
                   <Box sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
                     <img
-                      src={product.image || productTypeImage || logoImage}
+                      src={product.image || productTypeImage || categoryImage || logoImage}
                       alt={product.name}
                       style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }}
                     />

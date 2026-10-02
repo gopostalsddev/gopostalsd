@@ -110,6 +110,7 @@ const ShopPage = () => {
               <ProductDetailPage
                 product={selectedProduct}
                 onBack={handleBackToProducts}
+                categoryImage={selectedProductCategory?.image}
               />
             </Suspense>
           ) : selectedProductCategory ? (
