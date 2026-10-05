@@ -95,3 +95,7 @@
 		file_server
 	}
 }
+
+www.{$GOPOSTAL_HOST} {
+	redir https://{$GOPOSTAL_HOST}{uri} permanent
+}
