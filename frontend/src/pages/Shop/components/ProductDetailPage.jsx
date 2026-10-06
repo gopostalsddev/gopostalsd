@@ -387,14 +387,19 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
 
       const estimates = await getShippingEstimates(requestData);
       if (!estimates || estimates.length === 0) {
-        setError('Shipping estimates are currently unavailable for this product. Please contact us for a shipping quote.');
+        // Show inline in the dialog rather than a page-level error — Sinalite
+        // doesn't support estimates for all product types (e.g. large-format vinyl).
+        setShippingEstimates([]);
+        setShowShippingDialog(true);
       } else {
         setShippingEstimates(estimates);
         setShowShippingDialog(true);
       }
     } catch (error) {
       console.error('Error getting shipping estimates:', error);
-      setError(getErrorMessage(error?.response?.data?.error, 'Unable to retrieve shipping estimates. Please contact us for a quote.'));
+      // Non-fatal — open dialog with empty state rather than crashing the page.
+      setShippingEstimates([]);
+      setShowShippingDialog(true);
     } finally {
       setShippingLoading(false);
     }
