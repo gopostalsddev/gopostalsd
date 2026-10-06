@@ -7,7 +7,7 @@ import {
   Alert,
   Container
 } from '@mui/material';
-import { fetchProductTypesByCategory } from '../../../services/product_service';
+import { fetchProductTypesByCategory, fetchProductsByType } from '../../../services/product_service';
 import ProductTypeCard from './ProductTypeCard';
 
 /**
@@ -22,6 +22,7 @@ import ProductTypeCard from './ProductTypeCard';
  */
 const ProductTypeList = ({ category, onProductClick, onProductTypesLoaded }) => {
   const [productTypes, setProductTypes] = useState([]);
+  const [productsByTypeId, setProductsByTypeId] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -35,11 +36,22 @@ const ProductTypeList = ({ category, onProductClick, onProductTypesLoaded }) => 
       try {
         const result = await fetchProductTypesByCategory(category.id);
         if (result.success) {
-          setProductTypes(result.data);
-          // Notify parent component of the count
+          const types = result.data;
+          setProductTypes(types);
           if (onProductTypesLoaded) {
-            onProductTypesLoaded(result.data.length);
+            onProductTypesLoaded(types.length);
           }
+
+          // Batch-fetch all products for every type in parallel so each card
+          // renders with its data already loaded (no per-card skeleton flash).
+          const productResults = await Promise.all(
+            types.map((pt) => fetchProductsByType(pt.id).catch(() => ({ success: false, data: [] })))
+          );
+          const map = {};
+          types.forEach((pt, i) => {
+            map[pt.id] = productResults[i].success ? productResults[i].data : [];
+          });
+          setProductsByTypeId(map);
         } else {
           setError('Failed to load product types');
         }
@@ -143,6 +155,7 @@ const ProductTypeList = ({ category, onProductClick, onProductTypesLoaded }) => 
             <ProductTypeCard
               productType={productType}
               categoryImage={category?.image}
+              products={productsByTypeId[productType.id] || []}
               onProductClick={onProductClick}
             />
           </Grid>

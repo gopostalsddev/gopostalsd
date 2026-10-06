@@ -109,6 +109,7 @@ const ProductCategoryList = ({ productCategories, handleProductCategoryClick }) 
                   height="250"
                   image={category.image || placeholderImage}
                   alt={category.name}
+                  loading="lazy"
                   sx={{
                     objectFit: "cover",
                     transition: 'transform 0.3s ease',

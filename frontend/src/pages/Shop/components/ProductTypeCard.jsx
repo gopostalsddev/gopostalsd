@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -8,55 +8,21 @@ import {
   List,
   ListItem,
   ListItemText,
-  CircularProgress,
   Chip,
-  Alert,
-  Skeleton
 } from '@mui/material';
 import {
   Category as CategoryIcon
 } from '@mui/icons-material';
-import { fetchProductsByType } from '../../../services/product_service';
 import logoImage from '../../../assets/uzima-mark.svg';
 
 /**
  * ProductTypeCard Component
- * 
+ *
  * Displays a product type with its image, description, and list of products.
- * Features professional styling with symmetrical layout and performance optimization.
- * 
- * @param {Object} productType - The product type data
- * @param {Function} onProductClick - Callback when a product is clicked
+ * Products are passed as a prop (fetched in batch by ProductTypeList) to avoid
+ * an N+1 fetch waterfall and per-card skeleton flashes.
  */
-const ProductTypeCard = ({ productType, categoryImage, onProductClick }) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const loadProducts = async () => {
-      if (!productType?.id) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const result = await fetchProductsByType(productType.id);
-        if (result.success) {
-          setProducts(result.data);
-        } else {
-          setError('Failed to load products');
-        }
-      } catch (err) {
-        console.error('Error loading products for type:', err);
-        setError('Failed to load products');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProducts();
-  }, [productType?.id]);
+const ProductTypeCard = ({ productType, categoryImage, products = [], onProductClick }) => {
 
   const handleProductClick = (product) => {
     if (onProductClick) {
@@ -64,15 +30,14 @@ const ProductTypeCard = ({ productType, categoryImage, onProductClick }) => {
     }
   };
 
-  // Use product type image or fallback to logo
   const displayImage = productType?.image || categoryImage || logoImage;
 
   return (
-    <Card 
-      sx={{ 
+    <Card
+      sx={{
         height: '100%',
         width: '100%',
-        maxWidth: '350px', // Constrain card width
+        maxWidth: '350px',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: 3,
@@ -85,13 +50,14 @@ const ProductTypeCard = ({ productType, categoryImage, onProductClick }) => {
         }
       }}
     >
-      {/* Product Type Image - Full Width */}
+      {/* Product Type Image */}
       <Box sx={{ position: 'relative', height: 200, m: 2 }}>
         <CardMedia
           component="img"
           height="200"
           image={displayImage}
           alt={productType?.name || 'Product Type'}
+          loading="lazy"
           sx={{
             objectFit: 'cover',
             borderRadius: 2,
@@ -102,10 +68,9 @@ const ProductTypeCard = ({ productType, categoryImage, onProductClick }) => {
             }
           }}
         />
-        
-        
+
         {/* Product Count Badge */}
-        {!loading && !error && products.length > 0 && (
+        {products.length > 0 && (
           <Chip
             label={`${products.length} products`}
             color="success"
@@ -181,23 +146,7 @@ const ProductTypeCard = ({ productType, categoryImage, onProductClick }) => {
             Available Products ({products.length})
           </Typography>
 
-          {loading ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {[...Array(3)].map((_, index) => (
-                <Skeleton 
-                  key={index} 
-                  variant="text" 
-                  width="80%" 
-                  height={24}
-                  sx={{ borderRadius: 1 }}
-                />
-              ))}
-            </Box>
-          ) : error ? (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          ) : products.length === 0 ? (
+          {products.length === 0 ? (
             <Typography 
               variant="body2" 
               color="text.secondary"
