@@ -183,20 +183,28 @@ class SinaliteAdapter:
             "shippingInfo": shipping_info
         }
 
-        logger.debug("Sending shipping estimate request to Sinalite API")
-        logger.debug(f"Items count: {len(items)}")
-        logger.debug(f"Destination: {shipping_info.get('city')}, {shipping_info.get('stateCode')}")
+        logger.info(f"Sinalite shipping estimate request payload: {payload!r}")
 
         # Use shorter retries for shipping — 500s here usually mean Sinalite can't price
         # the product, not a transient error, so 3×2s is just unnecessary latency.
         response = make_http_request(self, "POST", endpoint, data=payload, requires_auth=True, max_retries=2, retry_delay=1)
 
-        if response and "body" in response:
-            logger.debug("Shipping estimate response received")
-            return response["body"]
-        elif response and isinstance(response, list):
-            logger.debug("Shipping estimate response received (direct array)")
+        logger.info(f"Sinalite shipping estimate raw response type={type(response).__name__} value={response!r}")
+
+        if response is None:
+            logger.error(f"{self.name} failed to retrieve shipping estimates (no response)")
+            return []
+
+        if isinstance(response, list):
+            logger.info(f"Sinalite shipping estimate returned {len(response)} option(s) (direct array)")
             return response
-        
-        logger.error(f"{self.name} failed to retrieve shipping estimates")
+
+        if isinstance(response, dict):
+            if "body" in response:
+                logger.info(f"Sinalite shipping estimate returned body with {len(response['body'])} option(s)")
+                return response["body"]
+            logger.warning(f"Sinalite shipping estimate unexpected dict format, keys={list(response.keys())}")
+            return []
+
+        logger.error(f"{self.name} failed to retrieve shipping estimates (unexpected type)")
         return []
