@@ -178,6 +178,8 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
   const [shippingEstimates, setShippingEstimates] = useState([]);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [showShippingDialog, setShowShippingDialog] = useState(false);
+  const [selectedShippingIndex, setSelectedShippingIndex] = useState(null);
+  const [selectedShipping, setSelectedShipping] = useState(null);
   const [error, setError] = useState(null);
   const [productTypeImage, setProductTypeImage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -393,6 +395,7 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
         setShowShippingDialog(true);
       } else {
         setShippingEstimates(estimates);
+        setSelectedShippingIndex(null);
         setShowShippingDialog(true);
       }
     } catch (error) {
@@ -1266,24 +1269,38 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
         </DialogTitle>
         <DialogContent>
           {shippingEstimates.length > 0 ? (
-            <List>
+            <List disablePadding>
               {shippingEstimates.map((option, index) => {
-                // Handle the formatted response from backend
                 const carrierName = option.carrier_name;
                 const methodName = option.method_name;
                 const price = option.price;
                 const shippingDays = option.shipping_days;
-                
+                const isSelected = selectedShippingIndex === index;
+
                 return (
-                  <ListItem key={index} divider>
+                  <ListItem
+                    key={index}
+                    divider
+                    onClick={() => setSelectedShippingIndex(index)}
+                    sx={{
+                      cursor: 'pointer',
+                      borderRadius: 1,
+                      border: isSelected ? '2px solid' : '2px solid transparent',
+                      borderColor: isSelected ? 'primary.main' : 'transparent',
+                      backgroundColor: isSelected ? 'primary.50' : 'transparent',
+                      '&:hover': { backgroundColor: 'action.hover' },
+                      mb: 0.5,
+                    }}
+                  >
                     <ListItemIcon>
-                      <LocalShippingIcon color="primary" />
+                      <LocalShippingIcon color={isSelected ? 'primary' : 'action'} />
                     </ListItemIcon>
                     <ListItemText
                       primary={`${carrierName} ${methodName}`}
                       secondary={`${shippingDays} ${shippingDays === 1 ? 'Day' : 'Days'} Shipping`}
+                      primaryTypographyProps={{ fontWeight: isSelected ? 700 : 400 }}
                     />
-                    <Typography variant="h6" color="primary">
+                    <Typography variant="h6" color={isSelected ? 'primary' : 'text.primary'}>
                       {formatPrice(price)}
                     </Typography>
                   </ListItem>
@@ -1305,7 +1322,17 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowShippingDialog(false)}>
-            Close
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={selectedShippingIndex === null}
+            onClick={() => {
+              setSelectedShipping(shippingEstimates[selectedShippingIndex]);
+              setShowShippingDialog(false);
+            }}
+          >
+            Select Shipping
           </Button>
         </DialogActions>
       </Dialog>
