@@ -36,7 +36,8 @@ cart_item_model = api.model('CartItem', {
     'unit_price': fields.Float(description='Unit price'),
     'total_price': fields.Float(description='Total price'),
     'selected_options': fields.Raw(description='Selected options'),
-    'package_info': fields.Raw(description='Package information')
+    'package_info': fields.Raw(description='Package information'),
+    'product_image': fields.String(description='Product image URL', allow_none=True)
 })
 
 cart_model = api.model('Cart', {

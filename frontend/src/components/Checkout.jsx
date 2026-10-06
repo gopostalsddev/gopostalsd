@@ -20,8 +20,10 @@ import {
   Radio,
   Checkbox,
   Card,
-  CardContent
+  CardContent,
+  Avatar
 } from '@mui/material';
+import logoImage from '../assets/uzima-mark.svg';
 import {
   ShoppingCart as CartIcon,
   Payment as PaymentIcon,
@@ -122,6 +124,7 @@ export function Checkout() {
     }
   }, [user]);
   const [orderResult, setOrderResult] = useState(null);
+  const [confirmedItems, setConfirmedItems] = useState([]);
   const [processingOrder, setProcessingOrder] = useState(false);
   const [checkoutStepError, setCheckoutStepError] = useState(null);
 
@@ -245,6 +248,8 @@ export function Checkout() {
       const paymentResult = paymentResponse.data;
 
       if (paymentResult.success) {
+        // Snapshot items before clearing so ConfirmationStep can show them.
+        setConfirmedItems(cart.items || []);
         // create_order_from_cart already clears the persisted cart in the
         // order transaction. Reset only the browser state here.
         clearCartAfterCheckout();
@@ -284,7 +289,7 @@ export function Checkout() {
           />
         );
       case 3:
-        return <ConfirmationStep orderResult={orderResult} />;
+        return <ConfirmationStep orderResult={orderResult} confirmedItems={confirmedItems} />;
       default:
         return null;
     }
@@ -595,7 +600,7 @@ function PaymentStep({ amountCents, checkoutData, onCreateOrder, processing }) {
   );
 }
 
-function ConfirmationStep({ orderResult }) {
+function ConfirmationStep({ orderResult, confirmedItems = [] }) {
   if (!orderResult) {
     return (
       <Box textAlign="center">
@@ -607,21 +612,62 @@ function ConfirmationStep({ orderResult }) {
     );
   }
 
+  const formatPrice = (amount) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
   return (
-    <Box textAlign="center">
-      <CheckIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-      <Typography variant="h4" gutterBottom>
-        Order Confirmed!
-      </Typography>
-      <Typography variant="h6" color="text.secondary" gutterBottom>
-        Order #{orderResult.order.order_number}
-      </Typography>
-      <Typography variant="body1" sx={{ mb: 4 }}>
-        Thank you for your order. You will receive a confirmation email shortly.
-      </Typography>
-      <Button variant="contained" size="large" href="/">
-        Continue Shopping
-      </Button>
+    <Box>
+      <Box textAlign="center" sx={{ mb: 4 }}>
+        <CheckIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
+        <Typography variant="h4" gutterBottom>
+          Order Confirmed!
+        </Typography>
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          Order #{orderResult.order.order_number}
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Thank you for your order. You will receive a confirmation email shortly.
+        </Typography>
+      </Box>
+
+      {confirmedItems.length > 0 && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              Items Ordered
+            </Typography>
+            <Stack spacing={2} divider={<Divider />}>
+              {confirmedItems.map((item) => (
+                <Box key={item.id} display="flex" alignItems="center" gap={2}>
+                  <Avatar
+                    src={item.product_image || logoImage}
+                    alt={item.product_name}
+                    variant="rounded"
+                    sx={{ width: 64, height: 64, flexShrink: 0 }}
+                  />
+                  <Box flex={1} minWidth={0}>
+                    <Typography variant="body1" noWrap>
+                      {item.product_name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Qty: {item.quantity}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" sx={{ flexShrink: 0 }}>
+                    {formatPrice(item.total_price)}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      <Box textAlign="center">
+        <Button variant="contained" size="large" href="/">
+          Continue Shopping
+        </Button>
+      </Box>
     </Box>
   );
 }

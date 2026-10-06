@@ -146,7 +146,11 @@ class CartItem(db.Model):
             # If it's stored as a string, parse it
             import json
             selected_options = json.loads(selected_options)
-        
+
+        from server.models.print_product import PrintProduct
+        product = PrintProduct.query.filter_by(vendor_product_id=str(self.product_id)).first()
+        product_image = product.image if product else None
+
         return {
             'id': self.id,
             'cart_id': self.cart_id,
@@ -159,6 +163,7 @@ class CartItem(db.Model):
             'unit_price': float(self.unit_price),
             'total_price': float(self.total_price),
             'package_info': self.package_info,
+            'product_image': product_image,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
