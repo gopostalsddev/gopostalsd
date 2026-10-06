@@ -45,7 +45,9 @@ import {
   Home as HomeIcon,
   Store as StoreIcon,
   Category as CategoryIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  UploadFile as UploadFileIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import {
   getShippingEstimates,
@@ -53,6 +55,7 @@ import {
 } from '../../../services/product_service';
 import { useCartOperations } from '../../../hooks/useCart';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useArtwork } from '../../../contexts/ArtworkContext';
 import { useNavigate } from 'react-router-dom';
 import { useProductOptions } from '../../../hooks/useProductOptions';
 import { useProductPricing } from '../../../hooks/useProductPricing';
@@ -79,10 +82,12 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { addItemToCart } = useCartOperations();
+  const { artworkFile, setArtworkFile } = useArtwork();
   const [selectedOptions, setSelectedOptions] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
-  const [artworkHandoffAccepted, setArtworkHandoffAccepted] = useState(false);
+  // artworkHandoffAccepted is true when the customer has selected an artwork file.
+  const artworkHandoffAccepted = artworkFile !== null;
   const [designNotes, setDesignNotes] = useState('');
   const [customizationService, setCustomizationService] = useState('none');
   const [useCustomSize, setUseCustomSize] = useState(false);
@@ -498,7 +503,7 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
     }
 
     if (!artworkHandoffAccepted) {
-      errors.artworkHandoff = 'Confirm the artwork handoff requirement before adding this item to your cart.';
+      errors.artworkHandoff = 'Please upload your artwork file before adding this item to your cart.';
     }
     
     // Validate shipping info for shipping estimates
@@ -1046,10 +1051,12 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
                       {designNotes || 'No design notes added yet.'}
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                      Artwork Handoff
+                      Artwork File
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Secure transfer instructions are provided after the order is reviewed.
+                    <Typography variant="body2" color={artworkFile ? 'success.main' : 'text.secondary'}>
+                      {artworkFile
+                        ? `${artworkFile.name} (${(artworkFile.size / 1024 / 1024).toFixed(2)} MB)`
+                        : 'No file selected yet.'}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -1061,30 +1068,53 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
             </Typography>
             <Stepper activeStep={activeStep} orientation="vertical">
               <Step>
-                <StepLabel>Confirm artwork handoff</StepLabel>
+                <StepLabel>Upload your artwork</StepLabel>
                 <StepContent>
                   <Box sx={{ mb: 2 }}>
-                    <Alert severity="warning" sx={{ mb: 2 }}>
-                      This website does not upload artwork during product configuration. It is not uploaded or attached to your order. After your order is reviewed, Uzima Prints will provide secure artwork transfer instructions. Production will not begin until the store confirms receipt and print readiness.
-                    </Alert>
-                    <FormControlLabel
-                      control={(
-                        <Checkbox
-                          checked={artworkHandoffAccepted}
-                          onChange={(event) => {
-                            setArtworkHandoffAccepted(event.target.checked);
-                            if (event.target.checked && validationErrors.artworkHandoff) {
-                              setValidationErrors((previous) => {
-                                const next = { ...previous };
-                                delete next.artworkHandoff;
-                                return next;
-                              });
-                            }
-                          }}
-                        />
-                      )}
-                      label="I understand that artwork is transferred separately and production starts only after Uzima Prints confirms the file."
-                    />
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Select the print-ready file for this order. Your file is held securely in your browser and only uploaded after payment succeeds — nothing is sent until your order is confirmed.
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                      Accepted formats: JPEG, PNG, TIFF, WEBP, PDF &mdash; max 50 MB
+                    </Typography>
+
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<UploadFileIcon />}
+                      sx={{ mb: 1 }}
+                    >
+                      Choose File
+                      <input
+                        type="file"
+                        hidden
+                        accept=".jpg,.jpeg,.png,.tif,.tiff,.webp,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setArtworkFile(file);
+                          if (file && validationErrors.artworkHandoff) {
+                            setValidationErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.artworkHandoff;
+                              return next;
+                            });
+                          }
+                        }}
+                      />
+                    </Button>
+
+                    {artworkFile && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                        <CheckCircleIcon color="success" fontSize="small" />
+                        <Typography variant="body2">
+                          {artworkFile.name}{' '}
+                          <Typography component="span" variant="caption" color="text.secondary">
+                            ({(artworkFile.size / 1024 / 1024).toFixed(2)} MB)
+                          </Typography>
+                        </Typography>
+                      </Box>
+                    )}
+
                     {validationErrors.artworkHandoff && (
                       <Typography variant="caption" color="error" display="block" sx={{ mt: 1 }}>
                         {validationErrors.artworkHandoff}
@@ -1097,7 +1127,7 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
                       if (!artworkHandoffAccepted) {
                         setValidationErrors((previous) => ({
                           ...previous,
-                          artworkHandoff: 'Confirm the artwork handoff requirement to continue.',
+                          artworkHandoff: 'Please upload your artwork file to continue.',
                         }));
                         return;
                       }

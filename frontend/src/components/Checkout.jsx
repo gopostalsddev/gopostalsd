@@ -33,12 +33,14 @@ import { useCartOperations, useCartFormatting } from '../hooks/useCart';
 import { SquarePaymentForm } from './SquarePaymentForm';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useArtwork } from '../contexts/ArtworkContext';
 import { useNavigate } from 'react-router-dom';
 
 const steps = ['Cart Review', 'Shipping & Billing', 'Payment', 'Confirmation'];
 
 export function Checkout() {
   const { isAuthenticated, user } = useAuth();
+  const { artworkFile, clearArtwork } = useArtwork();
   const navigate = useNavigate();
   
   const {
@@ -248,6 +250,21 @@ export function Checkout() {
       const paymentResult = paymentResponse.data;
 
       if (paymentResult.success) {
+        // Upload artwork file if the customer attached one.
+        if (artworkFile) {
+          try {
+            const formData = new FormData();
+            formData.append('file', artworkFile);
+            await api.post(`/orders/${orderData.id}/artwork`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          } catch (uploadErr) {
+            // Non-fatal: order succeeded; artwork can be requested manually.
+            console.error('Artwork upload failed:', uploadErr);
+          }
+          clearArtwork();
+        }
+
         // Snapshot items before clearing so ConfirmationStep can show them.
         setConfirmedItems(cart.items || []);
         // create_order_from_cart already clears the persisted cart in the

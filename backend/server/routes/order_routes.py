@@ -5,8 +5,10 @@ This module defines all order-related API endpoints using Flask-RESTX.
 It provides order creation, payment processing, and order management functionality.
 """
 
-from flask import request, g
+import io
+from flask import request, g, send_file
 from flask_restx import Namespace, Resource, fields
+from werkzeug.utils import secure_filename
 from server.services.order_service import OrderService
 from server.services.payment_service import PaymentService
 from server.services.email_service import EmailService
@@ -20,6 +22,11 @@ from server.validation.input_validator import (
     validator,
 )
 from server.routes.response_utils import error_response
+
+_ARTWORK_ALLOWED_MIMETYPES = {
+    'image/jpeg', 'image/png', 'image/tiff', 'image/webp', 'application/pdf',
+}
+_ARTWORK_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
 
 # Create namespace for order operations
 api = Namespace('orders', description='Order operations')
@@ -416,3 +423,81 @@ class OrderCancelResource(Resource):
             return error_response(result.get('error', 'Failed to cancel order'), 500)
 
         return {'success': True, 'message': 'Order cancelled', 'order': result['order']}, 200
+
+
+@api.route('/<int:order_id>/artwork')
+class OrderArtworkResource(Resource):
+    """Upload and list artwork files for an order."""
+
+    @require_auth
+    def post(self, order_id):
+        """Upload artwork for an order (order owner only)."""
+        from server.models.order import Order, OrderArtwork
+        from server import database as db
+
+        order = Order.query.get(order_id)
+        if not order:
+            return error_response('Order not found', 404)
+
+        request_user_id = getattr(request, 'user_id', None)
+        if request_user_id is None or order.user_id is None or int(order.user_id) != int(request_user_id):
+            return error_response('Forbidden', 403)
+
+        if 'file' not in request.files:
+            return error_response('No file provided', 400)
+
+        uploaded = request.files['file']
+        if not uploaded.filename:
+            return error_response('No file selected', 400)
+
+        mimetype = uploaded.mimetype or 'application/octet-stream'
+        if mimetype not in _ARTWORK_ALLOWED_MIMETYPES:
+            return error_response(
+                'File type not allowed. Use JPEG, PNG, TIFF, WEBP, or PDF.', 400
+            )
+
+        file_data = uploaded.read()
+        if len(file_data) > _ARTWORK_MAX_BYTES:
+            return error_response('File too large. Maximum 50 MB.', 400)
+
+        artwork = OrderArtwork(
+            order_id=order_id,
+            original_filename=secure_filename(uploaded.filename) or 'artwork',
+            mimetype=mimetype,
+            file_size=len(file_data),
+            file_data=file_data,
+        )
+        db.session.add(artwork)
+        db.session.commit()
+        return artwork.to_dict(), 201
+
+    @require_role('Admin')
+    def get(self, order_id):
+        """List artwork files for an order (admin only)."""
+        from server.models.order import Order
+
+        order = Order.query.get(order_id)
+        if not order:
+            return error_response('Order not found', 404)
+        return [a.to_dict() for a in order.artwork_files], 200
+
+
+@api.route('/<int:order_id>/artwork/<int:artwork_id>/download')
+class OrderArtworkDownloadResource(Resource):
+    """Download an artwork file."""
+
+    @require_role('Admin')
+    def get(self, order_id, artwork_id):
+        """Download artwork file (admin only)."""
+        from server.models.order import OrderArtwork
+
+        artwork = OrderArtwork.query.filter_by(id=artwork_id, order_id=order_id).first()
+        if not artwork:
+            return error_response('Artwork not found', 404)
+
+        return send_file(
+            io.BytesIO(artwork.file_data),
+            mimetype=artwork.mimetype,
+            as_attachment=True,
+            download_name=artwork.original_filename,
+        )

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -30,6 +30,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import SyncIcon from '@mui/icons-material/Sync';
 import NorthEastIcon from '@mui/icons-material/NorthEast';
 import { fetchAllOrders, fetchOrderStatuses, updateOrderStatus, issueRefund } from '../../services/order_service';
+import { api } from '../../services/api';
 import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 
 const statusConfig = {
@@ -74,6 +75,9 @@ const OrderManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Artwork state
+  const [artworkFiles, setArtworkFiles] = useState([]);
 
   // Refund dialog state
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -173,19 +177,27 @@ const OrderManagementPage = () => {
     ];
   }, [orders]);
 
-  const openOrderDialog = (order) => {
+  const openOrderDialog = useCallback(async (order) => {
     setSelectedOrder(order);
     setStatusDraft(order.status || 'pending');
     setTrackingNumberDraft(order.tracking_number || '');
     setCarrierNameDraft(order.carrier_name || '');
     setSuccess('');
-  };
+    setArtworkFiles([]);
+    try {
+      const res = await api.get(`/orders/${order.id}/artwork`);
+      setArtworkFiles(res.data || []);
+    } catch {
+      // No artwork or fetch failed — show nothing
+    }
+  }, []);
 
   const closeOrderDialog = () => {
     setSelectedOrder(null);
     setStatusDraft('pending');
     setTrackingNumberDraft('');
     setCarrierNameDraft('');
+    setArtworkFiles([]);
   };
 
   const openRefundDialog = () => {
@@ -571,6 +583,54 @@ const OrderManagementPage = () => {
                     </Paper>
                   ))}
                 </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                  Artwork Files
+                </Typography>
+                {artworkFiles.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No artwork uploaded for this order.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1}>
+                    {artworkFiles.map((file) => (
+                      <Paper key={file.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>{file.original_filename}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {file.mimetype} &mdash; {(file.file_size / 1024 / 1024).toFixed(2)} MB
+                            </Typography>
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={async () => {
+                              try {
+                                const res = await api.get(
+                                  `/orders/${selectedOrder.id}/artwork/${file.id}/download`,
+                                  { responseType: 'blob' }
+                                );
+                                const url = URL.createObjectURL(res.data);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = file.original_filename;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              } catch {
+                                alert('Failed to download artwork file.');
+                              }
+                            }}
+                          >
+                            Download
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
               </Box>
             </Stack>
           )}

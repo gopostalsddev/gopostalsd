@@ -10,7 +10,7 @@ from .pricing import (
 )
 from .order import (
     Order, OrderItem, Payment, PaymentAttempt, Refund, RefundAttempt,
-    OrderStatus, PaymentStatus
+    OrderArtwork, OrderStatus, PaymentStatus
 )
 from .webhook import SquareWebhookReceipt
 
@@ -22,6 +22,6 @@ __all__ = [
     'PrintProduct', 'Vendor', 'ProductOption', 'ProductPricing', 'Cart', 
     'CartItem', 'ShippingOption', 'ProductVariant', 'StoreCode', 'PricingPolicy',
     'Order', 'OrderItem', 'Payment', 'PaymentAttempt', 'Refund', 'RefundAttempt',
-    'OrderStatus', 'PaymentStatus',
+    'OrderArtwork', 'OrderStatus', 'PaymentStatus',
     'SquareWebhookReceipt'
 ]

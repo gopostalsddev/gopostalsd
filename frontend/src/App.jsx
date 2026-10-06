@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { Box, Typography, Button } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { ArtworkProvider } from './contexts/ArtworkContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
@@ -60,6 +61,7 @@ const App = () => {
         <CssBaseline />
         <AuthProvider>
           <CartProvider>
+            <ArtworkProvider>
             <Router>
               <Suspense fallback={<Layout><RouteLoadingState /></Layout>}>
                 <Routes>
@@ -141,6 +143,7 @@ const App = () => {
                 </Routes>
               </Suspense>
             </Router>
+            </ArtworkProvider>
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>

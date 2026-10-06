@@ -287,6 +287,31 @@ class Refund(db.Model):
         }
 
 
+class OrderArtwork(db.Model):
+    """Artwork file uploaded by the customer and attached to an order."""
+    __tablename__ = 'order_artwork'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False, index=True)
+    original_filename = db.Column(db.String(255), nullable=False)
+    mimetype = db.Column(db.String(100), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    file_data = db.Column(db.LargeBinary, nullable=False)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=func.now())
+
+    order = db.relationship('Order', backref='artwork_files')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'order_id': self.order_id,
+            'original_filename': self.original_filename,
+            'mimetype': self.mimetype,
+            'file_size': self.file_size,
+            'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
+        }
+
+
 class RefundAttempt(db.Model):
     """Durable identity and balance reservation for a provider refund."""
 
