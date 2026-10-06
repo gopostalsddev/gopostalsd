@@ -29,7 +29,7 @@ def make_http_request(third_party_adapter, method, endpoint, data=None, requires
             if not third_party_adapter.authenticate():
                 return None
             
-        headers["Authorization"] = third_party_adapter.access_token
+        headers["Authorization"] = f"Bearer {third_party_adapter.access_token}"
 
     url = f"{third_party_adapter.base_url}{endpoint}" if custom_base_url is None else f"{custom_base_url}{endpoint}"
 
