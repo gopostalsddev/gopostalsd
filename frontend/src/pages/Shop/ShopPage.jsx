@@ -34,16 +34,14 @@ const ShopPage = () => {
 
             // Restore state from URL on load/back-forward navigation
             const catId = searchParams.get('category');
-            const prodId = searchParams.get('product');
             if (catId) {
               const cat = enabledProductCategories.find(c => String(c.id) === catId);
               if (cat) {
                 setSelectedProductCategrory(cat);
-                if (prodId) {
-                  // product objects are loaded lazily; store a stub so ProductDetailPage
-                  // can fetch full details — or just clear to type list if not found
-                  setSelectedProduct({ id: parseInt(prodId, 10), _stub: true });
-                }
+                // Don't restore the product selection — the full product object
+                // (including vendor_product_id) is only available after the type
+                // list loads, and we have no endpoint to fetch it by id alone.
+                // Restoring to the type list is the next best UX.
               }
             }
           } else {

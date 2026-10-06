@@ -268,11 +268,11 @@ const ProductDetailPage = ({ product, onBack, categoryImage }) => {
   const hasSelectedValue = (value) =>
     value !== undefined && value !== null && `${value}` !== '';
 
-  // Manage initial loading state
+  // Manage initial loading state — clear as soon as we have the product id.
+  // vendor_product_id is nullable; checking it caused an infinite spinner for
+  // products without a Sinalite ID.
   React.useEffect(() => {
-    // Set initial loading to false when we have the basic product data
-    // Don't wait for options and pricing to load - show the layout immediately
-    if (product && product.vendor_product_id) {
+    if (product && product.id) {
       setInitialLoading(false);
     }
   }, [product]);
