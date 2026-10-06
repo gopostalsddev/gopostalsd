@@ -527,25 +527,64 @@ class PricingService:
             logger.info(f"cart_items: {cart_items}")
             logger.info(f"shipping_info: {shipping_info}")
             
-            # Prepare items for API call - handle both old and new formats
+            # Prepare items for API call - handle both old and new formats.
+            # Sinalite expects options as a list of integer IDs, e.g. [1, 2, 3].
+            # The frontend sends a dict {"Size": "12345", "Qty": "67890"} so we
+            # extract the values and coerce to int.
             api_items = []
             for item in cart_items:
-                # Handle new format (from frontend) or old format (from cart)
                 if 'productId' in item:
-                    api_items.append({
-                        'productId': item['productId'],
-                        'options': item['options']
-                    })
+                    raw_opts = item['options']
+                    product_id = item['productId']
                 else:
-                    api_items.append({
-                        'productId': item['product_id'],
-                        'options': item['selected_options']
-                    })
-            
+                    raw_opts = item['selected_options']
+                    product_id = item['product_id']
+
+                if isinstance(raw_opts, dict):
+                    option_ids = [int(v) for v in raw_opts.values() if v is not None and str(v).strip() != '']
+                elif isinstance(raw_opts, list):
+                    option_ids = [int(v) for v in raw_opts if v is not None]
+                else:
+                    option_ids = []
+
+                api_items.append({
+                    'productId': int(product_id),
+                    'options': option_ids,
+                    'quantity': item.get('quantity', 1),
+                })
+
+            # Normalise shippingInfo field names — the frontend sends PascalCase
+            # Sinalite keys (ShipState/ShipZip/ShipCountry) but also may send
+            # lowercase keys; accept either and forward a canonical dict.
+            country = (
+                shipping_info.get('ShipCountry') or
+                shipping_info.get('country') or ''
+            )
+            state = (
+                shipping_info.get('ShipState') or
+                shipping_info.get('state') or
+                shipping_info.get('stateCode') or ''
+            )
+            postal = (
+                shipping_info.get('ShipZip') or
+                shipping_info.get('postalCode') or
+                shipping_info.get('zip') or ''
+            )
+            city = shipping_info.get('city') or shipping_info.get('ShipCity') or ''
+
+            normalised_shipping = {
+                'ShipCountry': country,
+                'ShipState': state,
+                'ShipZip': postal,
+            }
+            if city:
+                normalised_shipping['ShipCity'] = city
+
             logger.info(f"Prepared api_items: {api_items}")
-            
+            logger.info(f"Normalised shipping_info: {normalised_shipping}")
+
             # Get shipping estimates from API
-            estimates = self.sinalite.get_shipping_estimate(api_items, shipping_info)
+            estimates = self.sinalite.get_shipping_estimate(api_items, normalised_shipping)
             
             logger.info(f"Raw estimates from Sinalite: {estimates}")
             
