@@ -5,6 +5,8 @@ This module defines all pricing-related API endpoints using Flask-RESTX.
 It follows the same pattern as print_product_routes.py.
 """
 
+import logging
+from decimal import Decimal, InvalidOperation
 from flask_restx import Namespace, Resource, fields
 from flask import request
 from server.controllers.pricing_controller import PricingController
@@ -12,6 +14,31 @@ from server.middleware.auth_middleware import require_role
 from server.models.pricing import PricingPolicy
 from server import database as db
 from server.routes.response_utils import error_response
+
+logger = logging.getLogger(__name__)
+
+_NUMERIC_POLICY_FIELDS = {
+    'cad_to_usd_rate',
+    'exchange_buffer_percent',
+    'markup_percent',
+    'fixed_fee_usd',
+    'minimum_profit_usd',
+    'rounding_increment',
+    'customization_file_review_fee_usd',
+    'customization_design_assist_fee_usd',
+}
+
+
+def _coerce_policy_value(field_name, value):
+    """Coerce a string value from the form to the right Python type for the model."""
+    if field_name not in _NUMERIC_POLICY_FIELDS:
+        return value
+    if value == '' or value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError):
+        raise ValueError(f"Invalid value for {field_name}: {value!r}")
 
 # Define a namespace for pricing
 api = Namespace("Pricing", description="Operations related to product pricing and shipping")
@@ -134,12 +161,17 @@ class PricingPolicyResource(Resource):
     @api.response(200, 'Pricing policy fetched successfully', pricing_policy_model)
     @require_role('Admin')
     def get(self):
-        policy = PricingPolicy.get_current()
-        if not policy:
-            policy = PricingPolicy()
-            db.session.add(policy)
-            db.session.commit()
-        return policy.to_dict(), 200
+        try:
+            policy = PricingPolicy.get_current()
+            if not policy:
+                policy = PricingPolicy()
+                db.session.add(policy)
+                db.session.commit()
+            return policy.to_dict(), 200
+        except Exception as exc:
+            db.session.rollback()
+            logger.error("Failed to load pricing policy", exc_info=True)
+            return error_response(f'Failed to load pricing policy: {str(exc)}', 500, code='PRICING_POLICY_LOAD_ERROR', category='business_logic')
 
     @api.doc('update_pricing_policy')
     @api.expect(pricing_policy_model)
@@ -168,12 +200,15 @@ class PricingPolicyResource(Resource):
         try:
             for field_name in field_names:
                 if field_name in data:
-                    setattr(policy, field_name, data[field_name])
+                    coerced = _coerce_policy_value(field_name, data[field_name])
+                    if coerced is not None:
+                        setattr(policy, field_name, coerced)
 
             db.session.commit()
             return policy.to_dict(), 200
         except Exception as exc:
             db.session.rollback()
+            logger.error("Failed to update pricing policy", exc_info=True)
             return error_response(f'Failed to update pricing policy: {str(exc)}', 400, code='PRICING_POLICY_UPDATE_ERROR', category='business_logic')
 
 
