@@ -48,6 +48,7 @@ def make_http_request(third_party_adapter, method, endpoint, data=None, requires
             
             if response.status_code == SERVER_ERROR_CODE: # Server error
                 logger.warning(f"Server error, retrying in {retry_delay} seconds... ({attempt+1}/{max_retries})")
+                logger.warning(f"Server error response body: {response.text[:500]}")
                 time.sleep(retry_delay)
                 continue  # Retry the request
 
