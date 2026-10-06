@@ -644,10 +644,9 @@ Thank you,
             shipping_option = ShippingOption.query.filter_by(cart_id=cart.id).first()
             if shipping_option:
                 return float(shipping_option.price)
-            # Default to constant $5 shipping if no option selected
-            return 5.00
+            return 0.00
         except (SQLAlchemyError, TypeError, ValueError):
-            return 5.00
+            return 0.00
     
     def _calculate_tax(self, subtotal: float, store_code: int) -> float:
         """Calculate tax amount."""

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Box, Alert, CircularProgress } from '@mui/material';
+import { useArtwork } from '../../contexts/ArtworkContext';
 
 
 // Import global components
@@ -15,6 +16,7 @@ const ProductDetailPage = lazy(() => import('./components/ProductDetailPage'));
 import { fetchEnabledPrintProductCategories } from '../../services/product_service';
 
 const ShopPage = () => {
+    const { clearArtwork } = useArtwork();
 
     const  [productCategories, setProductCategories] = useState([])
     const  [selectedProductCategory, setSelectedProductCategrory] = useState(null)
@@ -81,6 +83,7 @@ const ShopPage = () => {
     }
 
     const handleBackToProducts = () => {
+        clearArtwork();
         setSelectedProduct(null);
         setSearchParams({ category: selectedProductCategory.id });
     }

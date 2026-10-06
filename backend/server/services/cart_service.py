@@ -361,8 +361,7 @@ class CartService:
             
             # Calculate totals - convert all to float to avoid Decimal/float mixing
             subtotal = sum(float(item.total_price) for item in cart.items)
-            # Use constant $5 shipping fee for now
-            shipping_cost = 5.00
+            shipping_cost = self._calculate_shipping_cost(cart)
             tax_amount = self._calculate_tax(subtotal, cart.store_code)
             total = subtotal + shipping_cost + tax_amount
             
@@ -473,9 +472,14 @@ class CartService:
         }
     
     def _calculate_shipping_cost(self, cart: Cart) -> float:
-        """Calculate shipping cost for cart."""
-        # Using constant $5 shipping fee for now
-        return 5.00
+        """Return the price of the saved ShippingOption for this cart, or 0.00."""
+        try:
+            shipping_option = ShippingOption.query.filter_by(cart_id=cart.id).first()
+            if shipping_option:
+                return float(shipping_option.price)
+            return 0.00
+        except Exception:
+            return 0.00
     
     def _calculate_tax(self, subtotal: float, store_code: int) -> float:
         """Calculate tax amount."""
