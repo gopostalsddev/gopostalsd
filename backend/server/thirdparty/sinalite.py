@@ -37,16 +37,23 @@ class SinaliteAdapter:
 
     def authenticate(self):
         """Authenticate and obtain an access token."""
-        
+        import requests as _requests
+
         payload = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
-            "audience": "https://apiconnect.sinalite.com",
             "grant_type": "client_credentials"
         }
-        
-        
-        response = make_http_request(self, "POST", "/auth/token", data=payload, requires_auth=False, custom_base_url=self.auth_base_url)
+
+        url = f"{self.auth_base_url}/auth/token"
+        try:
+            resp = _requests.post(url, data=payload, timeout=10)
+            response = resp.json() if resp.status_code < 400 else None
+            if response is None:
+                logger.error(f"{self.name} auth HTTP {resp.status_code}: {resp.text[:300]}")
+        except Exception as exc:
+            logger.error(f"{self.name} auth request failed: {exc}")
+            response = None
 
         if response and "access_token" in response:
             self.access_token = response.get("access_token")
@@ -62,7 +69,7 @@ class SinaliteAdapter:
             self.token_lifetime= 0
             self.token_expiry = 0
             
-            logger.error(f"{self.name} authentication failed!")
+            logger.error(f"{self.name} authentication failed! response={response!r}")
             return False
 
     def get_products(self):
