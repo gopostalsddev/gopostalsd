@@ -130,7 +130,7 @@ class PricingRepository:
 
                 upsert_stmt = insert(ProductOption).values(upsert_rows)
                 upsert_stmt = upsert_stmt.on_conflict_do_update(
-                    constraint='product_options_sinalite_option_id_key',
+                    constraint='uq_product_options_product_option',
                     set_={
                         'product_id': upsert_stmt.excluded.product_id,
                         'group': upsert_stmt.excluded.group,
