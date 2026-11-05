@@ -127,6 +127,13 @@ class Config:
     SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
     SUPABASE_BUCKET = os.getenv('SUPABASE_BUCKET', 'gopostalsd-uploads')
 
+    # Cloudflare R2 file storage
+    R2_ENDPOINT_URL = os.getenv('R2_ENDPOINT_URL')
+    R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID')
+    R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY')
+    R2_BUCKET = os.getenv('R2_BUCKET', 'gopostal-production')
+    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL')
+
     PRICING_POLICY_VERSION = os.getenv('PRICING_POLICY_VERSION', 'retail-v1')
     PRICING_VENDOR_CURRENCY = os.getenv('PRICING_VENDOR_CURRENCY', 'CAD').upper()
     PRICING_DISPLAY_CURRENCY = os.getenv('PRICING_DISPLAY_CURRENCY', 'USD').upper()

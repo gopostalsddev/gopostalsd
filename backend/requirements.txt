@@ -69,6 +69,7 @@ SQLAlchemy==2.0.38
 storage3==0.11.3
 StrEnum==0.4.15
 supabase==2.15.0
+boto3==1.35.0
 supafunc==0.9.4
 mailersend==2.0.3
 sentry-sdk>=2.0.0
