@@ -22,6 +22,7 @@ from server.models.order import (
 from server.services.payment_service import PaymentService
 from server.services.refund_service import RefundService
 from server.services.email_service import EmailService
+from server.services.fulfillment_service import fulfillment_service
 from server.email_config import BRAND_NAME, INTENDED_SENDER_ADDRESS, PLATFORM_ATTRIBUTION
 
 logger = logging.getLogger(__name__)
@@ -96,10 +97,12 @@ class OrderService:
             
             # Calculate totals with Decimal to preserve money precision.
             subtotal = sum((self._to_money_decimal(item.total_price) for item in cart.items), Decimal('0.00'))
-            shipping_cost = self._to_money_decimal(self._get_shipping_cost(cart))
+            shipping_option = ShippingOption.query.filter_by(cart_id=cart.id).first()
+            shipping_cost = self._to_money_decimal(float(shipping_option.price) if shipping_option else 0)
+            shipping_method = shipping_option.method_name if shipping_option else None
             tax_amount = self._to_money_decimal(self._calculate_tax(float(subtotal), cart.store_code))
             total_amount = self._to_money_decimal(subtotal + shipping_cost + tax_amount)
-            
+
             # Create order
             order = Order(
                 order_number=order_number,
@@ -117,6 +120,7 @@ class OrderService:
                 currency='USD',
                 shipping_address=shipping_address,
                 billing_address=billing_address or shipping_address,
+                shipping_method=shipping_method,
                 payment_status=PaymentStatus.PENDING
             )
             
@@ -322,6 +326,10 @@ class OrderService:
                 db.session.commit()
 
                 logger.info(f"Payment processed successfully for order {order.order_number}")
+
+                # Forward to Sinalite for fulfillment (non-blocking — failure is logged, not raised)
+                fulfillment_service.forward_to_sinalite(order)
+
                 return {
                     'success': True,
                     'payment': payment.to_dict(),

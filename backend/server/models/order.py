@@ -71,6 +71,8 @@ class Order(db.Model):
     # Tracking and fulfillment
     tracking_number = db.Column(db.String(100), nullable=True)
     carrier_name = db.Column(db.String(50), nullable=True)
+    shipping_method = db.Column(db.String(100), nullable=True)
+    sinalite_order_id = db.Column(db.Integer, nullable=True)
     estimated_delivery = db.Column(db.DateTime, nullable=True)
     shipped_at = db.Column(db.DateTime, nullable=True)
     delivered_at = db.Column(db.DateTime, nullable=True)
@@ -107,6 +109,8 @@ class Order(db.Model):
             'payment_method': self.payment_method,
             'tracking_number': self.tracking_number,
             'carrier_name': self.carrier_name,
+            'shipping_method': self.shipping_method,
+            'sinalite_order_id': self.sinalite_order_id,
             'estimated_delivery': self.estimated_delivery.isoformat() if self.estimated_delivery else None,
             'shipped_at': self.shipped_at.isoformat() if self.shipped_at else None,
             'delivered_at': self.delivered_at.isoformat() if self.delivered_at else None,

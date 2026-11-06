@@ -215,3 +215,26 @@ class SinaliteAdapter:
 
         logger.error(f"{self.name} failed to retrieve shipping estimates (unexpected type)")
         return []
+
+    def place_order(self, payload: dict) -> dict:
+        """
+        Submit an order to Sinalite for fulfillment.
+
+        Args:
+            payload: Full Sinalite order payload (items, shippingInfo, billingInfo, notes)
+
+        Returns:
+            dict with keys: success (bool), sinalite_order_id (int or None), error (str or None)
+        """
+        logger.info("Sinalite place_order payload: %s", payload)
+        response = make_http_request(self, "POST", "/order/new", data=payload, requires_auth=True)
+        logger.info("Sinalite place_order response: %s", response)
+
+        if response and isinstance(response, dict) and response.get("status") == "success":
+            sinalite_id = response.get("orderId")
+            logger.info("Sinalite order placed successfully, orderId=%s", sinalite_id)
+            return {"success": True, "sinalite_order_id": sinalite_id, "error": None}
+
+        error = response.get("message", "Unknown error") if isinstance(response, dict) else "No response"
+        logger.error("Sinalite place_order failed: %s", error)
+        return {"success": False, "sinalite_order_id": None, "error": error}
