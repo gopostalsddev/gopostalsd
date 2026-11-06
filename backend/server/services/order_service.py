@@ -45,12 +45,13 @@ class OrderService:
         """Convert value to 2-decimal money representation."""
         return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     
-    def create_order_from_cart(self, 
+    def create_order_from_cart(self,
                               session_id: str,
                               customer_info: Dict[str, Any],
                               shipping_address: Dict[str, Any],
                               billing_address: Optional[Dict[str, Any]] = None,
-                              user_id: Optional[int] = None) -> Dict[str, Any]:
+                              user_id: Optional[int] = None,
+                              selected_shipping: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Create order from cart items.
         
@@ -97,9 +98,17 @@ class OrderService:
             
             # Calculate totals with Decimal to preserve money precision.
             subtotal = sum((self._to_money_decimal(item.total_price) for item in cart.items), Decimal('0.00'))
-            shipping_option = ShippingOption.query.filter_by(cart_id=cart.id).first()
-            shipping_cost = self._to_money_decimal(float(shipping_option.price) if shipping_option else 0)
-            shipping_method = shipping_option.method_name if shipping_option else None
+
+            # Prefer the shipping option sent from the frontend (the ShippingOption DB row
+            # is not populated in the current checkout flow).
+            if selected_shipping and selected_shipping.get('price') is not None:
+                shipping_cost = self._to_money_decimal(selected_shipping['price'])
+                shipping_method = selected_shipping.get('method_name')
+            else:
+                db_shipping = ShippingOption.query.filter_by(cart_id=cart.id).first()
+                shipping_cost = self._to_money_decimal(float(db_shipping.price) if db_shipping else 0)
+                shipping_method = db_shipping.method_name if db_shipping else None
+
             tax_amount = self._to_money_decimal(self._calculate_tax(float(subtotal), cart.store_code))
             total_amount = self._to_money_decimal(subtotal + shipping_cost + tax_amount)
 

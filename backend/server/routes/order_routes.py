@@ -214,7 +214,10 @@ class OrderResource(Resource):
         if session_error:
             return session_error
         user_id = get_user_id()
-        
+
+        # Optional: shipping option chosen by the customer in the UI
+        selected_shipping = data.get('selected_shipping')
+
         order_service = get_order_service()
         result = order_service.create_order_from_cart(
             session_id=session_id,
@@ -226,7 +229,8 @@ class OrderResource(Resource):
             },
             shipping_address=shipping_address_result.sanitized_data,
             billing_address=sanitized_billing_address,
-            user_id=user_id
+            user_id=user_id,
+            selected_shipping=selected_shipping,
         )
         
         if result['success']:

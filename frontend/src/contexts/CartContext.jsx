@@ -63,7 +63,11 @@ function cartReducer(state, action) {
       return { ...state, shippingOptions: action.payload };
     
     case CART_ACTIONS.SET_SELECTED_SHIPPING:
-      return { ...state, selectedShipping: action.payload };
+      return {
+        ...state,
+        selectedShipping: action.payload,
+        cart: { ...state.cart, shipping_cost: action.payload ? action.payload.price : 0 },
+      };
     
     default:
       return state;

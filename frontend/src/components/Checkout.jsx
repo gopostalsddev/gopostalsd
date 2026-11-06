@@ -234,9 +234,10 @@ export function Checkout() {
       const orderResponse = await api.post(`/orders/?session_id=${sessionId}`, {
         customer_info: checkoutData.customerInfo,
         shipping_address: checkoutData.shippingAddress,
-        billing_address: checkoutData.useSameAddress ? 
-          checkoutData.shippingAddress : 
-          checkoutData.billingAddress
+        billing_address: checkoutData.useSameAddress ?
+          checkoutData.shippingAddress :
+          checkoutData.billingAddress,
+        selected_shipping: selectedShipping || null,
       });
 
       const orderData = orderResponse.data;
