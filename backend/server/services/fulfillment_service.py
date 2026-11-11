@@ -38,7 +38,7 @@ class FulfillmentService:
             items = []
             for item in order.items:
                 options = self._map_options(item.product_id, item.selected_options)
-                files = [{"type": "front", "url": url} for url in artwork_urls]
+                files = [{"url": url, "name": url.rsplit("/", 1)[-1]} for url in artwork_urls]
                 items.append({
                     "productId": item.product_id,
                     "options": options,
