@@ -473,6 +473,13 @@ class OrderArtworkResource(Resource):
         )
         db.session.add(artwork)
         db.session.commit()
+
+        # Forward to Sinalite now that artwork is attached and (typically) payment is done.
+        # Idempotent — skips if already forwarded.
+        if order.payment_status and order.payment_status.value == 'completed':
+            from server.services.fulfillment_service import fulfillment_service
+            fulfillment_service.forward_to_sinalite(order)
+
         return artwork.to_dict(), 201
 
     @require_role('Admin')

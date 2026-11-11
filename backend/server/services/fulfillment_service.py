@@ -29,6 +29,10 @@ class FulfillmentService:
         logged but does NOT raise, so the payment response is never blocked.
         """
         try:
+            if order.sinalite_order_id:
+                logger.info("Order %s already forwarded (sinalite_order_id=%s), skipping", order.order_number, order.sinalite_order_id)
+                return True
+
             sinalite = current_app.extensions.get("sinalite")
             if not sinalite:
                 logger.error("Sinalite adapter not in app extensions; cannot forward order %s", order.order_number)
@@ -133,7 +137,7 @@ class FulfillmentService:
         Files are uploaded under the prefix artwork/<order_number>/ .
         Returns an empty list if there are no artwork files or the backend is not R2.
         """
-        from server.services.file_storage_service import file_storage
+        from server.config import filestorage as file_storage
         urls = []
         for artwork in order.artwork_files:
             try:
