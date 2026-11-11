@@ -132,7 +132,7 @@ class FulfillmentService:
             ProductOption.sinalite_option_id.in_(ids),
         ).all()
 
-        mapped = {row.group: str(row.sinalite_option_id) for row in rows}
+        mapped = {row.group: row.name for row in rows}
 
         if len(mapped) != len(ids):
             missing = set(ids) - {row.sinalite_option_id for row in rows}
