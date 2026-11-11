@@ -61,6 +61,9 @@ class FulfillmentService:
 
             addr = order.shipping_address or {}
             bill = order.billing_address or addr
+            # Sinalite requires 2-letter ISO country codes; normalize common 3-letter variants.
+            _COUNTRY_MAP = {"USA": "US", "CAN": "CA", "GBR": "GB", "AUS": "AU", "MEX": "MX"}
+            def _iso2(raw): return _COUNTRY_MAP.get((raw or "US").upper(), raw or "US")
             payload = {
                 "items": items,
                 "shippingInfo": {
@@ -72,7 +75,7 @@ class FulfillmentService:
                     "ShipCity": addr.get("city", ""),
                     "ShipState": addr.get("state", ""),
                     "ShipZip": addr.get("zip_code", ""),
-                    "ShipCountry": addr.get("country", "US"),
+                    "ShipCountry": _iso2(addr.get("country")),
                     "ShipPhone": order.customer_phone or "",
                     "ShipMethod": order.shipping_method or "UPS Ground",
                 },
@@ -85,7 +88,7 @@ class FulfillmentService:
                     "BillCity": bill.get("city", ""),
                     "BillState": bill.get("state", ""),
                     "BillZip": bill.get("zip_code", ""),
-                    "BillCountry": bill.get("country", "US"),
+                    "BillCountry": _iso2(bill.get("country")),
                     "BillPhone": order.customer_phone or "",
                 },
                 "notes": f"GoPostal order {order.order_number}",
