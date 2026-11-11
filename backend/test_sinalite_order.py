@@ -9,9 +9,11 @@ The script will print the Sinalite orderId on success. Check it in the
 Sinalite live dashboard at https://apifrontend.sinaliteuppy.com/
 """
 
+import os
 from server import create_server
 
-app = create_server()
+environment = os.getenv("ENVIRONMENT", "production")
+app = create_server(config=environment)
 
 with app.app_context():
     from server.models.pricing import ProductOption
