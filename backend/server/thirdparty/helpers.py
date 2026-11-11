@@ -61,7 +61,14 @@ def make_http_request(third_party_adapter, method, endpoint, data=None, requires
                 logger.error(f"API Error {response.status_code}: {response.text}")
                 return None
             response.raise_for_status()
-            return response.json()
+            if not response.text.strip():
+                logger.error(f"Empty response body from {url}")
+                return None
+            try:
+                return response.json()
+            except Exception:
+                logger.error(f"Non-JSON response from {url}: {response.text[:300]}")
+                return None
         except requests.exceptions.Timeout:
             logger.error(f"Request to {url} timed out.")
             return None
