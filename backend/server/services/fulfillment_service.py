@@ -50,7 +50,7 @@ class FulfillmentService:
                     )
                     continue
                 sinalite_product_id = int(product.vendor_product_id)
-                options = self._map_options(item.product_id, item.selected_options)
+                options = self._map_options(sinalite_product_id, item.selected_options)
                 files = [{"url": url, "name": url.rsplit("/", 1)[-1]} for url in artwork_urls]
                 items.append({
                     "productId": sinalite_product_id,
