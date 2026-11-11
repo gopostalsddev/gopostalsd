@@ -16,6 +16,7 @@ from flask import current_app
 from server.config import database as db
 from server.models.order import Order
 from server.models.pricing import ProductOption
+from server.models.print_product import PrintProduct
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +42,18 @@ class FulfillmentService:
             artwork_urls = self._upload_artwork(order)
             items = []
             for item in order.items:
+                product = PrintProduct.query.get(item.product_id)
+                if not product or not product.vendor_product_id:
+                    logger.error(
+                        "Order %s item product_id=%s has no vendor_product_id; skipping item",
+                        order.order_number, item.product_id,
+                    )
+                    continue
+                sinalite_product_id = int(product.vendor_product_id)
                 options = self._map_options(item.product_id, item.selected_options)
                 files = [{"url": url, "name": url.rsplit("/", 1)[-1]} for url in artwork_urls]
                 items.append({
-                    "productId": item.product_id,
+                    "productId": sinalite_product_id,
                     "options": options,
                     "files": files,
                     "extra": order.order_number,
