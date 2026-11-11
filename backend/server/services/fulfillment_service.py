@@ -137,12 +137,14 @@ class FulfillmentService:
         Files are uploaded under the prefix artwork/<order_number>/ .
         Returns an empty list if there are no artwork files or the backend is not R2.
         """
-        from server.config import filestorage as file_storage
+        from server.config import filestorage
         urls = []
         for artwork in order.artwork_files:
             try:
                 key = f"artwork_{order.order_number}_{int(time.time())}_{artwork.original_filename}"
-                url = file_storage.upload_file(
+                # Upload directly to the storage backend — bypasses the image-only
+                # content-type guard on FileStorage which blocks PDF/TIFF artwork files.
+                url = filestorage.backend.upload_file(
                     file_data=artwork.file_data,
                     file_name=key,
                     content_type=artwork.mimetype,
